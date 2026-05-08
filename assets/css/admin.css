@@ -1,0 +1,561 @@
+/*
+ * Post Runtime Engine — admin styles.
+ *
+ * Scoped to .pre-admin pages so we don't leak styles into the rest of
+ * wp-admin. Builds on WordPress's existing form-table / wp-list-table
+ * conventions; only the cosmetic differences live here.
+ */
+
+.pre-admin {
+	max-width: 1200px;
+}
+
+.pre-admin h1.wp-heading-inline {
+	margin-right: 12px;
+}
+
+.pre-admin .description {
+	color: #6b7280;
+	margin-top: 4px;
+}
+
+.pre-admin .pre-empty-state {
+	background: #ffffff;
+	border: 1px solid #e5e7eb;
+	border-radius: 6px;
+	padding: 48px 24px;
+	margin-top: 24px;
+	text-align: center;
+}
+
+.pre-admin .pre-empty-state p {
+	margin: 0 0 16px 0;
+	color: #4b5563;
+}
+
+.pre-admin .pre-cpts-table code {
+	font-size: 13px;
+	background: #f3f4f6;
+	padding: 2px 6px;
+	border-radius: 3px;
+}
+
+.pre-admin .pre-cpts-table td {
+	vertical-align: middle;
+}
+
+.pre-admin .pre-delete-link {
+	color: #b91c1c;
+}
+
+.pre-admin .pre-delete-link:hover,
+.pre-admin .pre-delete-link:focus {
+	color: #7f1d1d;
+}
+
+.pre-admin .pre-cpt-form h2.title {
+	margin-top: 32px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.pre-admin .pre-cpt-form .form-table th {
+	width: 200px;
+	padding-top: 18px;
+}
+
+.pre-admin .pre-cpt-form input[readonly] {
+	background-color: #f3f4f6;
+	color: #6b7280;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Meta box (post-edit screen)                                              */
+/*                                                                          */
+/* Visual model:                                                            */
+/* - Each grouping is a section card (white surface, soft border).          */
+/* - Inside, items are individual cards on a slightly cooler surface.       */
+/* - Inputs are border-light: subtle background, transparent border at      */
+/*   rest, indigo border-and-ring on focus. No heavy form-field chrome.     */
+/* - Drag handle and remove button fade in on hover; resting state shows    */
+/*   only the content, not the controls. This keeps the meta box scannable  */
+/*   when there are many items.                                             */
+/* ----------------------------------------------------------------------- */
+
+.pre-meta-empty {
+	padding: 24px 0;
+	text-align: center;
+	color: #4b5563;
+}
+
+.pre-meta-grouping {
+	border: 1px solid #e5e7eb;
+	border-radius: 8px;
+	padding: 16px 20px 20px;
+	margin-bottom: 20px;
+	background: #ffffff;
+}
+
+.pre-meta-grouping__header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 16px;
+	margin: 0 0 6px 0;
+}
+
+.pre-meta-grouping__header h3 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.pre-meta-grouping__key {
+	font-size: 11px;
+	font-weight: 400;
+	color: #6b7280;
+	background: #f3f4f6;
+	padding: 1px 6px;
+	border-radius: 3px;
+}
+
+.pre-meta-grouping__edit-link {
+	font-size: 12px;
+	text-decoration: none;
+}
+
+.pre-meta-grouping__description {
+	color: #6b7280;
+	font-size: 13px;
+	margin: 4px 0 12px 0;
+}
+
+.pre-meta-grouping__overrides {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	padding: 12px 0;
+	margin-bottom: 16px;
+	border-bottom: 1px solid #f3f4f6;
+}
+
+.pre-meta-grouping__overrides label {
+	display: flex;
+	flex-direction: column;
+	font-size: 11px;
+	font-weight: 500;
+	color: #6b7280;
+	gap: 4px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.pre-meta-grouping__overrides select {
+	font-weight: 400;
+	font-size: 13px;
+	text-transform: none;
+	letter-spacing: 0;
+	color: #1f2937;
+}
+
+.pre-meta-items h4 {
+	margin: 4px 0 10px 0;
+	font-size: 11px;
+	font-weight: 600;
+	color: #6b7280;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+.pre-items-list {
+	list-style: none;
+	margin: 0 0 12px 0;
+	padding: 0;
+}
+
+/* Individual item card. Position relative for absolute remove button. */
+.pre-item {
+	position: relative;
+	display: grid;
+	grid-template-columns: 24px 96px 1fr;
+	gap: 16px;
+	align-items: start;
+	padding: 14px 40px 14px 12px;
+	margin-bottom: 10px;
+	background: #ffffff;
+	border: 1px solid #e5e7eb;
+	border-radius: 6px;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pre-item:hover {
+	border-color: #d1d5db;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.pre-item:focus-within {
+	border-color: #6366f1;
+	box-shadow: 0 0 0 1px #6366f1;
+}
+
+/* Sortable placeholder while dragging. */
+.pre-item--placeholder {
+	height: 132px;
+	background: #eef2ff !important;
+	border: 1px dashed #a5b4fc !important;
+	border-radius: 6px;
+	box-shadow: none !important;
+}
+
+/* Drag handle — left rail, fades in on hover. */
+.pre-item__handle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 32px;
+	width: 24px;
+	color: #d1d5db;
+	cursor: grab;
+	user-select: none;
+	opacity: 0;
+	transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.pre-item:hover .pre-item__handle,
+.pre-item.ui-sortable-helper .pre-item__handle,
+.pre-item:focus-within .pre-item__handle {
+	opacity: 1;
+}
+
+.pre-item__handle:hover {
+	color: #6b7280;
+}
+
+.pre-item__handle:active {
+	cursor: grabbing;
+}
+
+.pre-item__handle .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+}
+
+/* Media column: preview tile + icon dropdown + image controls stacked. */
+.pre-item__media {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: 96px;
+}
+
+.pre-item__preview {
+	width: 96px;
+	height: 96px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #f9fafb;
+	border: 1px solid #e5e7eb;
+	border-radius: 6px;
+	color: #6b7280;
+	font-size: 28px;
+	overflow: hidden;
+}
+
+.pre-item__preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.pre-item__preview > span {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.pre-item__preview svg {
+	width: 36px;
+	height: 36px;
+	display: block;
+}
+
+.pre-item__preview-empty {
+	color: #cbd5e1;
+	font-size: 22px;
+	font-weight: 300;
+	line-height: 1;
+}
+
+.pre-item__media-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 11px;
+}
+
+.pre-item__icon-select {
+	width: 100%;
+	min-height: 26px;
+	font-size: 11px;
+	padding: 1px 22px 1px 6px;
+	background-color: #ffffff;
+	border-color: #e5e7eb;
+	color: #374151;
+	box-shadow: none;
+}
+
+.pre-item__icon-select:focus {
+	border-color: #6366f1;
+	box-shadow: 0 0 0 1px #6366f1;
+	outline: none;
+}
+
+.pre-item__media-buttons {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	font-size: 11px;
+	line-height: 1.3;
+	padding-left: 2px;
+}
+
+.pre-item__media-buttons .button-link {
+	padding: 0;
+	min-height: 0;
+	font-size: 11px;
+	color: #4b5563;
+	text-decoration: none;
+	text-align: left;
+	white-space: nowrap;
+}
+
+.pre-item__media-buttons .button-link:hover,
+.pre-item__media-buttons .button-link:focus {
+	color: #1f2937;
+	text-decoration: underline;
+	box-shadow: none;
+}
+
+.pre-item__media-buttons .pre-clear-media {
+	color: #9ca3af;
+}
+
+.pre-item__media-buttons .pre-clear-media:hover,
+.pre-item__media-buttons .pre-clear-media:focus {
+	color: #b91c1c;
+}
+
+/* Fields column: heading (bold), supporting text (normal), link (mono). */
+.pre-item__fields {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0; /* prevent grid blow-out from long links */
+}
+
+.pre-item__fields input,
+.pre-item__fields textarea {
+	width: 100%;
+	background: #f9fafb;
+	border: 1px solid transparent;
+	border-radius: 5px;
+	padding: 8px 10px;
+	font-size: 13px;
+	line-height: 1.4;
+	color: #1f2937;
+	box-shadow: none;
+	transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+	font-family: inherit;
+	box-sizing: border-box;
+}
+
+.pre-item__fields input::placeholder,
+.pre-item__fields textarea::placeholder {
+	color: #9ca3af;
+	font-weight: 400;
+}
+
+.pre-item__fields input:hover,
+.pre-item__fields textarea:hover {
+	background: #f3f4f6;
+}
+
+.pre-item__fields input:focus,
+.pre-item__fields textarea:focus {
+	background: #ffffff;
+	border-color: #6366f1;
+	box-shadow: 0 0 0 1px #6366f1;
+	outline: none;
+}
+
+.pre-item__heading {
+	font-weight: 600;
+	font-size: 14px;
+}
+
+.pre-item__supporting {
+	resize: vertical;
+	min-height: 56px;
+}
+
+.pre-item__link {
+	font-family: ui-monospace, "SF Mono", Menlo, Monaco, monospace;
+	font-size: 12px;
+	color: #4b5563;
+}
+
+/* Remove button — absolute top-right, hover-revealed. */
+.pre-item__remove {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	border-radius: 4px;
+	color: #9ca3af;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.pre-item:hover .pre-item__remove,
+.pre-item:focus-within .pre-item__remove {
+	opacity: 1;
+}
+
+.pre-item__remove:hover,
+.pre-item__remove:focus {
+	color: #b91c1c;
+	background: #fef2f2;
+	outline: none;
+}
+
+.pre-item__remove .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+/* "Add item" button — slightly subdued so it doesn't compete with content. */
+.pre-add-item {
+	margin-top: 4px;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Link-field autocomplete dropdown                                         */
+/*                                                                          */
+/* jQuery UI Autocomplete renders into a <ul class="ui-autocomplete">       */
+/* appended to .pre-meta-box (see appendTo in meta-box.js). We scope the    */
+/* styles under that wrapper so they don't leak out and conflict with any   */
+/* other plugin's autocomplete usage on the same screen.                    */
+/* ----------------------------------------------------------------------- */
+
+.pre-meta-box .ui-autocomplete {
+	position: absolute;
+	z-index: 100050; /* above WP admin's sticky publish box (z-index 99) */
+	max-width: 480px;
+	max-height: 320px;
+	overflow-y: auto;
+	margin: 4px 0 0;
+	padding: 4px 0;
+	list-style: none;
+	background: #ffffff;
+	border: 1px solid #e5e7eb;
+	border-radius: 6px;
+	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+	font-size: 13px;
+}
+
+.pre-meta-box .ui-autocomplete .ui-menu-item {
+	padding: 0;
+}
+
+.pre-meta-box .ui-autocomplete .ui-menu-item-wrapper {
+	display: block;
+	padding: 8px 12px;
+	cursor: pointer;
+	color: #1f2937;
+	border-radius: 0;
+	border: none;
+	background: transparent;
+	margin: 0;
+}
+
+.pre-meta-box .ui-autocomplete .ui-menu-item-wrapper.ui-state-active,
+.pre-meta-box .ui-autocomplete .ui-menu-item-wrapper:hover {
+	background: #eef2ff;
+	color: #1f2937;
+	border: none;
+}
+
+.pre-link-suggest {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 2px 12px;
+	align-items: baseline;
+}
+
+.pre-link-suggest__title {
+	font-weight: 600;
+	font-size: 13px;
+	color: #1f2937;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pre-link-suggest__type {
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #6366f1;
+	background: #eef2ff;
+	padding: 1px 6px;
+	border-radius: 10px;
+	white-space: nowrap;
+	justify-self: end;
+}
+
+.pre-link-suggest__url {
+	grid-column: 1 / -1;
+	font-family: ui-monospace, "SF Mono", Menlo, Monaco, monospace;
+	font-size: 11px;
+	color: #6b7280;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Hovered/active row: surface the link URL more clearly. */
+.pre-meta-box .ui-autocomplete .ui-menu-item-wrapper.ui-state-active .pre-link-suggest__url,
+.pre-meta-box .ui-autocomplete .ui-menu-item-wrapper:hover .pre-link-suggest__url {
+	color: #4338ca;
+}
+
+/* Auto-source advisory (read-only "this grouping is auto-resolved"). */
+.pre-meta-auto-source {
+	background: #f3f4f6;
+	border-left: 3px solid #6366f1;
+	padding: 12px 16px;
+	margin: 12px 0;
+	color: #4b5563;
+	font-size: 13px;
+	border-radius: 0 4px 4px 0;
+}
+
+.pre-meta-auto-source p {
+	margin: 0;
+}

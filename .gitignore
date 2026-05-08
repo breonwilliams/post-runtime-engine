@@ -1,0 +1,117 @@
+# =============================================================================
+# Post Runtime Engine — .gitignore
+#
+# Forward-looking; ignores patterns we don't generate yet but will (Composer,
+# Node tooling, build artifacts) so the rules don't have to be revisited at
+# each phase boundary.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Operating-system noise
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+.AppleDouble
+.LSOverride
+
+# -----------------------------------------------------------------------------
+# Editor / IDE config
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+.#*
+\#*\#
+.project
+.buildpath
+.settings/
+nbproject/
+.phpactor.json
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+*.log
+logs/
+debug.log
+error_log
+
+# -----------------------------------------------------------------------------
+# Environment / secrets
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+*.pem
+*.key
+
+# -----------------------------------------------------------------------------
+# Dependency directories (committed lockfiles, ignored installed deps)
+# -----------------------------------------------------------------------------
+node_modules/
+vendor/
+bower_components/
+jspm_packages/
+
+# Lockfiles ARE committed — uncomment if you ever want to ignore them
+# package-lock.json
+# composer.lock
+
+# -----------------------------------------------------------------------------
+# Build / release artifacts (bin/build-release.sh and friends will live here)
+# -----------------------------------------------------------------------------
+build/
+dist/
+release/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Compiled CSS / JS if a build pipeline is added later. The current frontend
+# CSS and admin JS are hand-authored and DO ship in source — these patterns
+# only catch generated `.min.*` or sourcemaps if we add a bundler.
+*.min.css.map
+*.min.js.map
+.parcel-cache/
+.next/
+.turbo/
+
+# -----------------------------------------------------------------------------
+# Test / tooling artifacts
+# -----------------------------------------------------------------------------
+phpunit.xml
+.phpunit.result.cache
+.phpcs-cache
+phpcs.xml
+.phpcs.xml.dist
+coverage/
+.coverage/
+*.coverage
+clover.xml
+
+# -----------------------------------------------------------------------------
+# Patch / merge debris
+# -----------------------------------------------------------------------------
+*.orig
+*.rej
+*.bak
+
+# -----------------------------------------------------------------------------
+# Local WordPress dev artifacts that occasionally land in plugin folders
+# -----------------------------------------------------------------------------
+wp-cli.local.yml
+.htaccess.local

@@ -100,6 +100,29 @@ Activated when the post is wrapped in `.aisb-section--dark` (Promptless's standa
 | `--aisb-smart-dark-surface-muted` | WCAG-corrected muted text against dark surface; falls back to `--aisb-color-dark-text-muted` | `#9ca3af` |
 | `--aisb-smart-dark-surface-border` | WCAG-corrected border against dark surface; falls back to `--aisb-color-dark-border` | `#4b5563` |
 
+### Smart Link Tokens (`--aisb-smart-*-link*`)
+
+PRE consumes Promptless's smart-link system to keep link colors and hover treatments contrast-correct in both light and dark mode without requiring per-deployment tuning. The system defines separate tokens for "section-level" links (sitting on the page background) and "surface-level" links (sitting on card surfaces), and for each it pairs a base color with a hover-brightness multiplier applied via CSS `filter: brightness()`.
+
+| Token | Purpose | Fallback |
+|-------|---------|----------|
+| `--aisb-smart-light-section-link` | Link color on light page backgrounds — body content, compact-grid/horizontal-row item hover destinations; falls back to `--aisb-color-primary` | `#6366f1` |
+| `--aisb-smart-light-surface-link` | Link color on light card surfaces — card-grid/featured-card item hover destinations, footer link hover, cta-arrow, focus outline; falls back to `--aisb-color-primary` | `#6366f1` |
+| `--aisb-smart-light-link-hover-brightness` | Brightness multiplier for hover on section-level light links; values <1 darken | `0.75` |
+| `--aisb-smart-light-surface-link-hover-brightness` | Brightness multiplier for hover on surface-level light links; values <1 darken | `0.75` |
+| `--aisb-smart-light-icon` | Icon color on light page backgrounds — compact-grid/horizontal-row decorative icons; falls back to `--aisb-color-primary` | `#6366f1` |
+| `--aisb-smart-light-surface-icon` | Icon color on light card surfaces — card-grid/featured-card decorative icons; falls back to `--aisb-color-primary` | `#6366f1` |
+| `--aisb-smart-dark-section-link` | Link color on dark page backgrounds; falls back to `--aisb-color-primary` | `#6366f1` |
+| `--aisb-smart-dark-surface-link` | Link color on dark card surfaces; falls back to `--aisb-color-primary` | `#6366f1` |
+| `--aisb-smart-dark-link-hover-brightness` | Brightness multiplier for hover on section-level dark links; values >1 brighten | `1.2` |
+| `--aisb-smart-dark-surface-link-hover-brightness` | Brightness multiplier for hover on surface-level dark links; values >1 brighten | `1.2` |
+| `--aisb-smart-dark-icon` | Icon color on dark page backgrounds; falls back to `--aisb-color-primary` | `#6366f1` |
+| `--aisb-smart-dark-surface-icon` | Icon color on dark card surfaces; falls back to `--aisb-color-primary` | `#6366f1` |
+
+PRE wraps each smart token in an intermediate `--pre-color-link` / `--pre-color-surface-link` / `--pre-color-icon` / `--pre-color-surface-icon` / `--pre-link-hover-brightness` / `--pre-surface-link-hover-brightness` so the dark-mode block under `.aisb-section--dark .pre-single` flips the entire chain in one place. Promptless WP overrides these tokens at runtime — its `SmartColorManager` (when `smart_accessibility_colors` is enabled in global settings) computes contrast-corrected variants based on the user's brand primary, the actual surface color, and the relevant WCAG target (4.5:1 for links/text, 3:1 for icons via 1.4.11 non-text contrast). The output goes to `:root` via `wp_head` priority 11 globally on every page, so it reaches PRE-rendered post pages even though they aren't AISB sections.
+
+> **Note on Promptless's smart-colors toggle:** the runtime contrast correction is opt-in via Promptless WP → Settings → Smart Accessibility Colors. When the toggle is off, `SmartColorManager` does not emit overrides and PRE's smart-* references fall through the chain to the raw `--aisb-color-primary`. That's the correct behavior — a user with a sufficiently-contrasting brand primary may not need correction. The setup docs flag the toggle for deployers who pick an intentionally low-contrast brand color and want PRE to compensate.
+
 ### Layout & Spacing (`--aisb-section-*`)
 
 | Token | Purpose | Fallback |

@@ -207,6 +207,7 @@ CPT shape (matches `PRE_Validator::validate_cpt`):
   "hero_layout": "split",
   "hero_image_position": "left",
   "hero_image_aspect": "landscape",
+  "default_icon": "home",
   "connector_version": 3,
   "created_at": "2026-05-08T12:00:00Z",
   "updated_at": "2026-05-08T14:30:00Z"
@@ -218,6 +219,8 @@ Hero fields control the single-page layout above the post body. All three defaul
 - `hero_layout` (`stacked` | `split`) — `stacked` renders the featured image as a 16:9 banner above the title (best for editorial CPTs: events, courses, articles). `split` renders the image side-by-side with the title at desktop breakpoints (best for profile-shaped CPTs: real estate listings, attorney bios, team pages).
 - `hero_image_position` (`left` | `right`) — only meaningful for `split`. Stacked layouts always place the image above the text.
 - `hero_image_aspect` (`square` | `landscape` | `wide`) — only meaningful for `split`. Pick the aspect that matches the natural shape of the post's photos so they crop cleanly: `square` (1:1) for headshots and team pages, `landscape` (4:3) for property photos and product shots, `wide` (16:9) for cinematic banner imagery. Stacked layouts always use a 16:9 banner regardless.
+
+The `default_icon` field is an optional icon ID from `PRE_Icon_Library` (use `postruntime_list_icons` to discover the available set). It serves as a fallback visual cue when a grouping item has no per-item icon and no image — particularly relevant for `compact-grid` and `horizontal-row` variants, which are icon-only by design and strip any `image_id` on the way to render. Auto-source items (`taxonomy_match`, `child_posts`) that pull from posts without `_pre_icon` meta also pick up this default. Empty string means "no fallback"; matching items render iconless. Pick a generic shape that fits the CPT (e.g. `home` for listings, `user` for team members, `calendar` for events).
 
 `connector_version`, `created_at`, `updated_at` are managed by the registry and ignored on writes (the registry assigns them). `slug` is the primary key and cannot be changed via `PUT`.
 
@@ -246,6 +249,7 @@ Hero fields control the single-page layout above the post body. All three defaul
 - `pre_invalid_hero_layout` — `hero_layout` not one of `stacked`, `split`
 - `pre_invalid_hero_image_position` — `hero_image_position` not one of `left`, `right`
 - `pre_invalid_hero_image_aspect` — `hero_image_aspect` not one of `square`, `landscape`, `wide`
+- `pre_invalid_default_icon` — `default_icon` is non-string or not a registered icon in `PRE_Icon_Library`
 
 #### Get a CPT
 

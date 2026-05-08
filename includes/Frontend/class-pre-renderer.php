@@ -262,6 +262,20 @@ class PRE_Renderer {
 		$hero_image_aspect   = is_array( $cpt_def ) && ! empty( $cpt_def['hero_image_aspect'] )
 			? $cpt_def['hero_image_aspect']
 			: 'square';
+
+		// CPT-level default icon. Used as a fallback when:
+		//   - a grouping item has neither image_id nor icon_id set (any
+		//     variant — gives every auto-source row a baseline visual cue
+		//     without requiring per-post _pre_icon meta)
+		//   - the variant is icon-only (compact-grid, horizontal-row) and
+		//     the item only has an image_id (variant intent overrides the
+		//     item's image; icon falls through to default)
+		// Validated against PRE_Icon_Library at registration time, so we
+		// don't need to re-validate here. Passed down to render_grouping
+		// → render_item so each item resolution sees the same default.
+		$cpt_default_icon = is_array( $cpt_def ) && ! empty( $cpt_def['default_icon'] )
+			? (string) $cpt_def['default_icon']
+			: '';
 		$values      = $plugin->post_data ? $plugin->post_data->get_groupings( $post->ID ) : array();
 
 		// Index post values by grouping_key for easy lookup.
@@ -320,7 +334,7 @@ class PRE_Renderer {
 			<div class="<?php echo esc_attr( $body_class ); ?>">
 				<div class="pre-body__main">
 					<?php foreach ( $above_main as $g ) : ?>
-						<?php $this->render_grouping( $g ); ?>
+						<?php $this->render_grouping( $g, $cpt_default_icon ); ?>
 					<?php endforeach; ?>
 
 					<?php if ( post_type_supports( $post->post_type, 'editor' ) ) : ?>
@@ -337,14 +351,14 @@ class PRE_Renderer {
 					<?php endif; ?>
 
 					<?php foreach ( $below_main as $g ) : ?>
-						<?php $this->render_grouping( $g ); ?>
+						<?php $this->render_grouping( $g, $cpt_default_icon ); ?>
 					<?php endforeach; ?>
 				</div>
 
 				<?php if ( $has_sidebar ) : ?>
 					<aside class="pre-body__sidebar">
 						<?php foreach ( $sidebar as $g ) : ?>
-							<?php $this->render_grouping( $g ); ?>
+							<?php $this->render_grouping( $g, $cpt_default_icon ); ?>
 						<?php endforeach; ?>
 					</aside>
 				<?php endif; ?>
@@ -452,9 +466,11 @@ class PRE_Renderer {
 	/**
 	 * Render a single grouping using its effective variant.
 	 *
-	 * @param array $g Resolved grouping (see render() for shape).
+	 * @param array  $g                Resolved grouping (see render() for shape).
+	 * @param string $cpt_default_icon Optional CPT-level default icon ID; passed
+	 *                                 through to render_item for fallback logic.
 	 */
-	private function render_grouping( array $g ) {
+	private function render_grouping( array $g, $cpt_default_icon = '' ) {
 		$variant = sanitize_html_class( $g['variant'] );
 		$key     = sanitize_html_class( $g['key'] );
 		$label   = isset( $g['def']['label'] ) ? $g['def']['label'] : '';
@@ -474,7 +490,7 @@ class PRE_Renderer {
 
 			<ul class="pre-grouping__items">
 				<?php foreach ( $items as $item ) : ?>
-					<?php $this->render_item( $item, $variant ); ?>
+					<?php $this->render_item( $item, $variant, $cpt_default_icon ); ?>
 				<?php endforeach; ?>
 			</ul>
 		</section>
@@ -493,10 +509,11 @@ class PRE_Renderer {
 	 * tel:, mailto:, external URLs) and as a fallback when the referenced
 	 * post has been trashed/deleted.
 	 *
-	 * @param array  $item    Item data ({image_id, icon_id, heading, supporting_text, link, link_post_id}).
-	 * @param string $variant The grouping's effective variant.
+	 * @param array  $item             Item data ({image_id, icon_id, heading, supporting_text, link, link_post_id}).
+	 * @param string $variant          The grouping's effective variant.
+	 * @param string $cpt_default_icon CPT-level default icon ID for fallback.
 	 */
-	private function render_item( array $item, $variant ) {
+	private function render_item( array $item, $variant, $cpt_default_icon = '' ) {
 		$image_id        = isset( $item['image_id'] ) ? (int) $item['image_id'] : 0;
 		$icon_id         = isset( $item['icon_id'] ) ? (string) $item['icon_id'] : '';
 		$heading         = isset( $item['heading'] ) ? (string) $item['heading'] : '';
@@ -536,6 +553,35 @@ class PRE_Renderer {
 			$item_classes .= ' pre-grouping__item--linked';
 		}
 
+		// Variant-aware media resolution.
+		//
+		// compact-grid and horizontal-row are icon-only variants by design —
+		// small icon affordances paired with one-line headings. A featured
+		// image at this size loses its visual value (a 32px building photo
+		// reads as a smudge, not a building) and breaks the row alignment
+		// between iconed items and image-pulling items in the same grouping.
+		// For these variants, we drop image_id entirely so the variant's
+		// visual rhythm wins over the item's content shape. The user's
+		// variant choice is a stronger statement of intent than a per-item
+		// image upload — if they wanted images, they'd pick card-grid or
+		// featured-card.
+		//
+		// Default-icon fallback: in any variant, if the item resolves to no
+		// media at all (no image, no icon), fall back to the CPT-level
+		// default_icon. For icon-only variants this means image-only items
+		// get the CPT default; for image-friendly variants it means iconless
+		// items still have a baseline visual cue. If no CPT default is set,
+		// items render iconless — graceful degradation, not breakage.
+		$is_icon_only_variant = in_array( $variant, array( 'compact-grid', 'horizontal-row' ), true );
+		if ( $is_icon_only_variant ) {
+			$image_id = 0;
+			if ( $icon_id === '' && $cpt_default_icon !== '' ) {
+				$icon_id = $cpt_default_icon;
+			}
+		} elseif ( $image_id === 0 && $icon_id === '' && $cpt_default_icon !== '' ) {
+			$icon_id = $cpt_default_icon;
+		}
+
 		// Resolve the media markup once. wp_get_attachment_image returns an
 		// empty string when the attachment has been trashed/deleted — without
 		// pre-checking, we'd emit an empty <div class="pre-grouping__media">
@@ -557,24 +603,49 @@ class PRE_Renderer {
 				$image_args['alt'] = $heading;
 			}
 
+			// Pick the smallest WP-registered size that comfortably covers
+			// each variant's rendered slot. featured-card uses `large` (up to
+			// 1024px wide) for its full-bleed image. card-grid uses `medium`
+			// (~300px) for its card-wide thumbnail. compact-grid and
+			// horizontal-row render the image as a small icon-affordance
+			// thumbnail (24-32px wide), so even `thumbnail` (150px) is
+			// 5-6x oversized — but the smaller registered sizes don't exist
+			// on every install, and `thumbnail` is the only universally
+			// available square crop. Browser still scales it down via
+			// object-fit; bandwidth is negligible at 150px source.
+			$image_size = 'medium';
+			if ( $is_featured_card ) {
+				$image_size = 'large';
+			} elseif ( in_array( $variant, array( 'compact-grid', 'horizontal-row' ), true ) ) {
+				$image_size = 'thumbnail';
+			}
+
 			$image_html = wp_get_attachment_image(
 				$image_id,
-				$is_featured_card ? 'large' : 'medium',
+				$image_size,
 				false,
 				$image_args
 			);
 
 			// wp_get_attachment_image returns '' when the attachment is gone.
 			// Skipping the wrapper in that case avoids a phantom layout slot.
+			// The --image modifier mirrors --icon so per-variant CSS can size
+			// images and icons independently — compact-grid and horizontal-row
+			// constrain images to icon-matching square thumbnails, while
+			// card-grid and featured-card let images render at full size.
+			// Without the modifier, a single .pre-grouping__media wrapper
+			// would have to handle both cases via attribute selectors or
+			// :has(), neither of which is as cache-friendly as a class.
 			if ( $image_html !== '' ) {
-				$media_html = $image_html;
+				$media_html           = $image_html;
+				$media_class_modifier = ' pre-grouping__media--image';
 			}
 		} elseif ( $icon_id !== '' && PRE_Icon_Library::has( $icon_id ) ) {
 			// Icon ID stored but the icon was removed from the library after
 			// the data was saved — PRE_Icon_Library::has() returns false and
 			// this branch is skipped. Item renders without media; graceful
 			// degradation rather than fatal error.
-			$media_html = PRE_Icon_Library::render( $icon_id, 'pre-grouping__icon' );
+			$media_html           = PRE_Icon_Library::render( $icon_id, 'pre-grouping__icon' );
 			$media_class_modifier = ' pre-grouping__media--icon';
 		}
 

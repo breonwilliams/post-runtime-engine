@@ -1,6 +1,6 @@
 # Post Runtime Engine
 
-**Status:** v0.1.0 — Phases 0–6 complete, ready for first client deployment.
+**Status:** v0.2.0 — hero layout system, smart-token routing for accessible link/icon contrast, variant-intent enforcement, and CPT default_icon fallback. Ready for second-round hosted-environment validation.
 
 Renders WordPress custom-post-type single pages with structured data display, inheriting brand styling from Promptless WP's Global Settings. Companion plugin to Promptless WP (page builder) and Form Runtime Engine (form renderer).
 

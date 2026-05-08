@@ -385,6 +385,13 @@ class PRE_CPT_Registry {
 			'hero_layout'         => 'stacked',
 			'hero_image_position' => 'left',
 			'hero_image_aspect'   => 'square',
+
+			// Default icon — empty string means "no fallback". Authors who
+			// want their compact-grid / horizontal-row groupings to always
+			// have a visual cue set this to an icon ID from PRE_Icon_Library.
+			// Validated at register time, so empty string here is the only
+			// path that bypasses the icon-library check.
+			'default_icon'        => '',
 		);
 
 		// wp_parse_args is shallow — it only fills missing top-level keys.

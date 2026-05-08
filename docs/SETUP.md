@@ -24,6 +24,8 @@ Upload and activate Post Runtime Engine through **Plugins → Add New** in wp-ad
 
 If you also have Promptless WP active, your CPT pages will inherit the brand styling you've already configured in Promptless's Global Settings. If not, the plugin uses its documented fallbacks (clean defaults) and your pages still render correctly.
 
+> **Tip — low-contrast brand colors:** if you've picked a brand primary that's intentionally close to your background (a light cream on white, a dark navy on charcoal, etc.), turn on **Promptless WP → Settings → Smart Accessibility Colors**. PRE consumes Promptless's smart link / icon tokens, so once that toggle is on the runtime contrast adjuster keeps icons, link hovers, and focus outlines WCAG-compliant on PRE templates without you having to pick a separate "accessible" version of your brand color.
+
 ---
 
 ## Step 2 — Register a CPT

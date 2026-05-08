@@ -304,6 +304,32 @@ class PRE_Validator {
 			}
 		}
 
+		// Default icon — optional; must be a known icon ID from
+		// PRE_Icon_Library. Used by the renderer as a fallback when an
+		// item resolves to no media (icon-only variants strip the image
+		// and fall through to this; image-friendly variants use it as a
+		// last-resort cue when neither image nor per-item icon is set).
+		// Empty string is allowed and means "no fallback" — items with
+		// no media simply render iconless.
+		if ( isset( $definition['default_icon'] ) && $definition['default_icon'] !== '' ) {
+			if ( ! is_string( $definition['default_icon'] ) ) {
+				return new WP_Error(
+					'pre_invalid_default_icon',
+					__( 'CPT default_icon must be a string icon ID.', 'post-runtime-engine' )
+				);
+			}
+			if ( ! PRE_Icon_Library::has( $definition['default_icon'] ) ) {
+				return new WP_Error(
+					'pre_invalid_default_icon',
+					/* translators: %s: the unknown icon ID */
+					sprintf(
+						__( 'CPT default_icon %s is not a registered icon. See PRE_Icon_Library for the available set.', 'post-runtime-engine' ),
+						$definition['default_icon']
+					)
+				);
+			}
+		}
+
 		return true;
 	}
 

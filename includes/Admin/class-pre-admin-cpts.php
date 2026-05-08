@@ -592,6 +592,38 @@ class PRE_Admin_CPTs {
 				</tr>
 			</table>
 
+			<h2 class="title"><?php esc_html_e( 'Grouping defaults', 'post-runtime-engine' ); ?></h2>
+			<p class="description" style="margin-top:0;">
+				<?php esc_html_e( 'Defaults that apply across every grouping rendered for this CPT. Useful when the same visual treatment fits all related-content groupings (sidebars, footers).', 'post-runtime-engine' ); ?>
+			</p>
+
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row">
+						<label for="pre_default_icon"><?php esc_html_e( 'Default icon', 'post-runtime-engine' ); ?></label>
+					</th>
+					<td>
+						<select id="pre_default_icon" name="default_icon">
+							<option value="" <?php selected( $values['default_icon'], '' ); ?>>
+								<?php esc_html_e( '— None —', 'post-runtime-engine' ); ?>
+							</option>
+							<?php foreach ( PRE_Icon_Library::get_grouped_by_category() as $category => $icons_in_category ) : ?>
+								<optgroup label="<?php echo esc_attr( $category ); ?>">
+									<?php foreach ( $icons_in_category as $icon_id => $icon ) : ?>
+										<option value="<?php echo esc_attr( $icon_id ); ?>" <?php selected( $values['default_icon'], $icon_id ); ?>>
+											<?php echo esc_html( $icon['label'] ); ?>
+										</option>
+									<?php endforeach; ?>
+								</optgroup>
+							<?php endforeach; ?>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Used as a fallback visual cue when an item has no icon and no image — for example, when an auto-resolved related-listings sidebar pulls in items from posts that don\'t have a per-post icon set. Compact-grid and horizontal-row variants are icon-only by design and will use this when no per-item icon is set. Leave blank to render those items without media.', 'post-runtime-engine' ); ?>
+						</p>
+					</td>
+				</tr>
+			</table>
+
 			<?php submit_button( $is_edit ? __( 'Save changes', 'post-runtime-engine' ) : __( 'Register post type', 'post-runtime-engine' ) ); ?>
 
 			<p>
@@ -733,6 +765,12 @@ class PRE_Admin_CPTs {
 		$hero_image_aspect = isset( $_POST['hero_image_aspect'] )
 			? sanitize_key( wp_unslash( $_POST['hero_image_aspect'] ) )
 			: 'square';
+		// default_icon is validated against PRE_Icon_Library by the validator
+		// — sanitize_key strips invalid chars (icon IDs are snake_case) before
+		// the lookup so malformed input fails with a typed error.
+		$default_icon = isset( $_POST['default_icon'] )
+			? sanitize_key( wp_unslash( $_POST['default_icon'] ) )
+			: '';
 
 		return array(
 			'slug'                => is_string( $slug ) ? trim( $slug ) : '',
@@ -752,6 +790,7 @@ class PRE_Admin_CPTs {
 			'hero_layout'         => $hero_layout,
 			'hero_image_position' => $hero_image_position,
 			'hero_image_aspect'   => $hero_image_aspect,
+			'default_icon'        => $default_icon,
 		);
 	}
 
@@ -848,6 +887,7 @@ class PRE_Admin_CPTs {
 			'hero_layout'         => $definition['hero_layout'] ?? 'stacked',
 			'hero_image_position' => $definition['hero_image_position'] ?? 'left',
 			'hero_image_aspect'   => $definition['hero_image_aspect'] ?? 'square',
+			'default_icon'        => $definition['default_icon'] ?? '',
 		);
 	}
 
@@ -875,6 +915,7 @@ class PRE_Admin_CPTs {
 			'hero_layout'         => 'stacked',
 			'hero_image_position' => 'left',
 			'hero_image_aspect'   => 'square',
+			'default_icon'        => '',
 		);
 	}
 }

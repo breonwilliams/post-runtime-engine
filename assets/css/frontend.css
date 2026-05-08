@@ -48,6 +48,30 @@
 	--pre-color-border: var(--aisb-color-border, #e5e7eb);
 	--pre-color-primary: var(--aisb-color-primary, #6366f1);
 
+	/* Smart-link / smart-icon tokens — split section vs surface so brand
+	 * elements rendered on the page background and inside card surfaces
+	 * can have independently tuned contrast. All four default to brand
+	 * primary; Promptless's SmartColorManager (when enabled in global
+	 * settings) recomputes them at wp_head priority 11 with WCAG-correct
+	 * contrast against each background, which is critical when the user
+	 * picks a low-contrast brand primary like a light yellow on white.
+	 *
+	 * Icons (decorative graphics, cta arrows) and links (interactive) are
+	 * separated tokens upstream because their contrast targets differ —
+	 * non-text UI is 3:1 per WCAG 1.4.11, body text and links are 4.5:1
+	 * per 1.4.3. Promptless's runtime computes both at the appropriate
+	 * targets and exposes them as the four `*-{icon,link}` variants below.
+	 *
+	 * The hover-brightness pair is applied via filter: brightness() on
+	 * link hover — 0.75 darkens for light mode, 1.2 brightens for dark
+	 * mode (the dark-mode block below). */
+	--pre-color-link: var(--aisb-smart-light-section-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-link: var(--aisb-smart-light-surface-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-icon: var(--aisb-smart-light-icon, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-icon: var(--aisb-smart-light-surface-icon, var(--aisb-color-primary, #6366f1));
+	--pre-link-hover-brightness: var(--aisb-smart-light-link-hover-brightness, 0.75);
+	--pre-surface-link-hover-brightness: var(--aisb-smart-light-surface-link-hover-brightness, 0.75);
+
 	/* Card chrome — overridden under body.aisb-neo-brutalist-cards. */
 	--pre-card-border-width: 1px;
 	--pre-card-shadow: none;
@@ -73,6 +97,16 @@
 	--pre-color-background: var(--aisb-color-dark-background, #1a1a1a);
 	--pre-color-surface: var(--aisb-color-dark-surface, #2a2a2a);
 	--pre-color-border: var(--aisb-smart-dark-surface-border, var(--aisb-color-dark-border, #4b5563));
+	/* Dark-mode smart tokens flip to brighten-on-hover. Both the link and
+	 * icon tokens may resolve to different colors than their light-mode
+	 * equivalents when Promptless's runtime computes a contrast-corrected
+	 * variant for the user's brand primary against the dark surface. */
+	--pre-color-link: var(--aisb-smart-dark-section-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-link: var(--aisb-smart-dark-surface-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-icon: var(--aisb-smart-dark-icon, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-icon: var(--aisb-smart-dark-surface-icon, var(--aisb-color-primary, #6366f1));
+	--pre-link-hover-brightness: var(--aisb-smart-dark-link-hover-brightness, 1.2);
+	--pre-surface-link-hover-brightness: var(--aisb-smart-dark-surface-link-hover-brightness, 1.2);
 	--pre-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -350,11 +384,32 @@ body.aisb-neo-brutalist-cards .pre-single {
 	margin-bottom: 0.5em;
 }
 
+/*
+ * Body-content links sit on the page background = section level. Use the
+ * section-link token (contrast-corrected by Promptless's runtime when
+ * available) and the section hover-brightness factor. Hover treatment
+ * mirrors Promptless's pattern: filter: brightness() darkens on light /
+ * brightens on dark, plus a thicker underline for additional cue beyond
+ * color. Focus indicator uses currentColor so it inherits whichever link
+ * color is in effect — no separate brand-color outline needed.
+ */
 .pre-content a {
-	color: var(--pre-color-primary);
+	color: var(--pre-color-link);
 	text-decoration: underline;
 	text-decoration-thickness: 1px;
 	text-underline-offset: 2px;
+	transition: filter var(--aisb-section-transition-base, 200ms ease);
+}
+
+.pre-content a:hover {
+	filter: brightness(var(--pre-link-hover-brightness));
+	text-decoration-thickness: 2px;
+}
+
+.pre-content a:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+	border-radius: 2px;
 }
 
 .pre-content img {
@@ -410,13 +465,43 @@ body.aisb-neo-brutalist-cards .pre-single {
 	border-radius: inherit; /* match item's rounded corners */
 }
 
+/*
+ * Focus indicator for stretched-link cards. Per WCAG 2.4.7 the indicator
+ * must be visible against the surrounding UI, and per WCAG 1.4.11 it
+ * needs 3:1 contrast against adjacent colors. Using --pre-color-surface-link
+ * routes the outline through Promptless's smart-link computation so it
+ * stays visible even when the user picks a low-contrast brand primary
+ * (e.g. light yellow). All stretched-link cards in PRE are surface-level
+ * so the surface variant is the right choice across compact-grid /
+ * card-grid / featured-card / horizontal-row.
+ */
 .pre-grouping__link-overlay:focus-visible {
-	outline: 2px solid var(--pre-color-primary);
+	outline: 2px solid var(--pre-color-surface-link);
 	outline-offset: 2px;
 }
 
-.pre-grouping__item--linked:hover .pre-grouping__heading {
-	color: var(--pre-color-primary);
+/*
+ * Linked-item heading hover: shifts heading color from text-color to the
+ * link-color so the user sees a visible response to hover. The destination
+ * is the smart-link token rather than raw brand primary so contrast stays
+ * WCAG-correct in dark mode. Section vs surface depends on the variant:
+ *
+ *   compact-grid + horizontal-row → items sit on the page background
+ *   (no card chrome), so they're SECTION level.
+ *   card-grid + featured-card → items have card surfaces, so they're
+ *   SURFACE level.
+ *
+ * Both default to brand primary, but Promptless can compute different
+ * contrast-corrected colors for each context at runtime.
+ */
+.pre-grouping--compact-grid .pre-grouping__item--linked:hover .pre-grouping__heading,
+.pre-grouping--horizontal-row .pre-grouping__item--linked:hover .pre-grouping__heading {
+	color: var(--pre-color-link);
+}
+
+.pre-grouping--card-grid .pre-grouping__item--linked:hover .pre-grouping__heading,
+.pre-grouping--featured-card .pre-grouping__item--linked:hover .pre-grouping__heading {
+	color: var(--pre-color-surface-link);
 }
 
 /*
@@ -437,7 +522,11 @@ body.aisb-neo-brutalist-cards .pre-single {
 	position: absolute;
 	bottom: var(--aisb-section-space-md, 1.5rem);
 	right: var(--aisb-section-space-md, 1.5rem);
-	color: var(--pre-color-primary);
+	/* Card-grid and featured-card items are surface-level cards. Use the
+	 * surface-link token so the arrow matches the eventual hover-state
+	 * heading color and inherits any contrast correction Promptless
+	 * applies for the surface context. */
+	color: var(--pre-color-surface-link);
 	font-weight: 600;
 	font-size: 1rem;
 	line-height: 1;
@@ -486,11 +575,34 @@ body.aisb-neo-brutalist-cards .pre-single {
 	justify-content: flex-start;
 }
 
+/*
+ * Default grouping icon color = section-level smart icon. compact-grid and
+ * horizontal-row use this as-is because their items have no card chrome
+ * (icons sit on the page background = section level). Card-grid and
+ * featured-card override below to the surface variant since their icons
+ * sit on card surfaces.
+ *
+ * Why this matters: --pre-color-primary is the raw user-chosen brand
+ * primary, which can be a low-contrast color (e.g. light yellow on white,
+ * giving ~1.4:1). The smart-icon token routes the same color through
+ * Promptless's runtime contrast adjustment so it always meets WCAG 1.4.11
+ * (3:1 for non-text UI). Without this routing, icons disappear into the
+ * background when users pick a brand-friendly low-contrast primary.
+ */
 .pre-grouping__icon {
 	display: inline-flex;
-	color: var(--pre-color-primary);
+	color: var(--pre-color-icon);
 	width: 1.5rem;
 	height: 1.5rem;
+}
+
+/* Surface-context override: card-grid and featured-card items have their
+ * own card surface, which is a distinct background from the page. Smart
+ * tokens compute different corrections per background, so the icon
+ * inside a card uses the surface-icon variant. */
+.pre-grouping--card-grid .pre-grouping__icon,
+.pre-grouping--featured-card .pre-grouping__icon {
+	color: var(--pre-color-surface-icon);
 }
 
 .pre-grouping__icon svg {
@@ -531,6 +643,14 @@ body.aisb-neo-brutalist-cards .pre-single {
 .pre-grouping--compact-grid .pre-grouping__media--icon {
 	flex: 0 0 auto;
 }
+
+/* Note: compact-grid is icon-only by design. The renderer strips image_id
+ * for this variant and falls back to the CPT default_icon when the item
+ * has no per-item icon. The .pre-grouping__media--image modifier should
+ * never appear inside .pre-grouping--compact-grid — if it does (legacy
+ * data, edge case), the bare <img> inherits no width constraint and would
+ * sprawl. Authors adding a new image-bearing variant should not extend
+ * compact-grid; pick card-grid or featured-card instead. */
 
 .pre-grouping--compact-grid .pre-grouping__heading {
 	font-size: 0.9375rem;
@@ -701,6 +821,10 @@ body.aisb-neo-brutalist-cards .pre-single {
 	height: 1.125rem;
 }
 
+/* Horizontal-row is icon-only by design (same rationale as compact-grid
+ * above). The renderer strips image_id; the variant's tight inline strip
+ * doesn't accommodate thumbnails. */
+
 .pre-grouping--horizontal-row .pre-grouping__heading {
 	font-size: 0.9375rem;
 	font-weight: 500;
@@ -848,8 +972,15 @@ body.aisb-neo-brutalist-cards .pre-single {
 	color: var(--pre-color-text);
 }
 
+/*
+ * Footer "related posts" items are presented as cards (each list item
+ * has its own surface), so their hover destination uses the surface-link
+ * token. Specificity is .pre-single .pre-footer__link:hover ... to win
+ * against Promptless WP's `.aisb-section--dark a` styles in the same
+ * way as the default footer link rules above.
+ */
 .pre-single .pre-footer__link:hover .pre-footer__title {
-	color: var(--pre-color-primary);
+	color: var(--pre-color-surface-link);
 }
 
 .pre-footer__media {

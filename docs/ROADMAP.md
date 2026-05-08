@@ -1,10 +1,11 @@
 # Post Runtime Engine — Roadmap
 
-**Document status:** Build in progress — Phases 0, 1, 2 complete; Phase 3 (connector + MCP) starting
+**Document status:** Phases 0–6 shipped in v0.1.0; v0.2.0 layered on hero layout system, smart-token routing, variant intent enforcement, and CPT default_icon fallback. Hosted-environment pressure testing in progress.
 **Author:** Breon Williams + Claude (planning + build sessions)
 **Last updated:** 2026-05-08
 **Plugin name:** Post Runtime Engine (PRE) — confirmed
 **Initial commit:** 2026-05-08 (v0.1.0)
+**Latest release:** 2026-05-08 (v0.2.0)
 
 ## Completion log
 

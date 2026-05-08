@@ -121,6 +121,11 @@ const TOOLS = [
           description:
             "Only meaningful when hero_layout is 'split'. Pick to match the natural shape of the post's photos so they crop cleanly: 'square' (1:1) for headshots, profiles, team pages; 'landscape' (4:3) for property photos, product shots; 'wide' (16:9) for cinematic banner imagery. Stacked layouts always use a 16:9 banner regardless.",
         },
+        default_icon: {
+          type: "string",
+          description:
+            "Optional icon ID from PRE_Icon_Library used as a fallback when a grouping item resolves to no media. Especially relevant for compact-grid and horizontal-row variants (which are icon-only by design): if an auto-source item from a post that has no _pre_icon meta would otherwise render iconless, this default fills in. Pick a generic shape that fits the CPT (e.g. 'home' for listings, 'user' for team members). Leave empty to render those items without media. Use postruntime_list_icons to discover available IDs.",
+        },
       },
       required: ["slug", "label_singular", "label_plural"],
     },
@@ -156,6 +161,7 @@ const TOOLS = [
         hero_layout: { type: "string", enum: ["stacked", "split"] },
         hero_image_position: { type: "string", enum: ["left", "right"] },
         hero_image_aspect: { type: "string", enum: ["square", "landscape", "wide"] },
+        default_icon: { type: "string", description: "Icon ID from PRE_Icon_Library, or empty string to remove the fallback." },
       },
       required: ["slug", "connector_version"],
     },
@@ -494,6 +500,7 @@ async function handleTool(name, args) {
         "hero_layout",
         "hero_image_position",
         "hero_image_aspect",
+        "default_icon",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
@@ -521,6 +528,7 @@ async function handleTool(name, args) {
         "hero_layout",
         "hero_image_position",
         "hero_image_aspect",
+        "default_icon",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });

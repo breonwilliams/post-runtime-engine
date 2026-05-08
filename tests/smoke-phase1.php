@@ -298,6 +298,40 @@ pre_smoke_equals( 'hero_layout defaults to stacked', 'stacked', $no_hero['hero_l
 pre_smoke_equals( 'hero_image_position defaults to left', 'left', $no_hero['hero_image_position'] ?? null );
 pre_smoke_equals( 'hero_image_aspect defaults to square', 'square', $no_hero['hero_image_aspect'] ?? null );
 
+// 5c. default_icon — round-trip a known icon, reject an unknown one,
+// confirm empty default and that empty string is allowed (means "no
+// fallback"). The validator is the gatekeeper here; we don't re-test
+// PRE_Icon_Library::has() itself.
+$plugin->cpts->register(
+	PRE_SMOKE_CPT_SLUG,
+	array(
+		'slug'           => PRE_SMOKE_CPT_SLUG,
+		'label_singular' => 'Smoke',
+		'label_plural'   => 'Smokes',
+		'default_icon'   => 'home',
+	)
+);
+$with_default_icon = $plugin->cpts->get( PRE_SMOKE_CPT_SLUG );
+pre_smoke_equals( 'default_icon round-trips', 'home', $with_default_icon['default_icon'] ?? null );
+
+pre_smoke_wp_error(
+	'unknown default_icon is rejected',
+	$plugin->cpts->register( 'pre_smoke_icon_test', array( 'slug' => 'pre_smoke_icon_test', 'label_singular' => 'X', 'label_plural' => 'Xs', 'default_icon' => 'not_a_real_icon_xyz' ) ),
+	'pre_invalid_default_icon'
+);
+
+// Re-register without default_icon to confirm it falls back to empty string.
+$plugin->cpts->register(
+	PRE_SMOKE_CPT_SLUG,
+	array(
+		'slug'           => PRE_SMOKE_CPT_SLUG,
+		'label_singular' => 'Smoke',
+		'label_plural'   => 'Smokes',
+	)
+);
+$no_default_icon = $plugin->cpts->get( PRE_SMOKE_CPT_SLUG );
+pre_smoke_equals( 'default_icon defaults to empty string', '', $no_default_icon['default_icon'] ?? null );
+
 // 6. Grouping definition — happy path.
 $result = $plugin->groupings->define(
 	PRE_SMOKE_CPT_SLUG,

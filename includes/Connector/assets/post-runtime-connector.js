@@ -332,6 +332,24 @@ const TOOLS = [
     },
   },
   {
+    name: "postruntime_update_post",
+    description:
+      "Partially update a post created through the connector. Accepts any subset of post_title, post_content, post_excerpt, post_status, featured_image_id, groupings — omitted fields are not changed. Sending an empty post_excerpt or post_content clears that field; sending featured_image_id=0 removes the thumbnail. Sending `groupings` fully replaces all groupings on the post (same as set_post_groupings). post_content is sanitized: a leading <![CDATA[...]]> wrapper is stripped automatically and a 'post_content_cdata_stripped' warning surfaces in the response. Use this to fix authored content without losing the post ID (which would break cross-CPT references via link_post_id).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "Post ID to update" },
+        post_title: { type: "string" },
+        post_content: { type: "string", description: "HTML body. NEVER wrap with <![CDATA[...]]> — see critical_rules.post_content_is_html." },
+        post_excerpt: { type: "string" },
+        post_status: { type: "string", enum: ["publish", "draft", "pending", "private", "future"] },
+        featured_image_id: { type: "integer", description: "Attachment ID; pass 0 to remove the existing thumbnail" },
+        groupings: { type: "array", description: "Optional. Full replace — same semantics as set_post_groupings." },
+      },
+      required: ["id"],
+    },
+  },
+  {
     name: "postruntime_preview_post",
     description:
       "Render a post and return the article HTML for visual verification. Always renders fresh (bypasses the render cache) so you see the current state of stored data. Returns html (article body only — no <head>, no theme chrome), css_url (the plugin's stylesheet for inlining if needed), and permalink. For full-page render, fetch the permalink directly.",
@@ -641,6 +659,25 @@ async function handleTool(name, args) {
         if (args[k] !== undefined) payload[k] = args[k];
       });
       return await makeRequest("POST", "/posts", payload);
+    }
+
+    case "postruntime_update_post": {
+      const payload = {};
+      [
+        "post_title",
+        "post_content",
+        "post_excerpt",
+        "post_status",
+        "featured_image_id",
+        "groupings",
+      ].forEach((k) => {
+        if (args[k] !== undefined) payload[k] = args[k];
+      });
+      return await makeRequest(
+        "PUT",
+        `/posts/${encodeURIComponent(args.id)}`,
+        payload
+      );
     }
 
     case "postruntime_preview_post":

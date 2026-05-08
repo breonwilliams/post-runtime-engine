@@ -567,19 +567,50 @@ class PRE_Renderer {
 		// featured-card.
 		//
 		// Default-icon fallback: in any variant, if the item resolves to no
-		// media at all (no image, no icon), fall back to the CPT-level
+		// media at all (no image, no icon), fall back to a CPT-level
 		// default_icon. For icon-only variants this means image-only items
-		// get the CPT default; for image-friendly variants it means iconless
-		// items still have a baseline visual cue. If no CPT default is set,
-		// items render iconless — graceful degradation, not breakage.
+		// get the default; for image-friendly variants it means iconless
+		// items still have a baseline visual cue.
+		//
+		// Two-tier lookup for cross-CPT items:
+		//   1) When the item links to another post via link_post_id, prefer
+		//      the LINKED post's CPT default_icon. A "Lead Architect"
+		//      featured-card on a Project page should reach for the
+		//      Architect CPT's default_icon ('user'), not the host Project
+		//      CPT's default_icon ('home') — the icon should describe what
+		//      the item IS, not what the host page is about.
+		//   2) Fall through to the host CPT's default_icon if no linked
+		//      post or that linked post's CPT has no default set.
+		// If neither is set, items render iconless — graceful degradation.
+		// See critical_rules.cross_cpt_item_icons for the author-side rule.
+		$resolve_default_icon = function () use ( $link_post_id, $cpt_default_icon ) {
+			if ( $link_post_id > 0 ) {
+				$linked_post = get_post( $link_post_id );
+				if ( $linked_post instanceof WP_Post ) {
+					$plugin = pre();
+					$linked_def = $plugin->cpts ? $plugin->cpts->get( $linked_post->post_type ) : null;
+					if ( is_array( $linked_def ) && ! empty( $linked_def['default_icon'] ) ) {
+						return (string) $linked_def['default_icon'];
+					}
+				}
+			}
+			return $cpt_default_icon;
+		};
+
 		$is_icon_only_variant = in_array( $variant, array( 'compact-grid', 'horizontal-row' ), true );
 		if ( $is_icon_only_variant ) {
 			$image_id = 0;
-			if ( $icon_id === '' && $cpt_default_icon !== '' ) {
-				$icon_id = $cpt_default_icon;
+			if ( $icon_id === '' ) {
+				$fallback = $resolve_default_icon();
+				if ( $fallback !== '' ) {
+					$icon_id = $fallback;
+				}
 			}
-		} elseif ( $image_id === 0 && $icon_id === '' && $cpt_default_icon !== '' ) {
-			$icon_id = $cpt_default_icon;
+		} elseif ( $image_id === 0 && $icon_id === '' ) {
+			$fallback = $resolve_default_icon();
+			if ( $fallback !== '' ) {
+				$icon_id = $fallback;
+			}
 		}
 
 		// Resolve the media markup once. wp_get_attachment_image returns an

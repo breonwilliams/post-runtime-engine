@@ -138,7 +138,220 @@ pre_smoke_assert(
 	$err && is_wp_error( $err ) && strpos( $err->get_error_code(), 'pre_invalid' ) === 0
 );
 
-// 6. Cleanup.
+// =============================================================================
+// Phase B (v0.3.0) — pressure-test findings encoded as smoke tests.
+// Each section here corresponds to a Phase A code change. If a test fails,
+// either the code regressed or the contract changed without updating tests.
+// =============================================================================
+
+// 6a. Phase A1 — critical_rules block in preflight.
+$res          = $dispatch( 'GET', '/preflight' );
+$preflight    = $res->get_data();
+$rules        = isset( $preflight['critical_rules'] ) ? $preflight['critical_rules'] : null;
+pre_smoke_assert( 'preflight returns critical_rules block', is_array( $rules ) );
+$expected_rule_keys = array(
+	'post_content_is_html',
+	'groupings_creation_pattern',
+	'cross_cpt_item_icons',
+	'compact_grid_strips_image',
+	'link_post_id_canonical',
+	'postgrid_grid_balance',
+	'featured_card_max_one',
+);
+foreach ( $expected_rule_keys as $rk ) {
+	pre_smoke_assert( "critical_rules has '{$rk}'", is_array( $rules ) && isset( $rules[ $rk ] ) && is_string( $rules[ $rk ] ) && $rules[ $rk ] !== '' );
+}
+pre_smoke_assert(
+	'post_content_is_html mentions CDATA explicitly',
+	is_array( $rules ) && isset( $rules['post_content_is_html'] ) && stripos( $rules['post_content_is_html'], 'CDATA' ) !== false
+);
+
+// 6b. Phase A2 — field_name_hints in preflight.
+$hints = isset( $preflight['field_name_hints'] ) ? $preflight['field_name_hints'] : null;
+pre_smoke_assert( 'preflight returns field_name_hints', is_array( $hints ) );
+pre_smoke_assert( 'field_name_hints has groupings_item_shape', is_array( $hints ) && isset( $hints['groupings_item_shape'] ) );
+foreach ( array( 'compact-grid', 'horizontal-row', 'card-grid', 'featured-card' ) as $variant ) {
+	pre_smoke_assert(
+		"groupings_item_shape lists fields for {$variant}",
+		isset( $hints['groupings_item_shape'][ $variant ] ) && is_array( $hints['groupings_item_shape'][ $variant ] ) && in_array( 'heading', $hints['groupings_item_shape'][ $variant ], true )
+	);
+}
+pre_smoke_assert( 'field_name_hints has cpt_definition list with default_icon', isset( $hints['cpt_definition'] ) && is_array( $hints['cpt_definition'] ) && in_array( 'default_icon', $hints['cpt_definition'], true ) );
+
+// 6c. Phase A6 — _site envelope present on every connector response.
+pre_smoke_assert( 'preflight has _site envelope', isset( $preflight['_site'] ) && is_array( $preflight['_site'] ) );
+pre_smoke_assert( '_site has site_url', isset( $preflight['_site']['site_url'] ) && filter_var( $preflight['_site']['site_url'], FILTER_VALIDATE_URL ) );
+pre_smoke_assert( '_site has site_name', isset( $preflight['_site']['site_name'] ) && is_string( $preflight['_site']['site_name'] ) && $preflight['_site']['site_name'] !== '' );
+pre_smoke_assert(
+	'_site has env_hint with valid value',
+	isset( $preflight['_site']['env_hint'] ) && in_array( $preflight['_site']['env_hint'], array( 'production', 'staging', 'development' ), true )
+);
+$res2 = $dispatch( 'GET', '/icons' );
+pre_smoke_assert( '_site envelope present on /icons', isset( $res2->get_data()['_site'] ) );
+$res2 = $dispatch( 'GET', '/cpts' );
+pre_smoke_assert( '_site envelope present on /cpts', isset( $res2->get_data()['_site'] ) );
+
+// 6d. Phase A3 — CDATA wrapper sanitization on create_post.
+$cdata_cpt = 'pre_smk_cdata';
+$dispatch( 'POST', '/cpts', array(
+	'slug'           => $cdata_cpt,
+	'label_singular' => 'CDATA Test',
+	'label_plural'   => 'CDATA Tests',
+	'supports'       => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
+) );
+
+// Bookend wrapper — opener AND closer at the boundaries → fully stripped.
+$res = $dispatch( 'POST', '/posts', array(
+	'post_type'    => $cdata_cpt,
+	'post_title'   => 'CDATA bookend test',
+	'post_content' => "<![CDATA[<p>This is the body.</p>]]>",
+) );
+pre_smoke_equals( 'CDATA bookend create returns 201', 201, $res->get_status() );
+$post_id_a = isset( $res->get_data()['post_id'] ) ? (int) $res->get_data()['post_id'] : 0;
+$warnings_a = $res->get_data()['warnings'] ?? array();
+pre_smoke_assert(
+	'CDATA bookend stripped warning surfaced',
+	is_array( $warnings_a ) && ! empty( array_filter( $warnings_a, function ( $w ) { return is_string( $w ) && strpos( $w, 'cdata_stripped' ) !== false; } ) )
+);
+$stored = get_post( $post_id_a );
+pre_smoke_assert( 'CDATA opener removed from stored content', $stored && strpos( $stored->post_content, '<![CDATA[' ) === false );
+pre_smoke_assert( 'CDATA closer removed from stored content', $stored && strpos( $stored->post_content, ']]>' ) === false );
+pre_smoke_assert( 'inner HTML preserved verbatim', $stored && strpos( $stored->post_content, '<p>This is the body.</p>' ) !== false );
+
+// Opener-only (no closer) — stripped with stronger warning text.
+$res = $dispatch( 'POST', '/posts', array(
+	'post_type'    => $cdata_cpt,
+	'post_title'   => 'CDATA opener-only test',
+	'post_content' => "<![CDATA[<p>Unclosed wrapper.</p>",
+) );
+$post_id_b = (int) $res->get_data()['post_id'];
+$warnings_b = $res->get_data()['warnings'] ?? array();
+pre_smoke_assert(
+	'CDATA opener-only stripped warning mentions no matching closer',
+	is_array( $warnings_b ) && ! empty( array_filter( $warnings_b, function ( $w ) { return is_string( $w ) && stripos( $w, 'no matching closer' ) !== false; } ) )
+);
+
+// Mid-content CDATA — our sanitizer must NOT fire (no warning). What WordPress
+// does to the text after our sanitizer is wp_kses_post's concern; that path
+// strips literal <![CDATA[ tokens regardless because they aren't in the
+// allowed-HTML list. The contract we're testing here is narrower: our
+// connector-level CDATA strip only acts on bookend wrappers, not on
+// CDATA-shaped tokens elsewhere in the body.
+$res = $dispatch( 'POST', '/posts', array(
+	'post_type'    => $cdata_cpt,
+	'post_title'   => 'CDATA mid-content test',
+	'post_content' => "<p>For example, the syntax <![CDATA[<x>literal</x>]]> embeds raw markup.</p>",
+) );
+$post_id_c  = (int) $res->get_data()['post_id'];
+$warnings_c = $res->get_data()['warnings'] ?? array();
+$has_cdata_warn_c = is_array( $warnings_c ) && ! empty( array_filter( $warnings_c, function ( $w ) { return is_string( $w ) && strpos( $w, 'cdata' ) !== false; } ) );
+pre_smoke_assert( 'mid-content CDATA does NOT trigger our sanitizer (no warning)', ! $has_cdata_warn_c );
+
+// 6e. Phase A5 — postruntime_update_post round-trip.
+// Title-only update — content untouched.
+$dispatch( 'PUT', '/posts/' . $post_id_a, array( 'post_title' => 'Renamed by update_post' ) );
+$updated_a = get_post( $post_id_a );
+pre_smoke_equals( 'update_post: title updated', 'Renamed by update_post', $updated_a ? $updated_a->post_title : '' );
+pre_smoke_assert(
+	'update_post: content untouched on title-only update',
+	$updated_a && strpos( $updated_a->post_content, '<p>This is the body.</p>' ) !== false
+);
+
+// Content-only update with CDATA wrapper — strip should fire here too.
+$res = $dispatch( 'PUT', '/posts/' . $post_id_a, array(
+	'post_content' => "<![CDATA[<p>New body via update.</p>]]>",
+) );
+pre_smoke_equals( 'update_post returns 200', 200, $res->get_status() );
+$update_warnings = $res->get_data()['warnings'] ?? array();
+pre_smoke_assert(
+	'update_post strips CDATA wrapper too',
+	is_array( $update_warnings ) && ! empty( array_filter( $update_warnings, function ( $w ) { return is_string( $w ) && strpos( $w, 'cdata_stripped' ) !== false; } ) )
+);
+$updated_a = get_post( $post_id_a );
+pre_smoke_assert(
+	'update_post: CDATA-stripped content stored cleanly',
+	$updated_a && strpos( $updated_a->post_content, '<![CDATA[' ) === false && strpos( $updated_a->post_content, '<p>New body via update.</p>' ) !== false
+);
+
+// Invalid post_status — typed 422.
+$res = $dispatch( 'PUT', '/posts/' . $post_id_a, array( 'post_status' => 'not-a-real-status' ) );
+pre_smoke_equals( 'update_post invalid status returns 422', 422, $res->get_status() );
+$err = $res->as_error();
+pre_smoke_equals( 'update_post invalid status error code', 'pre_invalid_post_status', $err && is_wp_error( $err ) ? $err->get_error_code() : '' );
+
+// Empty title — explicit rejection (vs partial-update where omitting is fine).
+$res = $dispatch( 'PUT', '/posts/' . $post_id_a, array( 'post_title' => '' ) );
+pre_smoke_equals( 'update_post empty title returns 422', 422, $res->get_status() );
+
+// 6f. Phase A4 — renderer falls back to LINKED CPT default_icon, not host.
+$dispatch( 'POST', '/cpts', array(
+	'slug'           => 'pre_smk_host',
+	'label_singular' => 'Host',
+	'label_plural'   => 'Hosts',
+	'default_icon'   => 'home',
+) );
+$dispatch( 'POST', '/cpts', array(
+	'slug'           => 'pre_smk_link',
+	'label_singular' => 'Link',
+	'label_plural'   => 'Links',
+	'default_icon'   => 'user',
+) );
+$dispatch( 'POST', '/cpts/pre_smk_host/groupings', array(
+	'key'              => 'related',
+	'label'            => 'Related',
+	'default_variant'  => 'featured-card',
+	'default_position' => 'sidebar',
+	'default_source'   => 'manual',
+	'link_required'    => true,
+	'max_items'        => 1,
+) );
+$res = $dispatch( 'POST', '/posts', array(
+	'post_type'  => 'pre_smk_link',
+	'post_title' => 'Link target post',
+) );
+$link_target_id = (int) $res->get_data()['post_id'];
+$res = $dispatch( 'POST', '/posts', array(
+	'post_type'  => 'pre_smk_host',
+	'post_title' => 'Host post',
+	'groupings'  => array(
+		array(
+			'grouping_key' => 'related',
+			'items'        => array(
+				array(
+					'heading'      => 'Linked item',
+					'link_post_id' => $link_target_id,
+					'link'         => '/?p=' . $link_target_id,
+				),
+			),
+		),
+	),
+) );
+$host_post_id = (int) $res->get_data()['post_id'];
+$res          = $dispatch( 'GET', '/posts/' . $host_post_id . '/preview' );
+$render_data  = $res->get_data();
+$html         = isset( $render_data['html'] ) ? $render_data['html'] : '';
+$expected_user_svg = PRE_Icon_Library::render( 'user', 'pre-grouping__icon' );
+$expected_home_svg = PRE_Icon_Library::render( 'home', 'pre-grouping__icon' );
+pre_smoke_assert(
+	'rendered featured-card uses LINKED CPT default_icon (user)',
+	$expected_user_svg !== '' && strpos( $html, $expected_user_svg ) !== false
+);
+pre_smoke_assert(
+	'rendered featured-card does NOT use host CPT default_icon (home)',
+	$expected_home_svg !== '' && strpos( $html, $expected_home_svg ) === false
+);
+
+// 6g. Phase B cleanup — wipe all Phase B test posts + CPTs.
+foreach ( array( $post_id_a, $post_id_b, $post_id_c, $link_target_id, $host_post_id ) as $cleanup_id ) {
+	if ( $cleanup_id > 0 ) {
+		wp_delete_post( $cleanup_id, true );
+	}
+}
+$dispatch( 'DELETE', '/cpts/' . $cdata_cpt . '?purge_data=1' );
+$dispatch( 'DELETE', '/cpts/pre_smk_host?purge_data=1' );
+$dispatch( 'DELETE', '/cpts/pre_smk_link?purge_data=1' );
+
+// 6. Cleanup (original Phase 3 test fixture).
 $res = $dispatch( 'DELETE', '/cpts/' . $test_slug );
 pre_smoke_equals( 'delete_cpt returns 204', 204, $res->get_status() );
 

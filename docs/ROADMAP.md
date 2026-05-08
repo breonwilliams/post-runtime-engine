@@ -1,11 +1,11 @@
 # Post Runtime Engine — Roadmap
 
-**Document status:** Phases 0–6 shipped in v0.1.0; v0.2.0 layered on hero layout system, smart-token routing, variant intent enforcement, and CPT default_icon fallback. Hosted-environment pressure testing in progress.
+**Document status:** Phases 0–6 shipped in v0.1.0. v0.2.0 layered on hero layouts + smart-token routing + variant intent + default_icon. v0.3.0 hardens the connector authoring contract from real hosted-pressure-test findings: critical_rules + field_name_hints in preflight, CDATA sanitization, link-aware cross-CPT icon resolution, update_post tool, _site envelope.
 **Author:** Breon Williams + Claude (planning + build sessions)
 **Last updated:** 2026-05-08
 **Plugin name:** Post Runtime Engine (PRE) — confirmed
 **Initial commit:** 2026-05-08 (v0.1.0)
-**Latest release:** 2026-05-08 (v0.2.0)
+**Latest release:** 2026-05-08 (v0.3.0)
 
 ## Completion log
 

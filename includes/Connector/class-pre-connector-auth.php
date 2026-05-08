@@ -64,6 +64,7 @@ class PRE_Connector_Auth {
 		// Light writes (30/min).
 		'set_post_groupings' => 30,
 		'create_post'        => 30,
+		'update_post'        => 30,
 
 		// Config writes (10/min).
 		'register_cpt'     => 10,

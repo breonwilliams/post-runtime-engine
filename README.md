@@ -1,6 +1,6 @@
 # Post Runtime Engine
 
-**Status:** v0.2.0 — hero layout system, smart-token routing for accessible link/icon contrast, variant-intent enforcement, and CPT default_icon fallback. Ready for second-round hosted-environment validation.
+**Status:** v0.3.0 — hosted pressure-test hardening: connector now ships a `critical_rules` rulebook + `field_name_hints` in preflight, defensive CDATA sanitization on post_content, link-aware cross-CPT default_icon resolution, `postruntime_update_post` tool, and a `_site` envelope on every connector response. Smoke suite extended from 99 to 138 assertions covering all of the above.
 
 Renders WordPress custom-post-type single pages with structured data display, inheriting brand styling from Promptless WP's Global Settings. Companion plugin to Promptless WP (page builder) and Form Runtime Engine (form renderer).
 

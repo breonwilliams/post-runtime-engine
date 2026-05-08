@@ -38,10 +38,176 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PRE_Connector_API {
 
 	/**
-	 * Hook registration. Wires register_routes() to rest_api_init.
+	 * Hook registration. Wires register_routes() to rest_api_init and
+	 * rest_post_dispatch (for the _site envelope injector).
 	 */
 	public function init() {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		// Use rest_request_after_callbacks (not rest_post_dispatch) so the
+		// envelope is also applied when handlers are invoked through
+		// rest_do_request() — the path our smoke tests + any internal
+		// PHP-side caller takes. rest_post_dispatch only fires for genuine
+		// HTTP-served REST requests via WP_REST_Server::serve_request, so
+		// the previous wiring missed half the dispatch surface. Late
+		// priority (20) keeps us out of the way of other plugins' shapers.
+		add_filter( 'rest_request_after_callbacks', array( $this, 'inject_site_envelope' ), 20, 3 );
+	}
+
+	/**
+	 * Inject a `_site` envelope into every connector response.
+	 *
+	 * Cross-site safety hardening: when the same MCP server config is
+	 * pointed at a different site (or a stale Application Password is
+	 * still valid against an old target), tools that don't return site
+	 * identity in their response leave the agent unable to verify which
+	 * site a call hit. Without that signal, an agent can run destructive
+	 * operations against the wrong site without realizing.
+	 *
+	 * The envelope contains:
+	 *   - site_url:  home_url() so the agent can verify the target host
+	 *   - site_name: business_identity if Promptless is providing it,
+	 *                else WP blogname as a fallback
+	 *   - env_hint:  heuristic classification of the host as production
+	 *                vs staging — best-effort, filterable via
+	 *                pre_site_envelope_env_hint
+	 *
+	 * Scoped strictly to PRE namespace routes; other plugins' REST
+	 * responses are untouched.
+	 *
+	 * Hooked to rest_request_after_callbacks (not rest_post_dispatch) so
+	 * we cover both serve_request HTTP dispatch AND internal dispatch via
+	 * rest_do_request() — the latter being how smoke tests and PHP-side
+	 * integrations call the connector.
+	 *
+	 * @param WP_REST_Response|WP_Error $response Built response or error.
+	 * @param array                     $handler  Route-handler metadata.
+	 * @param WP_REST_Request           $request  Inbound request.
+	 * @return mixed The response (possibly with _site added).
+	 */
+	public function inject_site_envelope( $response, $handler, $request ) {
+		// Bail on anything that isn't a JSON-shaped REST response.
+		if ( ! $response instanceof WP_REST_Response ) {
+			return $response;
+		}
+
+		// Only act on our namespace's routes. PRE_REST_NAMESPACE is
+		// 'post-runtime/v1'; routes look like '/post-runtime/v1/connector/...'.
+		$route = $request->get_route();
+		if ( strpos( $route, '/' . PRE_REST_NAMESPACE . '/' ) !== 0 ) {
+			return $response;
+		}
+
+		$data = $response->get_data();
+		if ( ! is_array( $data ) ) {
+			// Non-array bodies (rare, mostly error envelopes pre-WP_Error)
+			// stay untouched — wrapping them would change the contract.
+			return $response;
+		}
+
+		// Don't clobber if a handler already set _site explicitly.
+		if ( ! isset( $data['_site'] ) ) {
+			$data['_site'] = self::get_site_envelope();
+			$response->set_data( $data );
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Build the _site envelope. Cached per-request via static — site
+	 * identity doesn't change within a single REST round-trip.
+	 *
+	 * @return array {site_url, site_name, env_hint}
+	 */
+	private static function get_site_envelope() {
+		static $cached = null;
+		if ( $cached !== null ) {
+			return $cached;
+		}
+
+		// Prefer Promptless's business_identity name when available, since
+		// that's the brand the operator manages. Fall back to WP blogname,
+		// which can be the leftover-from-a-template default ("Health
+		// Professions" in the live pressure test) and is rarely brand-correct.
+		$business     = get_option( 'aisb_business_identity', array() );
+		$business_name = '';
+		if ( is_array( $business ) && ! empty( $business['business_name'] ) ) {
+			$business_name = (string) $business['business_name'];
+		}
+
+		$site_name = $business_name !== '' ? $business_name : get_bloginfo( 'name' );
+
+		$cached = array(
+			'site_url'  => home_url(),
+			'site_name' => $site_name,
+			'env_hint'  => self::detect_env_hint(),
+		);
+
+		/**
+		 * Filter the connector-response site envelope.
+		 *
+		 * Sites with non-standard staging/production patterns can override
+		 * env_hint here, or add custom keys for their own conventions.
+		 *
+		 * @param array $envelope {site_url, site_name, env_hint, ...}
+		 */
+		$cached = apply_filters( 'pre_site_envelope', $cached );
+
+		return $cached;
+	}
+
+	/**
+	 * Heuristic classification of the host as production vs staging.
+	 *
+	 * Best-effort — a sufficiently weird hostname will be misclassified.
+	 * Sites that need tighter classification can override via the
+	 * `pre_site_envelope` filter.
+	 *
+	 * @return string 'production' | 'staging' | 'development'
+	 */
+	private static function detect_env_hint() {
+		$host = parse_url( home_url(), PHP_URL_HOST );
+		if ( ! $host ) {
+			return 'production';
+		}
+
+		$host = strtolower( $host );
+
+		// Local-development indicators.
+		if ( $host === 'localhost' ||
+			strpos( $host, '127.0.0.1' ) === 0 ||
+			substr( $host, -6 ) === '.local' ||
+			substr( $host, -5 ) === '.test' ||
+			substr( $host, -7 ) === '.docker'
+		) {
+			return 'development';
+		}
+
+		// Staging-host indicators. Subdomain prefixes are checked at
+		// label boundaries (so 'staging.example.com' matches but
+		// 'thestaging.com' doesn't). Common managed-host staging domains
+		// are matched anywhere in the hostname since they sit at the
+		// effective TLD boundary.
+		$prefix_indicators = array( 'staging.', 'stage.', 'dev.', 'preview.', 'test.' );
+		foreach ( $prefix_indicators as $prefix ) {
+			if ( strpos( $host, $prefix ) === 0 ) {
+				return 'staging';
+			}
+		}
+		$contains_indicators = array(
+			'.mybluehost.me',  // Bluehost staging
+			'.wpengine.com',   // WP Engine staging convention
+			'.kinsta.cloud',   // Kinsta staging
+			'.ngrok.',         // ngrok tunnels
+			'.flywheelsites.com',  // Flywheel staging
+		);
+		foreach ( $contains_indicators as $needle ) {
+			if ( strpos( $host, $needle ) !== false ) {
+				return 'staging';
+			}
+		}
+
+		return 'production';
 	}
 
 	/**
@@ -180,6 +346,13 @@ class PRE_Connector_API {
 			'permission_callback' => PRE_Connector_Auth::build_callback( 'create_post' ),
 		) );
 
+		register_rest_route( $ns, "/{$base}/posts/(?P<id>\d+)", array(
+			'methods'             => WP_REST_Server::EDITABLE,
+			'callback'            => array( $this, 'handle_update_post' ),
+			'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'update_post' ),
+			'args'                => $this->post_id_arg(),
+		) );
+
 		register_rest_route( $ns, "/{$base}/posts/(?P<id>\d+)/preview", array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'handle_preview_post' ),
@@ -226,7 +399,67 @@ class PRE_Connector_API {
 			// fallbacks will be used instead.
 			'promptless_active' => defined( 'AISB_MODERN_VERSION' ),
 			'promptless_version' => defined( 'AISB_MODERN_VERSION' ) ? AISB_MODERN_VERSION : null,
+			// Authoring rulebook — distilled from past authoring mistakes.
+			// AI agents and human integrators should read these before the
+			// first content-creation call. The connector itself enforces
+			// many of these via validation, but several ('post_content_is_html',
+			// 'cross_cpt_item_icons', 'postgrid_grid_balance') describe AI-side
+			// patterns that the connector cannot detect at write time.
+			'critical_rules'   => self::get_critical_rules(),
+			// Per-variant grouping item shape. Field names that aren't in
+			// this list will be silently ignored on write — the canonical
+			// shape is enforced by PRE_Validator::validate_grouping_item.
+			'field_name_hints' => self::get_field_name_hints(),
 		) );
+	}
+
+	/**
+	 * Critical authoring rules surfaced via preflight.
+	 *
+	 * Mirrors Promptless WP's `wordpress_preflight.critical_rules` shape so
+	 * agents that already understand the Promptless contract recognize the
+	 * pattern. Each rule has a stable key + a clear instruction. Keys are
+	 * referenced by smoke tests so the suite stays in sync with the rulebook.
+	 *
+	 * Rules below are distilled from real authoring failures; do not remove
+	 * a rule without first removing the corresponding smoke-test assertion
+	 * and updating CHANGELOG.md.
+	 *
+	 * @return array<string,string>
+	 */
+	private static function get_critical_rules() {
+		return array(
+			'post_content_is_html'         => 'post_content is plain HTML for the WP editor area, with <p> tags for paragraphs. Do NOT wrap content in <![CDATA[...]]> — that XML idiom belongs to SOAP and WordPress importer XML; in JSON-typed connector parameters it is stored verbatim and leaks into the rendered body. The connector strips a leading <![CDATA[ and trailing ]]> from incoming post_content as a defensive net and adds a "post_content_cdata_stripped" warning when it fires — but treat that as a safety net, not a feature.',
+			'groupings_creation_pattern'   => 'Two ways to populate groupings on a post: (1) pass `groupings` inline with create_post for atomic creation in a single call; (2) call set_post_groupings after a bare create_post. Both work. set_post_groupings fully replaces all groupings — to update one grouping without touching others, use the read-modify-write pattern (get_post_groupings → modify → set_post_groupings). update_post also accepts a groupings field for atomic edits.',
+			'cross_cpt_item_icons'         => 'When a grouping item links to another CPT via link_post_id, set per-item icon_id explicitly to reflect what the item IS (e.g. icon_id:"user" on a Lead Architect featured-card item that links to an architect post). The renderer\'s default_icon fallback is link-aware: when link_post_id is set, it tries the LINKED post\'s CPT default_icon first, then falls back to the host post\'s default_icon. Setting icon_id explicitly bypasses both fallbacks.',
+			'compact_grid_strips_image'    => 'compact-grid and horizontal-row are icon-only variants by design. Any image_id on an item in these variants is dropped at render time — set icon_id on each item, or rely on the linked-CPT / host-CPT default_icon fallback chain. card-grid and featured-card variants accept either icon_id OR image_id (mutually exclusive; validator rejects both being set on the same item).',
+			'link_post_id_canonical'       => 'For internal links to same-site posts, prefer link_post_id over a literal URL. The renderer resolves it via get_permalink() at render time, which makes stored data domain-portable across staging → production migrations and after permalink-structure changes. The literal `link` field is preserved as a fallback when the referenced post has been trashed/deleted.',
+			'postgrid_grid_balance'        => 'When deploying a Promptless postgrid section that pulls from a PRE CPT, balance posts_per_page against the section\'s grid_columns to avoid orphan cards. Default postgrid is 3-column — request 3 or 6 items, not 4 or 5. For 4-column layouts request 4 or 8. Promptless\'s design optimizer does not repair asymmetric counts.',
+			'featured_card_max_one'        => 'featured-card variant has max_items=1 enforced by the validator. featured-card is for ONE prominent item per grouping (a Lead Architect, a Schedule a Tour CTA, a Currently Featured project). For multi-item collections of cards-with-images use card-grid.',
+		);
+	}
+
+	/**
+	 * Per-variant grouping item shape. Field names that aren't in this map
+	 * are silently dropped on write by PRE_Validator. The list helps AI
+	 * agents avoid invented field names like "title" (use heading) or
+	 * "subtitle" (use supporting_text). icon_id and image_id are mutually
+	 * exclusive — the validator rejects both being set on the same item.
+	 *
+	 * @return array<string,array>
+	 */
+	private static function get_field_name_hints() {
+		return array(
+			'groupings_item_shape' => array(
+				'compact-grid'    => array( 'heading', 'icon_id', 'link', 'link_post_id', 'link_text', 'link_target' ),
+				'horizontal-row'  => array( 'heading', 'icon_id' ),
+				'card-grid'       => array( 'heading', 'supporting_text', 'icon_id', 'image_id', 'link', 'link_post_id', 'link_text', 'link_target' ),
+				'featured-card'   => array( 'heading', 'supporting_text', 'icon_id', 'image_id', 'link', 'link_post_id', 'link_text', 'link_target' ),
+			),
+			'cpt_definition'       => array( 'slug', 'label_singular', 'label_plural', 'supports', 'public', 'has_archive', 'show_in_rest', 'show_in_menu', 'menu_position', 'menu_icon', 'taxonomies', 'capability_type', 'description', 'rewrite', 'hero_layout', 'hero_image_position', 'hero_image_aspect', 'default_icon' ),
+			'grouping_definition'  => array( 'key', 'label', 'description', 'default_variant', 'default_position', 'default_source', 'max_items', 'heading_required', 'supporting_text_required', 'link_required', 'icon_or_image_required' ),
+			'notes'                => 'icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails).',
+		);
 	}
 
 	/**
@@ -647,12 +880,22 @@ class PRE_Connector_API {
 			return $this->error_response( 'pre_missing_post_title', __( 'post_title is required.', 'post-runtime-engine' ), 422 );
 		}
 
+		// Defensive sanitization: AI agents sometimes wrap post_content with
+		// <![CDATA[...]]> by analogy with SOAP / WordPress importer XML. In
+		// JSON-typed connector params the wrapper is meaningless and would
+		// be stored verbatim, leaking <![CDATA[ at the top of the rendered
+		// body. We strip it here and surface a warning so authors know.
+		// See critical_rules.post_content_is_html for the rule itself.
+		$content_warnings = array();
+		$raw_content      = isset( $body['post_content'] ) ? (string) $body['post_content'] : '';
+		$cleaned_content  = self::strip_cdata_envelope( $raw_content, $content_warnings );
+
 		$insert_args = array(
 			'post_type'    => $post_type,
 			'post_status'  => isset( $body['post_status'] ) ? sanitize_key( $body['post_status'] ) : 'draft',
 			'post_title'   => $title,
 			'post_excerpt' => isset( $body['post_excerpt'] ) ? wp_kses_post( (string) $body['post_excerpt'] ) : '',
-			'post_content' => isset( $body['post_content'] ) ? wp_kses_post( (string) $body['post_content'] ) : '',
+			'post_content' => wp_kses_post( $cleaned_content ),
 		);
 
 		$post_id = wp_insert_post( $insert_args, true );
@@ -660,7 +903,7 @@ class PRE_Connector_API {
 			return $this->error_response( 'pre_post_create_failed', $post_id->get_error_message(), 500 );
 		}
 
-		$warnings = array();
+		$warnings = $content_warnings;
 
 		// Featured image.
 		if ( isset( $body['featured_image_id'] ) ) {
@@ -691,6 +934,117 @@ class PRE_Connector_API {
 			),
 			201
 		);
+	}
+
+	/**
+	 * PUT /posts/{id} — partial update of a post created through the
+	 * connector. Accepts any subset of post_title, post_content,
+	 * post_excerpt, post_status, featured_image_id, groupings.
+	 *
+	 * Partial-update semantics: omitted fields are not changed. Sending
+	 * an empty string clears a field. Sending a `groupings` array fully
+	 * replaces all groupings (same semantics as set_post_groupings).
+	 *
+	 * Atomicity: post updates and groupings updates are applied in
+	 * sequence. If groupings validation fails, the post-level update is
+	 * NOT rolled back — partial updates are preserved (use the response's
+	 * `errors` field to see what failed). Authors who need strict atomicity
+	 * should call set_post_groupings separately and check its response
+	 * before issuing further changes.
+	 *
+	 * Same defensive sanitization as create_post: a CDATA wrapper around
+	 * post_content is stripped with a warning. See critical_rules.
+	 */
+	public function handle_update_post( WP_REST_Request $request ) {
+		$post_id = (int) $request->get_param( 'id' );
+
+		$err = $this->require_pre_post( $post_id );
+		if ( is_wp_error( $err ) ) {
+			return $err;
+		}
+
+		$body = $this->parse_json_body( $request );
+		if ( is_wp_error( $body ) ) {
+			return $body;
+		}
+
+		$plugin = pre();
+
+		$update_args = array( 'ID' => $post_id );
+		$warnings    = array();
+
+		if ( array_key_exists( 'post_title', $body ) ) {
+			$title = wp_strip_all_tags( (string) $body['post_title'] );
+			if ( $title === '' ) {
+				return $this->error_response( 'pre_missing_post_title', __( 'post_title cannot be empty.', 'post-runtime-engine' ), 422 );
+			}
+			$update_args['post_title'] = $title;
+		}
+
+		if ( array_key_exists( 'post_excerpt', $body ) ) {
+			$update_args['post_excerpt'] = wp_kses_post( (string) $body['post_excerpt'] );
+		}
+
+		if ( array_key_exists( 'post_content', $body ) ) {
+			// Same defense-in-depth as create_post: strip a CDATA wrapper
+			// before storage and surface a warning when it fires.
+			$cleaned = self::strip_cdata_envelope( (string) $body['post_content'], $warnings );
+			$update_args['post_content'] = wp_kses_post( $cleaned );
+		}
+
+		if ( array_key_exists( 'post_status', $body ) ) {
+			$status = sanitize_key( (string) $body['post_status'] );
+			$valid  = array( 'publish', 'draft', 'pending', 'private', 'future' );
+			if ( ! in_array( $status, $valid, true ) ) {
+				return $this->error_response(
+					'pre_invalid_post_status',
+					/* translators: %1$s: invalid status; %2$s: list of valid statuses */
+					sprintf(
+						__( 'post_status %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						$status,
+						implode( ', ', $valid )
+					),
+					422
+				);
+			}
+			$update_args['post_status'] = $status;
+		}
+
+		// Apply post-level updates only if there's something to change.
+		if ( count( $update_args ) > 1 ) {
+			$result = wp_update_post( $update_args, true );
+			if ( is_wp_error( $result ) ) {
+				return $this->error_response( 'pre_post_update_failed', $result->get_error_message(), 500 );
+			}
+		}
+
+		// Featured image — separate path, mirrors create_post handling.
+		if ( array_key_exists( 'featured_image_id', $body ) ) {
+			$thumb = (int) $body['featured_image_id'];
+			if ( $thumb > 0 ) {
+				$ok = set_post_thumbnail( $post_id, $thumb );
+				if ( ! $ok ) {
+					$warnings[] = sprintf( 'featured_image_id %d could not be set.', $thumb );
+				}
+			} else {
+				delete_post_thumbnail( $post_id );
+			}
+		}
+
+		// Groupings — full replace, same semantics as set_post_groupings.
+		if ( array_key_exists( 'groupings', $body ) && is_array( $body['groupings'] ) ) {
+			$result = $plugin->post_data->set_groupings( $post_id, $body['groupings'], 'connector' );
+			if ( is_wp_error( $result ) ) {
+				return $this->error_from_wp_error( $result );
+			}
+		}
+
+		return rest_ensure_response( array(
+			'post_id'   => $post_id,
+			'permalink' => get_permalink( $post_id ),
+			'edit_url'  => get_edit_post_link( $post_id, 'raw' ),
+			'warnings'  => $warnings,
+		) );
 	}
 
 	public function handle_preview_post( WP_REST_Request $request ) {
@@ -767,6 +1121,45 @@ class PRE_Connector_API {
 
 	/**
 	 * Parse the JSON body. Returns the decoded array or a 415 / 400 error.
+	 * Strip a leading <![CDATA[ and trailing ]]> from incoming post_content
+	 * if present. AI agents occasionally wrap content with this XML idiom by
+	 * analogy with SOAP / WordPress importer XML; in JSON-typed connector
+	 * params the wrapper is meaningless and stored verbatim, leaking into
+	 * the rendered body as literal text. This is defense-in-depth — the
+	 * critical_rules.post_content_is_html rule documents the contract;
+	 * this helper catches the mistake when it slips through.
+	 *
+	 * Conservative: only strips the wrapper when it appears at the very
+	 * start AND end of the content (allowing leading/trailing whitespace).
+	 * A `<![CDATA[` somewhere in the middle of HTML is left untouched —
+	 * that's almost certainly intentional (a literal example, technical
+	 * documentation about XML, etc.).
+	 *
+	 * @param string $content    Raw post_content from the request body.
+	 * @param array  &$warnings  Warning bucket; appended to when a strip fires.
+	 * @return string Sanitized content.
+	 */
+	private static function strip_cdata_envelope( $content, array &$warnings ) {
+		$trimmed = trim( $content );
+		// Only act when the wrapper bookends the entire content.
+		if ( strpos( $trimmed, '<![CDATA[' ) === 0 ) {
+			$end = strrpos( $trimmed, ']]>' );
+			// Closer must be at the very end, not somewhere in the middle.
+			if ( $end !== false && $end === strlen( $trimmed ) - 3 ) {
+				$inner       = substr( $trimmed, 9, $end - 9 );
+				$warnings[]  = 'post_content_cdata_stripped: a <![CDATA[...]]> wrapper was removed from post_content. JSON-typed connector params do not need XML CDATA escaping. See critical_rules.post_content_is_html.';
+				return $inner;
+			}
+			// Opener present but no clean closer — strip the opener anyway
+			// (better to ship clean content than leak the literal tag) and
+			// flag a stronger warning so the author can review.
+			$warnings[]  = 'post_content_cdata_opener_stripped: a leading <![CDATA[ was removed from post_content but no matching closer was found. Review the rendered content for any trailing ]]>.';
+			return ltrim( substr( $trimmed, 9 ) );
+		}
+		return $content;
+	}
+
+	/**
 	 *
 	 * @param WP_REST_Request $request Request.
 	 * @return array|WP_Error Body or error.

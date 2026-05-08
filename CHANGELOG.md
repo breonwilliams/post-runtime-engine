@@ -4,6 +4,30 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.3.0] — 2026-05-08
+
+Driven by findings from a real hosted-environment pressure test (Northcraft Architects fixture on Bluehost staging). Two real bugs and one architectural gap surfaced during agentic content authoring of two cross-linked CPTs with multiple groupings. This release encodes the rules-of-the-road into the connector itself so the same mistakes can't reproduce, ships defensive sanitization for the most common authoring slip, fixes a renderer semantic, and extends the smoke test suite to lock the new behavior in.
+
+### Added
+
+- **`critical_rules` block in `postruntime_preflight`.** Mirrors Promptless WP's preflight rulebook pattern. Seven distilled rules covering the most frequent authoring failures: `post_content_is_html` (no CDATA wrappers), `groupings_creation_pattern`, `cross_cpt_item_icons`, `compact_grid_strips_image`, `link_post_id_canonical`, `postgrid_grid_balance`, `featured_card_max_one`. Each rule has a stable key and a clear instruction. AI agents reading preflight on first connection now see the contract before issuing their first write — without it, agents extrapolate from generic context and reach for plausible-but-wrong patterns (e.g. wrapping JSON parameters with XML CDATA notation).
+- **`field_name_hints` block in `postruntime_preflight`.** Per-variant grouping item shape (compact-grid / horizontal-row / card-grid / featured-card) plus full CPT and grouping definition field lists. Helps agents avoid invented field names like `title` (use `heading`) or `subtitle` (use `supporting_text`).
+- **`postruntime_update_post` connector tool.** Partial update of any post created through the connector — accepts subsets of `post_title`, `post_content`, `post_excerpt`, `post_status`, `featured_image_id`, `groupings`. Omitted fields are not changed. Same defensive CDATA sanitization as `create_post`. Closes the gap that previously forced `delete + recreate` (which broke cross-CPT references via `link_post_id`).
+- **`_site` envelope on every PRE connector response.** Each response now includes `_site: {site_url, site_name, env_hint}` so AI agents can verify the target host before destructive operations. This addresses a near-miss during the hosted pressure test where a stale connector configuration was silently still pointed at a production site (725 Print Lab) while the operator believed it was disconnected. `env_hint` heuristically classifies the host as `production` / `staging` / `development` based on URL patterns; tuneable via the `pre_site_envelope` filter for sites with non-standard subdomain conventions. Hooked to `rest_request_after_callbacks` rather than `rest_post_dispatch` so the envelope is also applied on internal `rest_do_request()` calls (smoke tests + PHP-side integrations) — not just HTTP-served REST.
+
+### Changed
+
+- **CDATA sanitization on incoming `post_content`.** Both `create_post` and `update_post` strip a leading `<![CDATA[` and trailing `]]>` from `post_content` if it bookends the entire content. Surfaces a `post_content_cdata_stripped` warning in the response when it fires (or a stronger `post_content_cdata_opener_stripped` when only the opener is present). Conservative — mid-content CDATA tokens (e.g. an article body that documents XML syntax) are not touched. The connector-side strip is defense-in-depth; `critical_rules.post_content_is_html` documents the contract authors should follow.
+- **Cross-CPT `default_icon` resolution in the renderer.** When a grouping item has `link_post_id` and no per-item `icon_id`, the renderer now first tries the LINKED post's CPT `default_icon`, then falls back to the host post's `default_icon`. Previously the host's default fired unconditionally — producing semantically wrong icons (e.g. a "Lead Architect" featured-card on a Project page showing the Project CPT's `home` icon instead of the Architect CPT's `user` icon). Items with explicit per-item `icon_id` are unaffected.
+
+### Tests
+
+Smoke suite extended from 99 to **138 assertions**, all passing. New coverage includes: every `critical_rules` key present, every variant's `field_name_hints` entry, `_site` envelope present on multiple route classes (preflight + introspection + CRUD), CDATA sanitization in three configurations (bookend / opener-only / mid-content), `update_post` round-trip through title-only / content-with-CDATA / invalid-status / empty-title-rejection, and rendered-HTML assertion that cross-CPT icon resolution returns the linked CPT's icon (not the host's). The Phase B test additions caught two real regressions during local validation before the release was built — the `rest_post_dispatch` hook didn't fire on internal dispatch (switched to `rest_request_after_callbacks`) and a wrong assumption about `wp_kses_post`'s interaction with mid-content CDATA tokens.
+
+### Storage compatibility
+
+`PRE_DATA_VERSION` stays at `0.1.0`. Every change in this release is purely runtime — preflight enrichment, request-time sanitization, render-time icon resolution, an additive REST endpoint. No storage schema changes. v0.3.0 installs cleanly over v0.2.0 by replacing files; existing CPT data, grouping data, and post meta are unaffected.
+
 ## [0.2.0] — 2026-05-08
 
 Layered four orthogonal feature areas on top of the v0.1.0 foundation. Every change is additive — existing v0.1.0 CPT and grouping data renders identically without touching admin or connector calls; new behavior opts in via new fields with safe defaults.

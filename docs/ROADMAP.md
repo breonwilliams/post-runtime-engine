@@ -15,8 +15,8 @@
 | 2 — Frontend rendering | ✅ Complete | All four variants + three positions + three source modes working; kitchen-sink fixture with realistic real-estate data; responsive iframe harness; 59/59 smoke tests passing |
 | 3 — Connector + MCP | ✅ Complete | 18 REST endpoints + admin page + 4 connector classes; spec at `docs/CONNECTOR_SPEC.md`; setup guide at `docs/MCP_CONNECTOR_SETUP.md`; 87/87 smoke tests passing |
 | 4 — Design-token CSS audit | ✅ Complete | All `--aisb-*` references flow through `--pre-color-*` / `--pre-card-*` intermediates; dark mode (`.aisb-section--dark` ancestor) and neo-brutalist mode (`body.aisb-neo-brutalist-cards`) both wired; ratified contract at `docs/AISB_TOKEN_CONTRACT.md` |
-| 5 — Reference patterns + docs | Pending | Kitchen-sink demo serves as one reference; formal patterns deferred |
-| 6 — Production polish | Pending | |
+| 5 — Reference patterns + docs | ✅ Complete (light) | README rewritten with shipped state; `docs/SETUP.md` walks human users through first-CPT setup; common patterns for real-estate / attorney / course / event / restaurant documented inline. Full per-industry reference patterns deferred to v1.1 — pending real client demand |
+| 6 — Production polish | ✅ Complete (critical path) | Edge-case audit (graceful degradation for trashed images, removed icons, deleted attachments); render-time transient cache with timestamp-based auto-invalidation; accessibility audit (heading hierarchy, alt-text fallbacks, focus indicators, ARIA on icons + link overlays). Multilingual / caching-plugin compat deferred until first client surfaces a need. |
 
 ## What shipped beyond original Phase 1+2 scope
 

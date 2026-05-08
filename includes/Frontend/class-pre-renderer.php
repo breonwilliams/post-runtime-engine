@@ -17,8 +17,50 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Renders a registered CPT single-post page.
+ *
+ * Caching layer:
+ *
+ *   The full rendered HTML of each post is cached as a transient keyed on
+ *   the post ID. The cache value carries `post_modified` and a per-CPT
+ *   `groupings_changed` timestamp; both must match before a cached render
+ *   is served. This way two events automatically invalidate the cache:
+ *
+ *     - The post is re-saved (post_modified bumps).
+ *     - Any grouping definition for the post's CPT is updated (the
+ *       updated_option hook bumps pre_groupings_changed_{cpt_slug}).
+ *
+ *   Active invalidation also fires on save_post / before_delete_post /
+ *   set_object_terms — these keep the transient store cleaner but aren't
+ *   strictly required for correctness; the timestamp comparison would
+ *   already orphan stale entries on the next read.
+ *
+ *   Users with edit_post capability bypass the cache so admin previews
+ *   are always fresh. The connector's preview endpoint passes
+ *   $use_cache=false explicitly for the same reason.
+ *
+ *   Filters:
+ *     - `pre_render_cache_enabled` (bool, $post): force-disable per post.
+ *     - `pre_render_cache_lifetime` (int, $post): TTL in seconds; default
+ *       1 hour. Caching plugins (WP Rocket, W3TC) cache the full page so
+ *       this layer matters most for pages without those plugins active.
  */
 class PRE_Renderer {
+
+	/**
+	 * Transient key prefix for cached renders.
+	 *
+	 * @var string
+	 */
+	const CACHE_KEY_PREFIX = 'pre_render_';
+
+	/**
+	 * Default cache TTL — 1 hour. Short enough that referenced-attachment
+	 * deletions and other indirect-dependency changes self-heal quickly;
+	 * long enough to make cache hits common for typical traffic.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_CACHE_LIFETIME = HOUR_IN_SECONDS;
 
 	/**
 	 * Source resolver dependency.
@@ -35,11 +77,174 @@ class PRE_Renderer {
 	}
 
 	/**
+	 * Wire cache-invalidation hooks. Called once from the main plugin
+	 * bootstrap; idempotent if called more than once (WP de-dupes
+	 * add_action by callable).
+	 */
+	public static function init_cache_invalidation() {
+		// Active invalidation on the most common change paths. These keep
+		// the transient store clean; correctness is also guaranteed by
+		// the cache-key timestamp comparison on read.
+		add_action( 'save_post', array( __CLASS__, 'invalidate_post_cache' ), 10, 1 );
+		add_action( 'before_delete_post', array( __CLASS__, 'invalidate_post_cache' ), 10, 1 );
+		add_action( 'set_object_terms', array( __CLASS__, 'invalidate_post_cache' ), 10, 1 );
+
+		// When a CPT's grouping definitions change, bump a per-CPT
+		// timestamp. The next read of every cached post in that CPT will
+		// see a mismatched timestamp and re-render. We hook the generic
+		// updated/added option actions (rather than per-CPT-named hooks)
+		// because grouping options are dynamically named.
+		add_action( 'updated_option', array( __CLASS__, 'maybe_bump_groupings_changed' ), 10, 3 );
+		add_action( 'added_option', array( __CLASS__, 'maybe_bump_groupings_changed_on_add' ), 10, 2 );
+		add_action( 'deleted_option', array( __CLASS__, 'maybe_bump_groupings_changed_on_delete' ), 10, 1 );
+	}
+
+	/**
+	 * Bust a single post's cached render. Safe to call with any post_id —
+	 * if no transient exists, this is a no-op.
+	 *
+	 * @param int $post_id Post ID.
+	 */
+	public static function invalidate_post_cache( $post_id ) {
+		delete_transient( self::CACHE_KEY_PREFIX . (int) $post_id );
+	}
+
+	/**
+	 * Bump the per-CPT `groupings_changed` timestamp when a
+	 * `pre_groupings_{cpt_slug}` option is updated. Read at render time;
+	 * mismatched values force a re-render.
+	 *
+	 * @param string $option    Option name being updated.
+	 * @param mixed  $old_value Previous value (unused).
+	 * @param mixed  $value     New value (unused).
+	 */
+	public static function maybe_bump_groupings_changed( $option, $old_value = null, $value = null ) {
+		if ( ! is_string( $option ) ) {
+			return;
+		}
+		$prefix = PRE_Grouping_Registry::OPTION_PREFIX;
+		if ( strpos( $option, $prefix ) !== 0 ) {
+			return;
+		}
+		$cpt_slug = substr( $option, strlen( $prefix ) );
+		if ( $cpt_slug === '' ) {
+			return;
+		}
+		update_option( 'pre_groupings_changed_' . $cpt_slug, time() );
+	}
+
+	/**
+	 * `added_option` action signature is ($option, $value) — adapter for
+	 * maybe_bump_groupings_changed which expects three params.
+	 *
+	 * @param string $option Option name.
+	 * @param mixed  $value  Option value.
+	 */
+	public static function maybe_bump_groupings_changed_on_add( $option, $value = null ) {
+		self::maybe_bump_groupings_changed( $option, null, $value );
+	}
+
+	/**
+	 * `deleted_option` action signature is ($option) — adapter.
+	 *
+	 * @param string $option Option name.
+	 */
+	public static function maybe_bump_groupings_changed_on_delete( $option ) {
+		self::maybe_bump_groupings_changed( $option );
+	}
+
+	/**
 	 * Render the full single-post page for the given post.
+	 *
+	 * @param WP_Post $post      Post to render.
+	 * @param bool    $use_cache Whether to use the render cache. Defaults
+	 *                           to true; the connector preview endpoint
+	 *                           passes false to force a fresh render.
+	 */
+	public function render( WP_Post $post, $use_cache = true ) {
+		// Logged-in users with edit_post capability always get a fresh
+		// render — they may have just saved data and want immediate
+		// visual confirmation, not a cached version from before the save.
+		$can_edit = current_user_can( 'edit_post', $post->ID );
+
+		/**
+		 * Filter whether the render cache is active for this post.
+		 *
+		 * Defaults to true unless the user can edit the post. Site
+		 * operators with bespoke caching needs (e.g. always-fresh CPTs)
+		 * can return false here.
+		 *
+		 * @param bool    $enabled Whether caching is on.
+		 * @param WP_Post $post    The post being rendered.
+		 */
+		$cache_enabled = $use_cache
+			&& ! $can_edit
+			&& apply_filters( 'pre_render_cache_enabled', true, $post );
+
+		if ( ! $cache_enabled ) {
+			$this->render_internal( $post );
+			return;
+		}
+
+		$cache_key    = self::CACHE_KEY_PREFIX . (int) $post->ID;
+		$defs_changed = (int) get_option( 'pre_groupings_changed_' . $post->post_type, 0 );
+		$cached       = get_transient( $cache_key );
+
+		if ( is_array( $cached )
+			&& isset( $cached['html'], $cached['post_modified'], $cached['defs_changed'] )
+			&& $cached['post_modified'] === $post->post_modified
+			&& (int) $cached['defs_changed'] === $defs_changed
+		) {
+			// Cache hit. Echo the cached HTML and append a debug comment
+			// when WP_DEBUG is on.
+			echo $cached['html']; // phpcs:ignore WordPress.Security.EscapeOutput
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				echo "\n<!-- pre-render-cache: HIT -->\n";
+			}
+			return;
+		}
+
+		// Cache miss. Render fresh, capture, store.
+		ob_start();
+		$this->render_internal( $post );
+		$html = ob_get_clean();
+
+		/**
+		 * Filter the render-cache TTL in seconds.
+		 *
+		 * @param int     $lifetime Seconds. Default HOUR_IN_SECONDS.
+		 * @param WP_Post $post     The post being cached.
+		 */
+		$lifetime = (int) apply_filters(
+			'pre_render_cache_lifetime',
+			self::DEFAULT_CACHE_LIFETIME,
+			$post
+		);
+
+		set_transient(
+			$cache_key,
+			array(
+				'html'          => $html,
+				'post_modified' => $post->post_modified,
+				'defs_changed'  => $defs_changed,
+			),
+			$lifetime
+		);
+
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			echo "\n<!-- pre-render-cache: MISS -->\n";
+		}
+	}
+
+	/**
+	 * Actual render logic, separated from cache-handling. Public-facing
+	 * code calls render() (which optionally caches); the connector's
+	 * preview endpoint calls render( $post, false ) to bypass.
 	 *
 	 * @param WP_Post $post Post to render.
 	 */
-	public function render( WP_Post $post ) {
+	private function render_internal( WP_Post $post ) {
 		$plugin      = pre();
 		$definitions = $plugin->groupings ? $plugin->groupings->get_all( $post->post_type ) : array();
 		$values      = $plugin->post_data ? $plugin->post_data->get_groupings( $post->ID ) : array();
@@ -143,11 +348,12 @@ class PRE_Renderer {
 	private function render_hero( WP_Post $post ) {
 		$has_thumbnail = has_post_thumbnail( $post->ID );
 		$excerpt       = $post->post_excerpt;
+		$title         = get_the_title( $post );
 
 		?>
 		<header class="pre-hero">
 			<div class="pre-hero__inner">
-				<h1 class="pre-hero__title"><?php echo esc_html( get_the_title( $post ) ); ?></h1>
+				<h1 class="pre-hero__title"><?php echo esc_html( $title ); ?></h1>
 
 				<?php if ( $excerpt !== '' ) : ?>
 					<p class="pre-hero__excerpt"><?php echo esc_html( $excerpt ); ?></p>
@@ -155,7 +361,21 @@ class PRE_Renderer {
 
 				<?php if ( $has_thumbnail ) : ?>
 					<div class="pre-hero__media">
-						<?php echo get_the_post_thumbnail( $post->ID, 'large', array( 'class' => 'pre-hero__image' ) ); ?>
+						<?php
+						// Alt-text fallback: when the attachment has no
+						// alt text saved at upload time, use the post
+						// title. Empty alt on a content image is an
+						// accessibility issue — a meaningful description
+						// is always better than the screen reader saying
+						// nothing.
+						$thumb_id  = get_post_thumbnail_id( $post->ID );
+						$saved_alt = trim( (string) get_post_meta( $thumb_id, '_wp_attachment_image_alt', true ) );
+						$args      = array( 'class' => 'pre-hero__image' );
+						if ( $saved_alt === '' ) {
+							$args['alt'] = $title;
+						}
+						echo get_the_post_thumbnail( $post->ID, 'large', $args );
+						?>
 					</div>
 				<?php endif; ?>
 			</div>
@@ -250,22 +470,53 @@ class PRE_Renderer {
 			$item_classes .= ' pre-grouping__item--linked';
 		}
 
+		// Resolve the media markup once. wp_get_attachment_image returns an
+		// empty string when the attachment has been trashed/deleted — without
+		// pre-checking, we'd emit an empty <div class="pre-grouping__media">
+		// wrapper that creates phantom layout space. Instead we capture the
+		// HTML and only emit the wrapper when there's something to display.
+		// Same logic for icons: render only if both the ID exists in storage
+		// AND the icon is still in the registry (defensive against icons
+		// removed from the library after data was saved).
+		$media_html = '';
+		$media_class_modifier = '';
+		if ( $image_id > 0 ) {
+			// Alt-text precedence: attachment's own alt (set at upload time)
+			// wins. Fall back to the item's heading only when the attachment
+			// has no alt — empty alt on a content image is worse than a
+			// reasonable description.
+			$attachment_alt = trim( (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true ) );
+			$image_args     = array( 'class' => 'pre-grouping__image' );
+			if ( $attachment_alt === '' && $heading !== '' ) {
+				$image_args['alt'] = $heading;
+			}
+
+			$image_html = wp_get_attachment_image(
+				$image_id,
+				$is_featured_card ? 'large' : 'medium',
+				false,
+				$image_args
+			);
+
+			// wp_get_attachment_image returns '' when the attachment is gone.
+			// Skipping the wrapper in that case avoids a phantom layout slot.
+			if ( $image_html !== '' ) {
+				$media_html = $image_html;
+			}
+		} elseif ( $icon_id !== '' && PRE_Icon_Library::has( $icon_id ) ) {
+			// Icon ID stored but the icon was removed from the library after
+			// the data was saved — PRE_Icon_Library::has() returns false and
+			// this branch is skipped. Item renders without media; graceful
+			// degradation rather than fatal error.
+			$media_html = PRE_Icon_Library::render( $icon_id, 'pre-grouping__icon' );
+			$media_class_modifier = ' pre-grouping__media--icon';
+		}
+
 		?>
 		<li class="<?php echo esc_attr( $item_classes ); ?>">
-			<?php if ( $image_id > 0 ) : ?>
-				<div class="pre-grouping__media">
-					<?php
-					echo wp_get_attachment_image(
-						$image_id,
-						$is_featured_card ? 'large' : 'medium',
-						false,
-						array( 'class' => 'pre-grouping__image' )
-					);
-					?>
-				</div>
-			<?php elseif ( $icon_id !== '' && PRE_Icon_Library::has( $icon_id ) ) : ?>
-				<div class="pre-grouping__media pre-grouping__media--icon">
-					<?php echo PRE_Icon_Library::render( $icon_id, 'pre-grouping__icon' ); ?>
+			<?php if ( $media_html !== '' ) : ?>
+				<div class="pre-grouping__media<?php echo esc_attr( $media_class_modifier ); ?>">
+					<?php echo $media_html; // SVG/img already escaped at source. ?>
 				</div>
 			<?php endif; ?>
 
@@ -332,15 +583,27 @@ class PRE_Renderer {
 		<footer class="pre-footer">
 			<h2 class="pre-footer__heading"><?php esc_html_e( 'Related', 'post-runtime-engine' ); ?></h2>
 			<ul class="pre-footer__list">
-				<?php foreach ( $related as $rp ) : ?>
+				<?php foreach ( $related as $rp ) :
+					$rp_title = get_the_title( $rp );
+					?>
 					<li class="pre-footer__item">
 						<a class="pre-footer__link" href="<?php echo esc_url( get_permalink( $rp ) ); ?>">
-							<?php if ( has_post_thumbnail( $rp->ID ) ) : ?>
+							<?php if ( has_post_thumbnail( $rp->ID ) ) :
+								// Same alt-text fallback pattern as the
+								// hero — saved alt wins, title fallback
+								// when blank.
+								$rp_thumb_id  = get_post_thumbnail_id( $rp->ID );
+								$rp_saved_alt = trim( (string) get_post_meta( $rp_thumb_id, '_wp_attachment_image_alt', true ) );
+								$rp_args      = array( 'class' => 'pre-footer__image' );
+								if ( $rp_saved_alt === '' ) {
+									$rp_args['alt'] = $rp_title;
+								}
+								?>
 								<div class="pre-footer__media">
-									<?php echo get_the_post_thumbnail( $rp->ID, 'medium', array( 'class' => 'pre-footer__image' ) ); ?>
+									<?php echo get_the_post_thumbnail( $rp->ID, 'medium', $rp_args ); ?>
 								</div>
 							<?php endif; ?>
-							<h3 class="pre-footer__title"><?php echo esc_html( get_the_title( $rp ) ); ?></h3>
+							<h3 class="pre-footer__title"><?php echo esc_html( $rp_title ); ?></h3>
 						</a>
 					</li>
 				<?php endforeach; ?>

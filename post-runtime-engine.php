@@ -198,6 +198,12 @@ final class Post_Runtime_Engine {
 		$this->template_router = new PRE_Template_Router();
 		$this->frontend_assets = new PRE_Frontend_Assets();
 
+		// Wire render-cache invalidation hooks. Static — no instance
+		// state required. The renderer caches output per-post via a
+		// transient and busts the cache on save_post / before_delete_post
+		// / set_object_terms, plus on grouping-definition changes.
+		PRE_Renderer::init_cache_invalidation();
+
 		// Connector REST API — always loaded so authenticated agents
 		// can call /wp-json/post-runtime/v1/connector/* from any
 		// context. The auth gate inside each route ensures the

@@ -704,10 +704,13 @@ class PRE_Connector_API {
 		$post = get_post( $post_id );
 
 		// Render through PRE_Renderer with output buffering so we
-		// capture the article HTML without theme chrome.
+		// capture the article HTML without theme chrome. Pass $use_cache
+		// = false: the connector preview is for agents verifying their
+		// just-written changes, so a cached version from before the
+		// write would be misleading.
 		ob_start();
 		setup_postdata( $post );
-		( new PRE_Renderer() )->render( $post );
+		( new PRE_Renderer() )->render( $post, false );
 		wp_reset_postdata();
 		$html = ob_get_clean();
 

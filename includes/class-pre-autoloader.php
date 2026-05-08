@@ -44,15 +44,13 @@ class PRE_Autoloader {
 		'PRE_Renderer'        => 'Frontend/class-pre-renderer.php',
 		'PRE_Frontend_Assets' => 'Frontend/class-pre-frontend-assets.php',
 
-		// Phase 3: Connector + MCP.
-		// 'PRE_Connector_API'       => 'Connector/class-pre-connector-api.php',
-		// 'PRE_Connector_Auth'      => 'Connector/class-pre-connector-auth.php',
-		// 'PRE_Connector_CPTs'      => 'Connector/class-pre-connector-cpts.php',
-		// 'PRE_Connector_Groupings' => 'Connector/class-pre-connector-groupings.php',
-		// 'PRE_Connector_Posts'     => 'Connector/class-pre-connector-posts.php',
-		// 'PRE_Connector_Preview'   => 'Connector/class-pre-connector-preview.php',
-		// 'PRE_Connector_Preflight' => 'Connector/class-pre-connector-preflight.php',
-		// 'PRE_MCP_Tools'           => 'Mcp/class-pre-mcp-tools.php',
+		// Phase 3: Connector REST + admin.
+		// One API class owns all 18 routes (FRE pattern); auth + settings
+		// + admin are split out for testability.
+		'PRE_Connector_API'      => 'Connector/class-pre-connector-api.php',
+		'PRE_Connector_Auth'     => 'Connector/class-pre-connector-auth.php',
+		'PRE_Connector_Settings' => 'Connector/class-pre-connector-settings.php',
+		'PRE_Connector_Admin'    => 'Connector/class-pre-connector-admin.php',
 
 		// Phase 1 admin UI.
 		'PRE_Admin'           => 'Admin/class-pre-admin.php',

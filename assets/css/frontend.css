@@ -6,9 +6,98 @@
  * WP when active; falls back to defaults documented in
  * docs/AISB_TOKEN_CONTRACT.md when Promptless isn't installed.
  *
+ * Mode handling: a small set of intermediate CSS variables (--pre-color-*)
+ * are declared on .pre-single and overridden inside .aisb-section--dark
+ * ancestors and on body.aisb-neo-brutalist-cards. This keeps mode logic
+ * in ONE place — every color reference inside the tree just reads the
+ * intermediate variable and inherits the correct mode automatically.
+ * The pattern mirrors how Form Runtime Engine consumes the same tokens.
+ *
  * No !important. No hardcoded colors. No fixed pixel sizes that should
  * scale with the design system — those use tokens with fallbacks.
  */
+
+/* ----------------------------------------------------------------------- */
+/* Mode variables                                                           */
+/*                                                                          */
+/* Light mode (default). Inside the tree, every reference reads from these  */
+/* intermediates rather than the raw --aisb-* tokens. To switch modes, only */
+/* these intermediate values change — the rest of the file is mode-blind.   */
+/* ----------------------------------------------------------------------- */
+
+.pre-single {
+	--pre-color-text: var(--pre-color-text);
+	--pre-color-text-muted: var(--pre-color-text-muted);
+	--pre-color-background: var(--pre-color-background);
+	--pre-color-surface: var(--pre-color-surface);
+	--pre-color-border: var(--pre-color-border);
+	--pre-color-primary: var(--pre-color-primary);
+
+	/* Card chrome — overridden under body.aisb-neo-brutalist-cards. */
+	--pre-card-border-width: 1px;
+	--pre-card-shadow: none;
+}
+
+/*
+ * Dark mode. Triggered when the post is rendered inside any ancestor with
+ * the .aisb-section--dark class (the convention Promptless WP and FRE both
+ * share). The intermediate variables flip to the dark-token chain — Smart
+ * tokens preferred (WCAG-correct contrast against the surface), with
+ * dark-color tokens as the next fallback, and conservative defaults last.
+ *
+ * The default card shadow flips to a soft elevation cue. On dark
+ * backgrounds, low-contrast surface vs. border isn't enough by itself —
+ * a subtle drop shadow makes cards read as elevated planes instead of
+ * blending into the background. Neo-brutalist mode overrides this with
+ * its hard offset shadow.
+ */
+.aisb-section--dark .pre-single,
+.pre-single--dark {
+	--pre-color-text: var(--aisb-color-dark-text, #fafafa);
+	--pre-color-text-muted: var(--aisb-smart-dark-surface-muted, var(--aisb-color-dark-text-muted, #9ca3af));
+	--pre-color-background: var(--aisb-color-dark-background, #1a1a1a);
+	--pre-color-surface: var(--aisb-color-dark-surface, #2a2a2a);
+	--pre-color-border: var(--aisb-smart-dark-surface-border, var(--aisb-color-dark-border, #4b5563));
+	--pre-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/*
+ * Extend the variant background full-width across the wrapping <main>
+ * element so the dark/light treatment fills the viewport, not just the
+ * 1200px-wide article. Scoped via :has() to wrappers that contain our
+ * .pre-single — affects only Post Runtime Engine output, never sibling
+ * content that happens to share the .aisb-section--{light|dark} class.
+ *
+ * Browser support: :has() is supported in Chrome 105+, Safari 15.4+,
+ * Firefox 121+ (≥95% global usage as of 2024). On older browsers, the
+ * background falls back to applying only on .pre-single (current
+ * behavior — content is dark, viewport gutters show the body background).
+ */
+.aisb-section--dark:has(.pre-single) {
+	background: var(--aisb-color-dark-background, #1a1a1a);
+	color: var(--aisb-color-dark-text, #fafafa);
+}
+
+.aisb-section--light:has(.pre-single) {
+	background: var(--aisb-color-background, #ffffff);
+	color: var(--aisb-color-text, #1f2937);
+}
+
+/*
+ * Neo-Brutalist mode. Promptless WP toggles this via the body class
+ * `aisb-neo-brutalist-cards` (matching FRE's neo-brutalist consumer).
+ * When on, cards get bold borders + an offset shadow. The two card-chrome
+ * variables are the only ones that change — colors and spacing keep their
+ * normal mode treatment.
+ */
+body.aisb-neo-brutalist-cards .pre-single {
+	--pre-card-border-width: var(--aisb-neo-border-width, 4px);
+	--pre-card-shadow:
+		var(--aisb-neo-shadow-offset, 8px)
+		var(--aisb-neo-shadow-offset, 8px)
+		0
+		var(--aisb-neo-brutalist-primary-border, #000000);
+}
 
 /* ----------------------------------------------------------------------- */
 /* Container + body layout                                                  */
@@ -19,8 +108,8 @@
 	margin: 0 auto;
 	padding: var(--aisb-section-space-xl, 3rem) var(--aisb-section-space-md, 1.5rem);
 	font-family: var(--aisb-section-font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
-	color: var(--aisb-color-text, #1f2937);
-	background: var(--aisb-color-background, #ffffff);
+	color: var(--pre-color-text);
+	background: var(--pre-color-background);
 }
 
 .pre-body {
@@ -79,13 +168,13 @@
 	font-weight: 700;
 	line-height: 1.2;
 	margin: 0;
-	color: var(--aisb-color-text, #1f2937);
+	color: var(--pre-color-text);
 }
 
 .pre-hero__excerpt {
 	font-size: 1.125rem;
 	line-height: 1.5;
-	color: var(--aisb-color-text-muted, #6b7280);
+	color: var(--pre-color-text-muted);
 	margin: 0;
 }
 
@@ -121,14 +210,14 @@
 .pre-content h3,
 .pre-content h4 {
 	font-family: var(--aisb-section-font-heading, inherit);
-	color: var(--aisb-color-text, #1f2937);
+	color: var(--pre-color-text);
 	line-height: 1.3;
 	margin-top: 1.75em;
 	margin-bottom: 0.5em;
 }
 
 .pre-content a {
-	color: var(--aisb-color-primary, #6366f1);
+	color: var(--pre-color-primary);
 	text-decoration: underline;
 	text-decoration-thickness: 1px;
 	text-underline-offset: 2px;
@@ -153,7 +242,7 @@
 	font-size: 1.25rem;
 	font-weight: 600;
 	margin: 0 0 var(--aisb-section-space-sm, 1rem) 0;
-	color: var(--aisb-color-text, #1f2937);
+	color: var(--pre-color-text);
 }
 
 .pre-grouping__items {
@@ -163,7 +252,7 @@
 }
 
 .pre-grouping__item {
-	color: var(--aisb-color-text, #1f2937);
+	color: var(--pre-color-text);
 }
 
 /*
@@ -188,12 +277,12 @@
 }
 
 .pre-grouping__link-overlay:focus-visible {
-	outline: 2px solid var(--aisb-color-primary, #6366f1);
+	outline: 2px solid var(--pre-color-primary);
 	outline-offset: 2px;
 }
 
 .pre-grouping__item--linked:hover .pre-grouping__heading {
-	color: var(--aisb-color-primary, #6366f1);
+	color: var(--pre-color-primary);
 }
 
 /*
@@ -214,7 +303,7 @@
 	position: absolute;
 	bottom: var(--aisb-section-space-md, 1.5rem);
 	right: var(--aisb-section-space-md, 1.5rem);
-	color: var(--aisb-color-primary, #6366f1);
+	color: var(--pre-color-primary);
 	font-weight: 600;
 	font-size: 1rem;
 	line-height: 1;
@@ -246,7 +335,7 @@
 }
 
 .pre-grouping__supporting {
-	color: var(--aisb-color-text-muted, #6b7280);
+	color: var(--pre-color-text-muted);
 	font-size: 0.9375rem;
 	line-height: 1.5;
 	margin: 0.25rem 0 0 0;
@@ -265,7 +354,7 @@
 
 .pre-grouping__icon {
 	display: inline-flex;
-	color: var(--aisb-color-primary, #6366f1);
+	color: var(--pre-color-primary);
 	width: 1.5rem;
 	height: 1.5rem;
 }
@@ -299,9 +388,10 @@
 	align-items: center;
 	gap: 0.75rem;
 	padding: 0.75rem 1rem;
-	background: var(--aisb-color-surface, #f9fafb);
-	border: 1px solid var(--aisb-color-border, #e5e7eb);
+	background: var(--pre-color-surface);
+	border: var(--pre-card-border-width) solid var(--pre-color-border);
 	border-radius: var(--aisb-section-radius-card, 8px);
+	box-shadow: var(--pre-card-shadow);
 }
 
 .pre-grouping--compact-grid .pre-grouping__media--icon {
@@ -333,9 +423,10 @@
 	flex-direction: column;
 	gap: 0.75rem;
 	padding: var(--aisb-section-space-md, 1.5rem);
-	background: var(--aisb-color-surface, #f9fafb);
-	border: 1px solid var(--aisb-color-border, #e5e7eb);
+	background: var(--pre-color-surface);
+	border: var(--pre-card-border-width) solid var(--pre-color-border);
 	border-radius: var(--aisb-section-radius-card, 8px);
+	box-shadow: var(--pre-card-shadow);
 }
 
 /* Gap on the parent flex column handles spacing between media / heading /
@@ -369,9 +460,10 @@
 .pre-grouping--featured-card .pre-grouping__item {
 	display: grid;
 	grid-template-columns: 1fr;
-	background: var(--aisb-color-surface, #f9fafb);
-	border: 1px solid var(--aisb-color-border, #e5e7eb);
+	background: var(--pre-color-surface);
+	border: var(--pre-card-border-width) solid var(--pre-color-border);
 	border-radius: var(--aisb-section-radius-card, 8px);
+	box-shadow: var(--pre-card-shadow);
 	overflow: hidden; /* Clip the bleeding image to the card's rounded corners. */
 }
 
@@ -467,7 +559,7 @@
 	align-items: center;
 	gap: 0.5rem;
 	font-size: 0.9375rem;
-	color: var(--aisb-color-text, #1f2937);
+	color: var(--pre-color-text);
 }
 
 .pre-grouping--horizontal-row .pre-grouping__media--icon .pre-grouping__icon {
@@ -481,7 +573,7 @@
 }
 
 .pre-grouping--horizontal-row .pre-grouping__item + .pre-grouping__item {
-	border-left: 1px solid var(--aisb-color-border, #e5e7eb);
+	border-left: 1px solid var(--pre-color-border);
 	padding-left: var(--aisb-section-space-sm, 1rem);
 }
 
@@ -572,7 +664,7 @@
 .pre-body__sidebar .pre-grouping--horizontal-row .pre-grouping__item + .pre-grouping__item {
 	border-left: none;
 	padding-left: 0;
-	border-top: 1px solid var(--aisb-color-border, #e5e7eb);
+	border-top: 1px solid var(--pre-color-border);
 	padding-top: var(--aisb-section-space-sm, 1rem);
 }
 
@@ -583,7 +675,7 @@
 .pre-footer {
 	margin-top: var(--aisb-section-space-xl, 3rem);
 	padding-top: var(--aisb-section-space-lg, 2rem);
-	border-top: 1px solid var(--aisb-color-border, #e5e7eb);
+	border-top: 1px solid var(--pre-color-border);
 }
 
 .pre-footer__heading {
@@ -602,14 +694,28 @@
 	gap: var(--aisb-section-space-md, 1.5rem);
 }
 
-.pre-footer__link {
-	color: var(--aisb-color-text, #1f2937);
+/*
+ * Footer link + title color rules use compound selectors to win against
+ * Promptless WP's `.aisb-section--dark a` and Promptless theme's global
+ * heading colors, both of which have higher specificity than a single
+ * class would. We deliberately avoid !important — extra specificity is
+ * the right tool here.
+ */
+.pre-single .pre-footer__link,
+.pre-single .pre-footer__link:link,
+.pre-single .pre-footer__link:visited {
+	color: var(--pre-color-text);
 	text-decoration: none;
 	display: block;
 }
 
-.pre-footer__link:hover .pre-footer__title {
-	color: var(--aisb-color-primary, #6366f1);
+.pre-single .pre-footer__title,
+.pre-single .pre-footer__heading {
+	color: var(--pre-color-text);
+}
+
+.pre-single .pre-footer__link:hover .pre-footer__title {
+	color: var(--pre-color-primary);
 }
 
 .pre-footer__media {

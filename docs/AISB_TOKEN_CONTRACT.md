@@ -1,20 +1,54 @@
 # AISB Token Contract — Post Runtime Engine (consumer side)
 
-**Status:** Draft (planning phase). Final token list will be confirmed during Phase 4 once actual CSS is written.
+**Status:** Ratified for v0.2.0 (after Phase 4 audit, 2026-05-08)
 **Consumer:** Post Runtime Engine
 **Producer:** Promptless WP plugin (AI Section Builder Modern)
 **Minimum compatible producer version:** Promptless WP `1.3.0+`
-**Sister contract:** `form-runtime-engine/docs/AISB_TOKEN_CONTRACT.md` — Form Runtime Engine consumes the same producer with overlapping token set
+**Sister contract:** [`form-runtime-engine/docs/AISB_TOKEN_CONTRACT.md`](../../form-runtime-engine/docs/AISB_TOKEN_CONTRACT.md) — Form Runtime Engine consumes the same producer with overlapping token set
 
 ---
 
 ## Purpose
 
-Post Runtime Engine is designed to **inherit brand styling from Promptless WP when it is active** and to **degrade gracefully to sensible defaults when it is not**. It does this by reading a small set of CSS custom properties (design tokens) emitted by Promptless WP's Global Settings.
+Post Runtime Engine **inherits brand styling from Promptless WP when active** and **degrades gracefully to sensible defaults when not**. It does this by reading a small set of CSS custom properties (design tokens) emitted by Promptless WP's Global Settings.
 
-This document is the **public contract** between the two plugins. It is the authoritative list of `--aisb-*` tokens that Post Runtime Engine reads. No other tokens are consumed, and every token listed here has a documented fallback so the plugin never breaks when Promptless is absent, deactivated, or running an older version that does not yet emit a given token.
+This document is the **public contract** between the two plugins. It is the authoritative list of `--aisb-*` tokens that Post Runtime Engine reads. No other tokens are consumed without first updating this file.
 
-This is the second contract Promptless WP has with consumer plugins (Form Runtime Engine has its own contract). The producer-side commitment is the same; the consumer-side commitment lives in this document.
+---
+
+## Architectural pattern: intermediate variables
+
+Inside Post Runtime Engine's frontend CSS, references to `--aisb-*` tokens flow through a small set of intermediate variables (`--pre-color-*`, `--pre-card-*`) declared on the `.pre-single` element. The intermediates make mode switching cheap — when a parent applies `.aisb-section--dark` or the body gets `aisb-neo-brutalist-cards`, only the intermediates change; the rest of the file is mode-blind.
+
+Example:
+
+```css
+/* Light mode (default) */
+.pre-single {
+    --pre-color-text: var(--aisb-color-text, #1f2937);
+    --pre-color-surface: var(--aisb-color-surface, #f9fafb);
+    /* … */
+}
+
+/* Dark mode override — flips the intermediates only */
+.aisb-section--dark .pre-single {
+    --pre-color-text: var(--aisb-color-dark-text, #fafafa);
+    --pre-color-surface: var(--aisb-color-dark-surface, #2a2a2a);
+    /* … */
+}
+
+/* Neo-brutalist override — flips the card chrome only */
+body.aisb-neo-brutalist-cards .pre-single {
+    --pre-card-border-width: var(--aisb-neo-border-width, 4px);
+    --pre-card-shadow: var(--aisb-neo-shadow-offset, 8px) var(--aisb-neo-shadow-offset, 8px) 0 var(--aisb-neo-brutalist-primary-border, #000000);
+}
+
+/* Every other rule reads the intermediates — mode-blind */
+.pre-grouping__heading { color: var(--pre-color-text); }
+.pre-grouping__item    { background: var(--pre-color-surface); border: var(--pre-card-border-width) solid var(--pre-color-border); box-shadow: var(--pre-card-shadow); }
+```
+
+This mirrors how Form Runtime Engine consumes the same tokens.
 
 ---
 
@@ -22,108 +56,89 @@ This is the second contract Promptless WP has with consumer plugins (Form Runtim
 
 **Promptless WP (producer) promises:**
 
-1. Every token listed in the Consumed Tokens table below will continue to be emitted on any page where Promptless WP is active, for as long as the contract version in this document is supported.
-2. A token's semantic meaning (what it represents visually) will not change between minor versions. Values may be re-calculated; meanings will not be repurposed.
-3. Removal or rename of a listed token will be preceded by at least one minor version's worth of deprecation notice, and the old token will continue to be emitted (as an alias) for the full deprecation window.
+1. Every token listed in the Consumed Tokens table will continue to be emitted on any page where Promptless WP is active, for as long as the contract version is supported.
+2. A token's semantic meaning will not change between minor versions.
+3. Removal or rename is preceded by at least one minor version of deprecation notice; the old token is emitted as an alias during the deprecation window.
 
 **Post Runtime Engine (consumer) promises:**
 
-1. Every `var(--aisb-*, <fallback>)` in `assets/css/frontend.css` and `assets/css/variants/*.css` provides a fallback that produces a usable rendering when the token is absent.
-2. No `--aisb-*` token will be read anywhere else in the plugin (no JS reads, no PHP reads, no additional CSS files) without updating this document first.
-3. New token consumption requires: (a) adding the token to the table below, (b) pinning the minimum producer version, (c) supplying a fallback.
-4. The plugin must function at minimum-viable visual quality with all tokens absent (i.e., on a vanilla WordPress install with no Promptless WP).
+1. Every `--aisb-*` reference in `assets/css/frontend.css` provides a fallback that produces a usable rendering when the token is absent. Direct references that don't hit the fallback (because they read through `--pre-*` intermediates) keep the fallback at the intermediate's declaration site.
+2. No `--aisb-*` token is read anywhere else in the plugin (no JS, no PHP, no other CSS files) without updating this document first.
+3. New token consumption requires: (a) adding it to the table below, (b) pinning the minimum producer version, (c) supplying a fallback.
+4. The plugin functions at minimum-viable visual quality with all tokens absent (vanilla WordPress, no Promptless).
 
 ---
 
 ## Consumed Tokens
 
-> **Note:** This list is **provisional** during planning. Phase 4 will audit the actual CSS and finalize the token list. Tokens in this draft reflect what the plugin is *expected* to consume based on the four layout variants (compact grid, card grid, featured card, horizontal row) and the base template structure (hero, body, sidebar, footer).
-
-Tokens are grouped by functional area. The **Fallback** column is the value used when Promptless WP is inactive or the token is otherwise not defined; changing a fallback is a breaking change for standalone plugin styling.
+These are the tokens actually read by `assets/css/frontend.css` as of v0.2.0. The **Fallback** column is the value used when Promptless WP is inactive or the token is otherwise not defined; changing a fallback is a breaking change for standalone styling.
 
 ### Core Colors (`--aisb-color-*`)
 
+Read directly into the `--pre-color-*` intermediates on `.pre-single`.
+
 | Token | Purpose | Fallback |
 |-------|---------|----------|
-| `--aisb-color-primary` | Primary brand color; CTA buttons, link colors, focus rings | `#6366f1` |
-| `--aisb-color-secondary` | Secondary brand color; accent highlights | `#8b5cf6` |
-| `--aisb-color-text` | Body text color (light mode) | `#1f2937` |
-| `--aisb-color-text-muted` | Secondary text (supporting text in groupings, dates, captions) | `#6b7280` |
-| `--aisb-color-text-inverse` | Text on dark backgrounds (button labels, badges) | `#ffffff` |
-| `--aisb-color-background` | Page / template background (light mode) | `#ffffff` |
-| `--aisb-color-surface` | Card backgrounds, sidebar surface (light mode) | `#f9fafb` |
-| `--aisb-color-border` | Card borders, dividers, separators (light mode) | `#e5e7eb` |
+| `--aisb-color-primary` | Brand primary; link color, focus ring, icon tint, arrow indicator | `#6366f1` |
+| `--aisb-color-text` | Body text (light mode) | `#1f2937` |
+| `--aisb-color-text-muted` | Secondary text — supporting text in groupings, hero excerpt, related-posts captions | `#6b7280` |
+| `--aisb-color-background` | Container background (light mode) | `#ffffff` |
+| `--aisb-color-surface` | Card backgrounds (light mode) | `#f9fafb` |
+| `--aisb-color-border` | Card borders, dividers (light mode) | `#e5e7eb` |
 
 ### Dark Mode Colors (`--aisb-color-dark-*`)
 
-Used when the page is inside a dark-themed wrapper or the user-level theme variant is dark.
+Activated when the post is wrapped in `.aisb-section--dark` (Promptless's standard dark-mode marker). Smart tokens preferred for muted/border (WCAG-correct contrast against the dark surface), with dark-color tokens as the next fallback.
 
 | Token | Purpose | Fallback |
 |-------|---------|----------|
 | `--aisb-color-dark-text` | Body text (dark mode) | `#fafafa` |
-| `--aisb-color-dark-text-muted` | Secondary text (dark mode) | `#9ca3af` |
-| `--aisb-color-dark-background` | Page background (dark mode) | `#1a1a1a` |
+| `--aisb-color-dark-text-muted` | Secondary text (dark mode) — used as the inner fallback for the smart variant | `#9ca3af` |
+| `--aisb-color-dark-background` | Container background (dark mode) | `#1a1a1a` |
 | `--aisb-color-dark-surface` | Card backgrounds (dark mode) | `#2a2a2a` |
-| `--aisb-color-dark-border` | Card borders (dark mode) | `#4b5563` |
+| `--aisb-color-dark-border` | Card borders (dark mode) — used as the inner fallback for the smart variant | `#4b5563` |
+| `--aisb-smart-dark-surface-muted` | WCAG-corrected muted text against dark surface; falls back to `--aisb-color-dark-text-muted` | `#9ca3af` |
+| `--aisb-smart-dark-surface-border` | WCAG-corrected border against dark surface; falls back to `--aisb-color-dark-border` | `#4b5563` |
 
-### Smart-Color Chain (`--aisb-smart-*`)
-
-Promptless WP calculates these WCAG-compliant values from the primary color and surface context. Post Runtime Engine uses them so contrast remains correct against any brand color choice.
-
-| Token | Purpose | Fallback |
-|-------|---------|----------|
-| `--aisb-smart-light-section-link` | Link color in groupings (light surfaces) | `var(--aisb-color-primary, #6366f1)` |
-| `--aisb-smart-light-surface-border` | Card border on light surfaces (3.0:1 contrast) | `var(--aisb-color-border, #e5e7eb)` |
-| `--aisb-smart-light-surface-muted` | Muted text on light surfaces (4.5:1 contrast) | `var(--aisb-color-text-muted, #6b7280)` |
-| `--aisb-smart-dark-section-link` | Link color in groupings (dark surfaces) | `var(--aisb-color-primary, #6366f1)` |
-| `--aisb-smart-dark-surface-border` | Card border on dark surfaces (3.0:1 contrast) | `var(--aisb-color-dark-border, #4b5563)` |
-| `--aisb-smart-dark-surface-muted` | Muted text on dark surfaces (4.5:1 contrast) | `var(--aisb-color-dark-text-muted, #9ca3af)` |
-
-### Button Tokens (`--aisb-button-*`)
-
-For CTA buttons in featured-card variants and link-style groupings.
+### Layout & Spacing (`--aisb-section-*`)
 
 | Token | Purpose | Fallback |
 |-------|---------|----------|
-| `--aisb-button-primary-bg` | Primary CTA button background | `var(--aisb-color-primary, #6366f1)` |
-| `--aisb-button-primary-text` | Primary CTA button label | `#ffffff` |
-| `--aisb-button-primary-hover-bg` | Primary CTA hover background | `#4f46e5` |
-| `--aisb-button-primary-hover-text` | Primary CTA hover label | `#ffffff` |
+| `--aisb-section-max-width` | Max content width of `.pre-single` container | `1280px` |
+| `--aisb-section-space-sm` | Small spacing — inline gap, card-internal gap | `1rem` |
+| `--aisb-section-space-md` | Medium spacing — default card padding, primary content gap | `1.5rem` |
+| `--aisb-section-space-lg` | Large spacing — between hero and body, between groupings | `2rem` |
+| `--aisb-section-space-xl` | Extra-large spacing — page padding, footer top margin | `3rem` |
 
 ### Typography (`--aisb-section-font-*`)
 
 | Token | Purpose | Fallback |
 |-------|---------|----------|
-| `--aisb-section-font-body` | Body font for grouping text, supporting text, descriptions | System font stack: `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` |
-| `--aisb-section-font-heading` | Heading font for grouping headings, post titles, section labels | `var(--aisb-section-font-body)` |
-| `--aisb-section-font-button` | Button font family | `var(--aisb-section-font-body)` |
-| `--aisb-section-font-button-weight` | Button font weight | `600` |
+| `--aisb-section-font-body` | Body font family — `.pre-single` base | System font stack |
+| `--aisb-section-font-heading` | Heading font family — hero title, grouping labels, group headings, footer heading | `inherit` |
 
-### Layout & Shape (`--aisb-section-*`)
+### Radii (`--aisb-section-radius-*`)
 
 | Token | Purpose | Fallback |
 |-------|---------|----------|
-| `--aisb-section-radius-card` | Card border-radius (groupings, sidebar surfaces) | `8px` |
-| `--aisb-section-radius-button` | Button border-radius | `8px` |
-| `--aisb-section-radius-image` | Image border-radius (featured card images, hero featured image) | `8px` |
-| `--aisb-section-space-xs` | Extra-small spacing scale | `0.5rem` |
-| `--aisb-section-space-sm` | Small spacing scale | `1rem` |
-| `--aisb-section-space-md` | Medium (default) spacing scale | `1.5rem` |
-| `--aisb-section-space-lg` | Large spacing scale | `2rem` |
-| `--aisb-section-space-xl` | Extra-large spacing scale (between major regions: hero / body / footer) | `3rem` |
-| `--aisb-section-max-width` | Maximum content width (constrains template wrapper) | `1280px` |
+| `--aisb-section-radius-card` | Card border-radius — all three card variants | `8px` |
+| `--aisb-section-radius-image` | Image border-radius — hero image, related-posts thumbnails (cards use overflow:hidden so the inner image inherits the card radius) | `8px` |
 
-### Neo-Brutalist Mode (`--aisb-neo-*`)
-
-Promptless WP emits these only when Neo-Brutalist mode is enabled in Global Settings. When present, the plugin's groupings render with bold borders and box shadows matching the site's brutalist treatment.
+### Motion (`--aisb-section-transition-*`)
 
 | Token | Purpose | Fallback |
 |-------|---------|----------|
-| `--aisb-neo-border-width` | Bold border thickness for cards | `2px` |
-| `--aisb-neo-border-color` | Bold border color | `var(--aisb-color-text, #1f2937)` |
-| `--aisb-neo-box-shadow` | Brutalist box shadow on cards | `4px 4px 0px var(--aisb-color-text, #1f2937)` |
+| `--aisb-section-transition-base` | Default transition — link hover color, related-posts title hover | `200ms ease` |
 
-When Neo-Brutalist mode is OFF, the plugin's CSS uses `var(--aisb-neo-border-width, 1px)` etc., so cards render with subtle 1px borders and no harsh shadows.
+### Neo-Brutalist Mode (`--aisb-neo-*`, `--aisb-neo-brutalist-*`)
+
+Activated when the body has the `aisb-neo-brutalist-cards` class (Promptless's master toggle). Switches card chrome to bold borders + offset shadows.
+
+| Token | Purpose | Fallback |
+|-------|---------|----------|
+| `--aisb-neo-border-width` | Card border thickness in brutalist mode | `4px` |
+| `--aisb-neo-shadow-offset` | Card box-shadow offset (both x and y) | `8px` |
+| `--aisb-neo-brutalist-primary-border` | Card border + box-shadow color in brutalist mode | `#000000` |
 
 ---
 
@@ -131,66 +146,63 @@ When Neo-Brutalist mode is OFF, the plugin's CSS uses `var(--aisb-neo-border-wid
 
 | File | Tokens used |
 |------|-------------|
-| `assets/css/frontend.css` | All Core Colors, Smart-Color Chain, Typography, Layout & Shape, Neo-Brutalist |
-| `assets/css/variants/compact-grid.css` | Layout & Shape (spacing, radius), Core Colors (text, surface, border) |
-| `assets/css/variants/card-grid.css` | Same as compact-grid plus surface backgrounds, neo tokens |
-| `assets/css/variants/featured-card.css` | Same as card-grid plus button tokens, image radius |
-| `assets/css/variants/horizontal-row.css` | Layout & Shape (spacing only), Core Colors (text, muted) |
-| `assets/css/admin.css` | NONE — admin UI uses fixed editor styling, parallel to Promptless's `--aisb-editor-*` separation |
-
-The admin CSS deliberately does NOT consume `--aisb-*` tokens. The admin UI is internal tooling, not user-facing brand surface, and using the editor-fixed styling pattern (parallel to Promptless's `--aisb-editor-*` system) keeps the meta box and admin pages visually consistent regardless of brand customization.
-
----
-
-## Verification at build time
-
-A CI test (added during Phase 4) greps all CSS files in `assets/css/` for `--aisb-*` references and verifies that:
-
-1. Every reference has a fallback (`var(--aisb-foo, <fallback>)` form, never bare `var(--aisb-foo)`)
-2. Every consumed token appears in this contract
-3. No tokens listed in this contract are absent from the actual CSS (catches drift)
-
-This test runs on every PR. Failure blocks merge.
+| `assets/css/frontend.css` | All tokens listed above |
+| `assets/css/admin.css` | **None.** The admin UI uses fixed editor styling, parallel to Promptless's `--aisb-editor-*` separation. Admin chrome is internal tooling, not user-facing brand surface. |
 
 ---
 
 ## Visual quality bar without Promptless WP
 
-The plugin must render at minimum-viable quality when Promptless WP is not active. "Minimum-viable" means:
+The plugin must render at minimum-viable quality when Promptless is not active. "Minimum-viable" means:
 
-- Layout structure is preserved (hero / body / sidebar / footer)
-- All four grouping variants render correctly with the fallback values
-- Text is readable (sufficient contrast against background)
-- Cards have visible borders (1px subtle border via fallback)
-- Buttons have hover states
-- Dark mode works if triggered by the user-level theme variant
-- No JavaScript errors, no broken images, no layout collapse
+- Layout structure preserved (hero / body / sidebar / footer)
+- All four grouping variants render correctly with fallback values
+- Text legible (sufficient contrast against the white fallback background)
+- Cards have visible 1px borders and subtle gray surface
+- Dark mode works if triggered by an `.aisb-section--dark` ancestor (using fallback dark colors)
+- No JS errors, no broken images, no layout collapse
 
 The plugin does NOT need to look polished or branded without Promptless. The fallbacks are for graceful degradation, not for replacing the brand styling.
 
 ---
 
+## `!important` exceptions
+
+The plugin's CSS is `!important`-free with one documented exception in `assets/css/admin.css`:
+
+```css
+.pre-item--placeholder {
+    background: #eef2ff !important;
+    border: 1px dashed #a5b4fc !important;
+    box-shadow: none !important;
+}
+```
+
+These three rules style the jQuery UI Sortable placeholder (the visual ghost shown while dragging an item). jQuery UI sortable applies inline styles via JavaScript at drag-start that override class-based rules; `!important` is the only mechanism that wins against runtime-injected inline styles. This exception is contained to drag-state visuals only — no production rendering uses `!important`.
+
+The `frontend.css` file (everything user-facing) has zero `!important` and zero hardcoded brand colors.
+
+---
+
 ## When this contract changes
 
-Adding a new token to consume:
+**Adding a new token to consume:**
 
-1. Add the token to this document (table entry + fallback)
-2. Pin the minimum producer version in the version row at the top of this doc
-3. Open a coordination note with Promptless WP's maintainers (i.e., update `ai-section-builder-modern/docs/development/CONNECTOR_KNOWLEDGE_MAP.md` to note the new consumer dependency)
-4. Add the CSS reference with the fallback
-5. Update the CI test
+1. Add it to the table above with purpose + fallback
+2. Pin the minimum producer version at the top of this doc
+3. Add a coordination note for Promptless WP's maintainers (update `ai-section-builder-modern/docs/development/CONNECTOR_KNOWLEDGE_MAP.md` if such tracking exists)
+4. Add the CSS reference with the fallback (or wire through an existing intermediate)
 
-Removing a consumed token:
+**Removing a consumed token:**
 
-1. Stop using the token in CSS
+1. Stop using it in CSS
 2. Remove the row from this document
-3. Update the CI test
-4. (No producer-side action needed — Promptless can keep emitting it for other consumers)
+3. (No producer-side action — Promptless can keep emitting it for other consumers)
 
-Renaming a token (producer-side change):
+**Renaming (producer-side):**
 
-1. Promptless WP emits both old and new tokens during the deprecation window
-2. This plugin updates its CSS to use the new token name
+1. Promptless emits both old and new names during the deprecation window
+2. PRE updates its CSS to use the new token name
 3. After all known consumers have migrated, Promptless removes the old token
 
-This is the same versioning protocol Form Runtime Engine's contract follows.
+This matches Form Runtime Engine's contract versioning protocol.

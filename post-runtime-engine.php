@@ -102,6 +102,23 @@ final class Post_Runtime_Engine {
 	public $frontend_assets = null;
 
 	/**
+	 * Connector REST controller. Populated on init() — needed in REST
+	 * requests as well as admin and frontend, so always loaded.
+	 *
+	 * @var PRE_Connector_API|null
+	 */
+	public $connector_api = null;
+
+	/**
+	 * Connector admin page coordinator. Populated on init() in admin
+	 * context only — the settings UI for enabling the connector and
+	 * generating Application Passwords.
+	 *
+	 * @var PRE_Connector_Admin|null
+	 */
+	public $connector_admin = null;
+
+	/**
 	 * Get the singleton instance.
 	 *
 	 * @return Post_Runtime_Engine
@@ -170,14 +187,23 @@ final class Post_Runtime_Engine {
 		// Admin module is only loaded inside wp-admin. Frontend / REST
 		// requests don't need any of this.
 		if ( is_admin() ) {
-			$this->admin = new PRE_Admin();
+			$this->admin           = new PRE_Admin();
+			$this->connector_admin = new PRE_Connector_Admin();
+			$this->connector_admin->init();
 		}
 
 		// Frontend rendering — instantiated regardless of context because
-		// REST requests can also produce post output (preview endpoints
-		// in Phase 3) and admin previews need the renderer too.
+		// REST requests can also produce post output (preview endpoint)
+		// and admin previews need the renderer too.
 		$this->template_router = new PRE_Template_Router();
 		$this->frontend_assets = new PRE_Frontend_Assets();
+
+		// Connector REST API — always loaded so authenticated agents
+		// can call /wp-json/post-runtime/v1/connector/* from any
+		// context. The auth gate inside each route ensures the
+		// connector_enabled toggle is honored.
+		$this->connector_api = new PRE_Connector_API();
+		$this->connector_api->init();
 
 		/**
 		 * Fires after Post Runtime Engine has finished initializing its core

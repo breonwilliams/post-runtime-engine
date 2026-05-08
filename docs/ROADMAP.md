@@ -1,9 +1,42 @@
 # Post Runtime Engine — Roadmap
 
-**Document status:** Draft v1 (planning phase)
-**Author:** Breon Williams + Claude (planning sessions)
-**Date:** 2026-05-07
-**Provisional plugin name:** Post Runtime Engine (PRE) — final name TBD before Phase 1
+**Document status:** Build in progress — Phases 0, 1, 2 complete; Phase 3 (connector + MCP) starting
+**Author:** Breon Williams + Claude (planning + build sessions)
+**Last updated:** 2026-05-08
+**Plugin name:** Post Runtime Engine (PRE) — confirmed
+**Initial commit:** 2026-05-08 (v0.1.0)
+
+## Completion log
+
+| Phase | Status | Notes |
+|---|---|---|
+| 0 — Planning + design docs | ✅ Complete | All architectural decisions locked; folder scaffold, CLAUDE.md, ARCHITECTURE.md, AISB_TOKEN_CONTRACT.md, INTEGRATION_PROMPTLESS.md shipped |
+| 1 — Data layer + admin UI | ✅ Complete | All Phase 1 deliverables shipped + meta box visual polish, hover-revealed handle/remove, expanded 53-icon library across 13 categories, post-search autocomplete with site-portable post_id storage |
+| 2 — Frontend rendering | ✅ Complete | All four variants + three positions + three source modes working; kitchen-sink fixture with realistic real-estate data; responsive iframe harness; 59/59 smoke tests passing |
+| 3 — Connector + MCP | ✅ Complete | 18 REST endpoints + admin page + 4 connector classes; spec at `docs/CONNECTOR_SPEC.md`; setup guide at `docs/MCP_CONNECTOR_SETUP.md`; 87/87 smoke tests passing |
+| 4 — Design-token CSS audit | ✅ Complete | All `--aisb-*` references flow through `--pre-color-*` / `--pre-card-*` intermediates; dark mode (`.aisb-section--dark` ancestor) and neo-brutalist mode (`body.aisb-neo-brutalist-cards`) both wired; ratified contract at `docs/AISB_TOKEN_CONTRACT.md` |
+| 5 — Reference patterns + docs | Pending | Kitchen-sink demo serves as one reference; formal patterns deferred |
+| 6 — Production polish | Pending | |
+
+## What shipped beyond original Phase 1+2 scope
+
+These weren't in the original phase plan but proved valuable to ship inline:
+
+- **53-icon curated library across 13 categories.** Original plan called for a small starter set; expanded to cover real estate, legal, education, communication, location, commerce, people, food/hospitality, medical, creative, fitness, travel, and general primitives. Dropdown uses `<optgroup>` for browsability. Extensible via the `pre_icon_library` filter for site-specific additions.
+- **Modern meta box card layout.** Drag handle and remove × are hover-revealed; preview tile + icon picker + image controls combined into a single 96px column; fields use border-light styling with indigo focus ring; placeholder-driven labels keep the card scannable when scrolling many items.
+- **Post-search autocomplete on the link field.** Inline jQuery UI Autocomplete backed by `/wp/v2/search`. Suppresses for URL-shaped input (anchors, tel:, mailto:, external URLs). Lazy-initialized on first focus.
+- **Site-portable internal links.** Items now store `link_post_id` alongside the URL string. Renderer prefers `get_permalink(link_post_id)` at render time, making links survive domain migrations and permalink-structure changes. The autocomplete captures post_id on selection; manual edits clear it. Defense-in-depth check on save: post_id is dropped if the URL no longer matches `get_permalink()`.
+- **Browser-based test harnesses.** `tests/run-via-browser.php` and `tests/run-kitchen-sink-via-browser.php` work around Local's wp-cli MySQL socket setup; `tests/responsive-preview.php` renders a post at 375/768/1280px in iframes for visual regression review.
+
+## Architectural decisions resolved during the build
+
+- **Icon UX:** Curated dropdown with optgroup categories, not Iconify slug input. Reasoning: 53 icons cover ≥90% of expected use, dropdown is faster than typing, extensible via filter for niche cases.
+- **Link affordance for clickable items:** Unified stretched-link pattern across all variants — full card is the click target, subtle arrow indicator on card-grid / featured-card. Per-item CTA buttons with custom labels deferred to v1.1 (would require a `link_label` field).
+- **Featured-card image:** Edge-bleed (1:1 aspect ratio when stacked, auto-fill when side-by-side). No padding around the image.
+- **Sidebar groupings:** Force single-column layout regardless of variant — sidebar context overrides the variant's grid even at desktop viewport.
+- **Internal link storage:** `link_post_id` (canonical, hidden) + `link` (display string, fallback). Renderer prefers post_id; falls back to URL when post_id is empty or post is trashed.
+- **Validator strictness on link_post_id:** Validates structure only (positive int when set), not post existence. Drafts and scheduled posts are valid link targets; trashed posts are rendered with the URL fallback.
+- **Plugin name:** "Post Runtime Engine" confirmed (was provisional).
 
 ---
 
@@ -121,7 +154,7 @@ Each phase ends with an acceptance gate. No phase begins until the previous phas
 
 ---
 
-### Phase 1 — CPT registry + grouping data layer + meta box (14 hours)
+### Phase 1 — CPT registry + grouping data layer + meta box (14 hours, ✅ complete)
 
 **Goal.** Promptless owns CPT registration end-to-end. Users can register a CPT through the admin UI, define which groupings it accepts, and fill in per-post grouping items.
 
@@ -161,7 +194,7 @@ uninstall.php                        ← On plugin delete: clean options (preser
 
 ---
 
-### Phase 2 — Frontend rendering + layout variants + source modes (14 hours)
+### Phase 2 — Frontend rendering + layout variants + source modes (14 hours, ✅ complete)
 
 **Goal.** Single-post pages for registered CPTs render through this plugin's template, with all four layout variants and all three source modes (manual / child_posts / taxonomy_match) working correctly. Per-post variant overrides applied at render time.
 
@@ -197,7 +230,7 @@ uninstall.php                        ← On plugin delete: clean options (preser
 
 ---
 
-### Phase 3 — Connector REST + MCP tools (12 hours)
+### Phase 3 — Connector REST + MCP tools (12 hours, 🚧 starting)
 
 **Goal.** Claude Cowork can register CPTs, define groupings, populate per-post values, choose layout variants, and preview output entirely through MCP tools.
 
@@ -333,6 +366,17 @@ Each follows the pattern established by Promptless WP's connector and FRE's conn
 **Resolved during planning (no longer open):**
 - ~~Per-post variant override.~~ Promoted to v1.0 scope.
 - ~~Source modes (auto-population from child posts and taxonomy matches).~~ Promoted to v1.0 scope.
+
+**Resolved during Phases 1+2 (no longer open):**
+- ~~Final plugin name.~~ "Post Runtime Engine" confirmed.
+- ~~Image-or-icon field UX.~~ Mutually exclusive per item (validator enforces). Curated 53-icon library across 13 categories with `<optgroup>` dropdown; extensible via `pre_icon_library` filter for site-specific additions. Iconify slug input deferred — curated set covers expected use.
+- ~~Block editor compatibility for the meta box.~~ Classic-style PHP-rendered meta box; works alongside Gutenberg post-edit screen via the standard meta-box compat shim. No native Gutenberg-block port in v1.
+
+**Still open (resolve during Phase 3):**
+- MCP tool naming convention. Provisional: `postruntime_*` (matches plugin slug, distinct from FRE's `formengine_*` and Promptless WP's `wordpress_*`). Final lock during spec authoring.
+- Free vs premium tier. Decision: defer Freemius wiring in v1; ship as a single tier behind WP App Password auth + capability check, matching FRE's connector pattern. Revisit before public release.
+- Hero customization beyond automatic post title + featured image. Defer to v1.1 unless a real client surfaces a need.
+- Related-posts footer configurability. Currently hardcoded to first registered taxonomy; defer per-CPT configurability to v1.1.
 
 ## 9. Risks and mitigations
 

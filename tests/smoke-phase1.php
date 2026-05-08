@@ -518,6 +518,16 @@ pre_smoke_assert( 'https URL is accepted', true === $validator->validate_link( '
 pre_smoke_wp_error( 'javascript: URL is rejected', $validator->validate_link( 'javascript:alert(1)' ), 'pre_invalid_url' );
 
 // ---------------------------------------------------------------------------
+// Phase 3 — Connector tests (append to the shared $pre_smoke_results array
+// so the final report includes them).
+// ---------------------------------------------------------------------------
+
+$phase3 = __DIR__ . '/smoke-phase3.php';
+if ( file_exists( $phase3 ) ) {
+	include $phase3;
+}
+
+// ---------------------------------------------------------------------------
 // Cleanup and report.
 // ---------------------------------------------------------------------------
 
@@ -544,5 +554,5 @@ if ( $failed > 0 ) {
 	exit( 1 );
 }
 
-echo "\nAll Phase 1 data-layer tests passed. Plugin is ready for the admin UI pass.\n";
+echo "\nAll data-layer + connector tests passed. Plugin is ready for use.\n";
 exit( 0 );

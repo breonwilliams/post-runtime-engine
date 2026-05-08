@@ -26,12 +26,27 @@
 /* ----------------------------------------------------------------------- */
 
 .pre-single {
-	--pre-color-text: var(--pre-color-text);
-	--pre-color-text-muted: var(--pre-color-text-muted);
-	--pre-color-background: var(--pre-color-background);
-	--pre-color-surface: var(--pre-color-surface);
-	--pre-color-border: var(--pre-color-border);
-	--pre-color-primary: var(--pre-color-primary);
+	/*
+	 * Light-mode defaults. Each intermediate reads from the
+	 * corresponding --aisb-* token emitted by Promptless WP, with a
+	 * documented fallback for standalone use (no Promptless active).
+	 *
+	 * IMPORTANT: these MUST point at --aisb-* tokens, not at
+	 * themselves. Self-referencing (e.g. --pre-color-surface:
+	 * var(--pre-color-surface)) creates a CSS variable cycle which
+	 * resolves to the guaranteed-invalid value, which then makes
+	 * `background: var(--pre-color-surface)` invalid and the property
+	 * falls back to its initial value (transparent for background,
+	 * 0px for border-width). This was the cause of the v0.1.0
+	 * "cards have no surface in light mode" bug — caught by a global
+	 * find-replace during the Phase 4 token refactor.
+	 */
+	--pre-color-text: var(--aisb-color-text, #1f2937);
+	--pre-color-text-muted: var(--aisb-color-text-muted, #6b7280);
+	--pre-color-background: var(--aisb-color-background, #ffffff);
+	--pre-color-surface: var(--aisb-color-surface, #f9fafb);
+	--pre-color-border: var(--aisb-color-border, #e5e7eb);
+	--pre-color-primary: var(--aisb-color-primary, #6366f1);
 
 	/* Card chrome — overridden under body.aisb-neo-brutalist-cards. */
 	--pre-card-border-width: 1px;
@@ -156,12 +171,7 @@ body.aisb-neo-brutalist-cards .pre-single {
 	margin-bottom: var(--aisb-section-space-lg, 2rem);
 }
 
-.pre-hero__inner {
-	display: flex;
-	flex-direction: column;
-	gap: var(--aisb-section-space-sm, 1rem);
-}
-
+/* Shared element styles — apply to both layouts. */
 .pre-hero__title {
 	font-family: var(--aisb-section-font-heading, inherit);
 	font-size: clamp(1.75rem, 4vw, 2.5rem);
@@ -175,21 +185,145 @@ body.aisb-neo-brutalist-cards .pre-single {
 	font-size: 1.125rem;
 	line-height: 1.5;
 	color: var(--pre-color-text-muted);
-	margin: 0;
+	margin: var(--aisb-section-space-sm, 1rem) 0 0 0;
 }
 
-.pre-hero__media {
-	margin-top: var(--aisb-section-space-sm, 1rem);
-	border-radius: var(--aisb-section-radius-image, 8px);
-	overflow: hidden;
+.pre-hero__text {
+	display: flex;
+	flex-direction: column;
 }
 
 .pre-hero__image {
 	display: block;
 	width: 100%;
-	height: auto;
-	max-height: 540px;
+	height: 100%;
 	object-fit: cover;
+}
+
+/* ----- Layout: stacked (default) -----
+ * Featured image as a 16:9 banner above the title block. Capped at 540px
+ * tall so banners stay banner-shaped on wide viewports — without the cap,
+ * a 1280px container at 16:9 produces a 720px tall image, which dominates
+ * the fold instead of acting as a lead-in. Falls back to a clean
+ * text-only hero when no image is set.
+ */
+.pre-hero--stacked .pre-hero__inner {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aisb-section-space-md, 1.5rem);
+}
+
+.pre-hero--stacked .pre-hero__media {
+	aspect-ratio: 16 / 9;
+	max-height: 540px;
+	border-radius: var(--aisb-section-radius-image, 8px);
+	overflow: hidden;
+	background: var(--pre-color-surface);
+}
+
+/* ----- Layout: split -----
+ * Featured image side-by-side with the title block. Mobile collapses to a
+ * single column with the image first, then text below. Desktop renders the
+ * 50/50 grid; the image_position class controls which side the image sits on.
+ *
+ * No-image case: when .pre-hero--has-image is absent, we let .pre-hero__text
+ * span the full width naturally (no grid columns to fight against).
+ */
+.pre-hero--split .pre-hero__inner {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aisb-section-space-md, 1.5rem);
+}
+
+.pre-hero--split .pre-hero__media {
+	border-radius: var(--aisb-section-radius-image, 8px);
+	overflow: hidden;
+	background: var(--pre-color-surface);
+}
+
+/* Per-aspect sizing for split hero images. The aspect-ratio + max-width
+ * pair sets the natural shape of the media slot so featured images crop
+ * cleanly to the intended frame. Pick the aspect at CPT registration to
+ * match the natural shape of the post's photos:
+ *
+ *   square (1:1) — headshots, profiles, team pages. Default.
+ *   landscape (4:3) — property photos, product shots.
+ *   wide (16:9) — cinematic banner imagery.
+ *
+ * Max dimensions cap each aspect at a sensible ceiling for narrow text
+ * columns; the underlying object-fit:cover (set on .pre-hero__image
+ * upstream) handles cropping when the source photo doesn't match. */
+.pre-hero--split.pre-hero--aspect-square .pre-hero__media {
+	aspect-ratio: 1 / 1;
+	max-width: 480px;
+	max-height: 480px;
+}
+
+.pre-hero--split.pre-hero--aspect-landscape .pre-hero__media {
+	aspect-ratio: 4 / 3;
+	max-width: 560px;
+	max-height: 420px;
+}
+
+.pre-hero--split.pre-hero--aspect-wide .pre-hero__media {
+	aspect-ratio: 16 / 9;
+	max-width: 640px;
+	max-height: 360px;
+}
+
+@media (min-width: 768px) {
+	/* 40/60 grid — image takes ~40% of the row, text takes ~60%. This is
+	 * the proportion modern profile-page layouts converge on (Cooley LLP,
+	 * modern attorney bio sites, team pages). 50/50 makes the image too
+	 * dominant relative to the text it supports.
+	 *
+	 * The image always lives in the 2fr (narrower) column, regardless of
+	 * which side it sits on — the image's max-width caps are sized to
+	 * fit a 2fr column at typical desktop widths. The image-right rule
+	 * below swaps the column ratio (3fr 2fr) so the narrower column
+	 * lands on the right; without that swap, image-right would put the
+	 * image into the wider 3fr column where its max-width caps would
+	 * make it float with empty space inside its cell. */
+	.pre-hero--split.pre-hero--has-image .pre-hero__inner {
+		display: grid;
+		grid-template-columns: 2fr 3fr;
+		gap: var(--aisb-section-space-xl, 3rem);
+		align-items: center;
+	}
+
+	.pre-hero--split.pre-hero--image-right.pre-hero--has-image .pre-hero__inner {
+		grid-template-columns: 3fr 2fr;
+	}
+
+	/* Anchor the image to the content edge so its outer edge aligns with
+	 * the body grid below. On viewports wider than the image's max-width,
+	 * the image would otherwise float inside its 2fr column, leaving a
+	 * visible gap between the image edge and the content edge.
+	 *
+	 *   image-left  → image's left edge sits at the content's left edge
+	 *   image-right → image's right edge sits at the content's right edge
+	 *
+	 * Both anchor points match the body content grid below the hero, so
+	 * the hero image visually aligns with the rest of the page. */
+	.pre-hero--split.pre-hero--has-image .pre-hero__media {
+		justify-self: start;
+	}
+
+	/* When image-right, swap visual order via CSS — document order stays
+	 * image-first so screen readers announce alt before title. */
+	.pre-hero--split.pre-hero--image-right .pre-hero__media {
+		order: 2;
+		justify-self: end;
+	}
+	.pre-hero--split.pre-hero--image-right .pre-hero__text {
+		order: 1;
+	}
+
+	/* Slightly tighter title in split — image carries visual weight, so
+	 * the title doesn't need to be as oversized as in stacked. */
+	.pre-hero--split .pre-hero__title {
+		font-size: clamp(1.5rem, 3vw, 2.25rem);
+	}
 }
 
 /* ----------------------------------------------------------------------- */

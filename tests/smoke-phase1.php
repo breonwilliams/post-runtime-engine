@@ -249,6 +249,55 @@ pre_smoke_wp_error(
 	'pre_slug_too_long'
 );
 
+// 5b. Hero fields — happy path round-trip + validation rejections.
+$plugin->cpts->register(
+	PRE_SMOKE_CPT_SLUG,
+	array(
+		'slug'                => PRE_SMOKE_CPT_SLUG,
+		'label_singular'      => 'Smoke',
+		'label_plural'        => 'Smokes',
+		'hero_layout'         => 'split',
+		'hero_image_position' => 'right',
+		'hero_image_aspect'   => 'landscape',
+	)
+);
+$with_hero = $plugin->cpts->get( PRE_SMOKE_CPT_SLUG );
+pre_smoke_equals( 'hero_layout round-trips', 'split', $with_hero['hero_layout'] ?? null );
+pre_smoke_equals( 'hero_image_position round-trips', 'right', $with_hero['hero_image_position'] ?? null );
+pre_smoke_equals( 'hero_image_aspect round-trips', 'landscape', $with_hero['hero_image_aspect'] ?? null );
+
+pre_smoke_wp_error(
+	'invalid hero_layout is rejected',
+	$plugin->cpts->register( 'pre_smoke_hero_test', array( 'slug' => 'pre_smoke_hero_test', 'label_singular' => 'X', 'label_plural' => 'Xs', 'hero_layout' => 'fancy' ) ),
+	'pre_invalid_hero_layout'
+);
+pre_smoke_wp_error(
+	'invalid hero_image_position is rejected',
+	$plugin->cpts->register( 'pre_smoke_hero_test', array( 'slug' => 'pre_smoke_hero_test', 'label_singular' => 'X', 'label_plural' => 'Xs', 'hero_image_position' => 'middle' ) ),
+	'pre_invalid_hero_image_position'
+);
+pre_smoke_wp_error(
+	'invalid hero_image_aspect is rejected',
+	$plugin->cpts->register( 'pre_smoke_hero_test', array( 'slug' => 'pre_smoke_hero_test', 'label_singular' => 'X', 'label_plural' => 'Xs', 'hero_image_aspect' => 'panoramic' ) ),
+	'pre_invalid_hero_image_aspect'
+);
+
+// CPTs without explicit hero fields should default to stacked + left +
+// square after merge_defaults. Test the same CPT registered without
+// those keys.
+$plugin->cpts->register(
+	PRE_SMOKE_CPT_SLUG,
+	array(
+		'slug'           => PRE_SMOKE_CPT_SLUG,
+		'label_singular' => 'Smoke',
+		'label_plural'   => 'Smokes',
+	)
+);
+$no_hero = $plugin->cpts->get( PRE_SMOKE_CPT_SLUG );
+pre_smoke_equals( 'hero_layout defaults to stacked', 'stacked', $no_hero['hero_layout'] ?? null );
+pre_smoke_equals( 'hero_image_position defaults to left', 'left', $no_hero['hero_image_position'] ?? null );
+pre_smoke_equals( 'hero_image_aspect defaults to square', 'square', $no_hero['hero_image_aspect'] ?? null );
+
 // 6. Grouping definition — happy path.
 $result = $plugin->groupings->define(
 	PRE_SMOKE_CPT_SLUG,

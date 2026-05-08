@@ -245,6 +245,65 @@ class PRE_Validator {
 			}
 		}
 
+		// Hero layout — optional; enum (stacked|split). Default 'stacked' is
+		// applied by PRE_CPT_Registry::merge_defaults; the validator only
+		// rejects malformed input. Existing CPTs registered before this
+		// field existed pass through untouched (the field is absent =>
+		// merge_defaults supplies the default).
+		if ( isset( $definition['hero_layout'] ) ) {
+			$valid_layouts = array( 'stacked', 'split' );
+			if ( ! in_array( $definition['hero_layout'], $valid_layouts, true ) ) {
+				return new WP_Error(
+					'pre_invalid_hero_layout',
+					/* translators: %1$s: the invalid layout; %2$s: list of allowed layouts */
+					sprintf(
+						__( 'CPT hero_layout %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						is_string( $definition['hero_layout'] ) ? $definition['hero_layout'] : 'non-string',
+						implode( ', ', $valid_layouts )
+					)
+				);
+			}
+		}
+
+		// Hero image position — optional; enum (left|right). Only meaningful
+		// when hero_layout is 'split'; ignored when 'stacked'. Validator
+		// rejects malformed values regardless of layout to keep stored data
+		// consistent and to surface typos at write time rather than render.
+		if ( isset( $definition['hero_image_position'] ) ) {
+			$valid_positions = array( 'left', 'right' );
+			if ( ! in_array( $definition['hero_image_position'], $valid_positions, true ) ) {
+				return new WP_Error(
+					'pre_invalid_hero_image_position',
+					/* translators: %1$s: the invalid position; %2$s: list of allowed positions */
+					sprintf(
+						__( 'CPT hero_image_position %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						is_string( $definition['hero_image_position'] ) ? $definition['hero_image_position'] : 'non-string',
+						implode( ', ', $valid_positions )
+					)
+				);
+			}
+		}
+
+		// Hero image aspect — optional; enum (square|landscape|wide). Only
+		// meaningful when hero_layout is 'split' (stacked always uses a
+		// 16:9 banner regardless). Pick the aspect that matches the
+		// content's natural photo shape — square for headshots, landscape
+		// for property photos / product shots, wide for cinematic banners.
+		if ( isset( $definition['hero_image_aspect'] ) ) {
+			$valid_aspects = array( 'square', 'landscape', 'wide' );
+			if ( ! in_array( $definition['hero_image_aspect'], $valid_aspects, true ) ) {
+				return new WP_Error(
+					'pre_invalid_hero_image_aspect',
+					/* translators: %1$s: the invalid aspect; %2$s: list of allowed aspects */
+					sprintf(
+						__( 'CPT hero_image_aspect %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						is_string( $definition['hero_image_aspect'] ) ? $definition['hero_image_aspect'] : 'non-string',
+						implode( ', ', $valid_aspects )
+					)
+				);
+			}
+		}
+
 		return true;
 	}
 

@@ -367,17 +367,24 @@ class PRE_CPT_Registry {
 	 */
 	private function merge_defaults( array $definition ) {
 		$defaults = array(
-			'public'           => true,
-			'hierarchical'     => false,
-			'has_archive'      => true,
-			'show_in_rest'     => true,
-			'show_in_menu'     => true,
-			'menu_position'    => 25,
-			'menu_icon'        => 'dashicons-admin-post',
-			'supports'         => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
-			'taxonomies'       => array(),
-			'capability_type'  => 'post',
-			'description'      => '',
+			'public'              => true,
+			'hierarchical'        => false,
+			'has_archive'         => true,
+			'show_in_rest'        => true,
+			'show_in_menu'        => true,
+			'menu_position'       => 25,
+			'menu_icon'           => 'dashicons-admin-post',
+			'supports'            => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
+			'taxonomies'          => array(),
+			'capability_type'     => 'post',
+			'description'         => '',
+
+			// Hero defaults — applied to existing CPT registrations
+			// transparently. Stacked is the safe default (matches the
+			// pre-feature behavior); split is opt-in per CPT.
+			'hero_layout'         => 'stacked',
+			'hero_image_position' => 'left',
+			'hero_image_aspect'   => 'square',
 		);
 
 		// wp_parse_args is shallow — it only fills missing top-level keys.

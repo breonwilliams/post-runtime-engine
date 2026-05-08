@@ -527,6 +527,71 @@ class PRE_Admin_CPTs {
 				</tr>
 			</table>
 
+			<h2 class="title"><?php esc_html_e( 'Hero', 'post-runtime-engine' ); ?></h2>
+			<p class="description" style="margin-top:0;">
+				<?php esc_html_e( 'Controls the layout of the post title, excerpt, and featured image at the top of every single page of this CPT. Pick the shape that matches the content: split for profile-style content (real estate, attorney bios, team pages), stacked for editorial content (events, courses, articles).', 'post-runtime-engine' ); ?>
+			</p>
+
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row">
+						<label for="pre_hero_layout"><?php esc_html_e( 'Hero layout', 'post-runtime-engine' ); ?></label>
+					</th>
+					<td>
+						<select id="pre_hero_layout" name="hero_layout">
+							<option value="stacked" <?php selected( $values['hero_layout'], 'stacked' ); ?>>
+								<?php esc_html_e( 'Stacked — featured image as a banner above the title (16:9)', 'post-runtime-engine' ); ?>
+							</option>
+							<option value="split" <?php selected( $values['hero_layout'], 'split' ); ?>>
+								<?php esc_html_e( 'Split — featured image side-by-side with title + excerpt (1:1)', 'post-runtime-engine' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'When the post has no featured image, both layouts collapse to a clean text-only hero — no empty image slot.', 'post-runtime-engine' ); ?>
+						</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="pre_hero_image_position"><?php esc_html_e( 'Image position', 'post-runtime-engine' ); ?></label>
+					</th>
+					<td>
+						<select id="pre_hero_image_position" name="hero_image_position">
+							<option value="left" <?php selected( $values['hero_image_position'], 'left' ); ?>>
+								<?php esc_html_e( 'Left', 'post-runtime-engine' ); ?>
+							</option>
+							<option value="right" <?php selected( $values['hero_image_position'], 'right' ); ?>>
+								<?php esc_html_e( 'Right', 'post-runtime-engine' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Only applies when Hero layout is set to Split. Stacked layouts always place the image above the text.', 'post-runtime-engine' ); ?>
+						</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="pre_hero_image_aspect"><?php esc_html_e( 'Image aspect ratio', 'post-runtime-engine' ); ?></label>
+					</th>
+					<td>
+						<select id="pre_hero_image_aspect" name="hero_image_aspect">
+							<option value="square" <?php selected( $values['hero_image_aspect'], 'square' ); ?>>
+								<?php esc_html_e( 'Square (1:1) — headshots, profiles, team pages', 'post-runtime-engine' ); ?>
+							</option>
+							<option value="landscape" <?php selected( $values['hero_image_aspect'], 'landscape' ); ?>>
+								<?php esc_html_e( 'Landscape (4:3) — property photos, product shots', 'post-runtime-engine' ); ?>
+							</option>
+							<option value="wide" <?php selected( $values['hero_image_aspect'], 'wide' ); ?>>
+								<?php esc_html_e( 'Wide (16:9) — cinematic banner imagery', 'post-runtime-engine' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Only applies when Hero layout is set to Split. Pick the shape that matches the natural aspect of your photos so they crop cleanly. Stacked layouts always use a 16:9 banner.', 'post-runtime-engine' ); ?>
+						</p>
+					</td>
+				</tr>
+			</table>
+
 			<?php submit_button( $is_edit ? __( 'Save changes', 'post-runtime-engine' ) : __( 'Register post type', 'post-runtime-engine' ) ); ?>
 
 			<p>
@@ -656,21 +721,37 @@ class PRE_Admin_CPTs {
 			}
 		}
 
+		// Hero fields — sanitize_key normalizes case + strips invalid chars
+		// before the validator does its enum check. Unknown values fail the
+		// validator with a typed error rather than corrupting storage.
+		$hero_layout = isset( $_POST['hero_layout'] )
+			? sanitize_key( wp_unslash( $_POST['hero_layout'] ) )
+			: 'stacked';
+		$hero_image_position = isset( $_POST['hero_image_position'] )
+			? sanitize_key( wp_unslash( $_POST['hero_image_position'] ) )
+			: 'left';
+		$hero_image_aspect = isset( $_POST['hero_image_aspect'] )
+			? sanitize_key( wp_unslash( $_POST['hero_image_aspect'] ) )
+			: 'square';
+
 		return array(
-			'slug'            => is_string( $slug ) ? trim( $slug ) : '',
-			'label_singular'  => isset( $_POST['label_singular'] ) ? sanitize_text_field( wp_unslash( $_POST['label_singular'] ) ) : '',
-			'label_plural'    => isset( $_POST['label_plural'] ) ? sanitize_text_field( wp_unslash( $_POST['label_plural'] ) ) : '',
-			'description'     => isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '',
-			'public'          => ! empty( $_POST['public'] ),
-			'has_archive'     => ! empty( $_POST['has_archive'] ),
-			'hierarchical'    => ! empty( $_POST['hierarchical'] ),
-			'show_in_rest'    => ! empty( $_POST['show_in_rest'] ),
-			'show_in_menu'    => ! empty( $_POST['show_in_menu'] ),
-			'menu_position'   => isset( $_POST['menu_position'] ) ? max( 1, min( 100, (int) $_POST['menu_position'] ) ) : 25,
-			'menu_icon'       => isset( $_POST['menu_icon'] ) ? sanitize_text_field( wp_unslash( $_POST['menu_icon'] ) ) : 'dashicons-admin-post',
-			'supports'        => $supports,
-			'taxonomies'      => $taxonomies,
-			'capability_type' => isset( $_POST['capability_type'] ) ? sanitize_key( wp_unslash( $_POST['capability_type'] ) ) : 'post',
+			'slug'                => is_string( $slug ) ? trim( $slug ) : '',
+			'label_singular'      => isset( $_POST['label_singular'] ) ? sanitize_text_field( wp_unslash( $_POST['label_singular'] ) ) : '',
+			'label_plural'        => isset( $_POST['label_plural'] ) ? sanitize_text_field( wp_unslash( $_POST['label_plural'] ) ) : '',
+			'description'         => isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '',
+			'public'              => ! empty( $_POST['public'] ),
+			'has_archive'         => ! empty( $_POST['has_archive'] ),
+			'hierarchical'        => ! empty( $_POST['hierarchical'] ),
+			'show_in_rest'        => ! empty( $_POST['show_in_rest'] ),
+			'show_in_menu'        => ! empty( $_POST['show_in_menu'] ),
+			'menu_position'       => isset( $_POST['menu_position'] ) ? max( 1, min( 100, (int) $_POST['menu_position'] ) ) : 25,
+			'menu_icon'           => isset( $_POST['menu_icon'] ) ? sanitize_text_field( wp_unslash( $_POST['menu_icon'] ) ) : 'dashicons-admin-post',
+			'supports'            => $supports,
+			'taxonomies'          => $taxonomies,
+			'capability_type'     => isset( $_POST['capability_type'] ) ? sanitize_key( wp_unslash( $_POST['capability_type'] ) ) : 'post',
+			'hero_layout'         => $hero_layout,
+			'hero_image_position' => $hero_image_position,
+			'hero_image_aspect'   => $hero_image_aspect,
 		);
 	}
 
@@ -750,20 +831,23 @@ class PRE_Admin_CPTs {
 	 */
 	private function definition_to_form_values( array $definition ) {
 		return array(
-			'slug'            => $definition['slug'] ?? '',
-			'label_singular'  => $definition['label_singular'] ?? '',
-			'label_plural'    => $definition['label_plural'] ?? '',
-			'description'     => $definition['description'] ?? '',
-			'public'          => ! empty( $definition['public'] ),
-			'has_archive'     => ! empty( $definition['has_archive'] ),
-			'hierarchical'    => ! empty( $definition['hierarchical'] ),
-			'show_in_rest'    => ! empty( $definition['show_in_rest'] ),
-			'show_in_menu'    => ! empty( $definition['show_in_menu'] ),
-			'menu_position'   => (int) ( $definition['menu_position'] ?? 25 ),
-			'menu_icon'       => $definition['menu_icon'] ?? 'dashicons-admin-post',
-			'supports'        => is_array( $definition['supports'] ?? null ) ? $definition['supports'] : array(),
-			'taxonomies'      => is_array( $definition['taxonomies'] ?? null ) ? $definition['taxonomies'] : array(),
-			'capability_type' => $definition['capability_type'] ?? 'post',
+			'slug'                => $definition['slug'] ?? '',
+			'label_singular'      => $definition['label_singular'] ?? '',
+			'label_plural'        => $definition['label_plural'] ?? '',
+			'description'         => $definition['description'] ?? '',
+			'public'              => ! empty( $definition['public'] ),
+			'has_archive'         => ! empty( $definition['has_archive'] ),
+			'hierarchical'        => ! empty( $definition['hierarchical'] ),
+			'show_in_rest'        => ! empty( $definition['show_in_rest'] ),
+			'show_in_menu'        => ! empty( $definition['show_in_menu'] ),
+			'menu_position'       => (int) ( $definition['menu_position'] ?? 25 ),
+			'menu_icon'           => $definition['menu_icon'] ?? 'dashicons-admin-post',
+			'supports'            => is_array( $definition['supports'] ?? null ) ? $definition['supports'] : array(),
+			'taxonomies'          => is_array( $definition['taxonomies'] ?? null ) ? $definition['taxonomies'] : array(),
+			'capability_type'     => $definition['capability_type'] ?? 'post',
+			'hero_layout'         => $definition['hero_layout'] ?? 'stacked',
+			'hero_image_position' => $definition['hero_image_position'] ?? 'left',
+			'hero_image_aspect'   => $definition['hero_image_aspect'] ?? 'square',
 		);
 	}
 
@@ -774,20 +858,23 @@ class PRE_Admin_CPTs {
 	 */
 	private function default_form_values() {
 		return array(
-			'slug'            => '',
-			'label_singular'  => '',
-			'label_plural'    => '',
-			'description'     => '',
-			'public'          => true,
-			'has_archive'     => true,
-			'hierarchical'    => false,
-			'show_in_rest'    => true,
-			'show_in_menu'    => true,
-			'menu_position'   => 25,
-			'menu_icon'       => 'dashicons-admin-post',
-			'supports'        => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
-			'taxonomies'      => array(),
-			'capability_type' => 'post',
+			'slug'                => '',
+			'label_singular'      => '',
+			'label_plural'        => '',
+			'description'         => '',
+			'public'              => true,
+			'has_archive'         => true,
+			'hierarchical'        => false,
+			'show_in_rest'        => true,
+			'show_in_menu'        => true,
+			'menu_position'       => 25,
+			'menu_icon'           => 'dashicons-admin-post',
+			'supports'            => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
+			'taxonomies'          => array(),
+			'capability_type'     => 'post',
+			'hero_layout'         => 'stacked',
+			'hero_image_position' => 'left',
+			'hero_image_aspect'   => 'square',
 		);
 	}
 }

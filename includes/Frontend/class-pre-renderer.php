@@ -246,7 +246,22 @@ class PRE_Renderer {
 	 */
 	private function render_internal( WP_Post $post ) {
 		$plugin      = pre();
+		$cpt_def     = $plugin->cpts ? $plugin->cpts->get( $post->post_type ) : null;
 		$definitions = $plugin->groupings ? $plugin->groupings->get_all( $post->post_type ) : array();
+
+		// Hero layout flows from the CPT definition. Falls back to 'stacked'
+		// + 'left' + 'square' for any CPT registered before these fields
+		// existed. Aspect only applies to split layouts; stacked is always
+		// 16:9 regardless of the stored aspect.
+		$hero_layout         = is_array( $cpt_def ) && ! empty( $cpt_def['hero_layout'] )
+			? $cpt_def['hero_layout']
+			: 'stacked';
+		$hero_image_position = is_array( $cpt_def ) && ! empty( $cpt_def['hero_image_position'] )
+			? $cpt_def['hero_image_position']
+			: 'left';
+		$hero_image_aspect   = is_array( $cpt_def ) && ! empty( $cpt_def['hero_image_aspect'] )
+			? $cpt_def['hero_image_aspect']
+			: 'square';
 		$values      = $plugin->post_data ? $plugin->post_data->get_groupings( $post->ID ) : array();
 
 		// Index post values by grouping_key for easy lookup.
@@ -300,7 +315,7 @@ class PRE_Renderer {
 
 		?>
 		<article id="post-<?php echo esc_attr( $post->ID ); ?>" <?php post_class( 'pre-single pre-single--' . sanitize_html_class( $post->post_type ) ); ?>>
-			<?php $this->render_hero( $post ); ?>
+			<?php $this->render_hero( $post, $hero_layout, $hero_image_position, $hero_image_aspect ); ?>
 
 			<div class="<?php echo esc_attr( $body_class ); ?>">
 				<div class="pre-body__main">
@@ -343,41 +358,92 @@ class PRE_Renderer {
 	/**
 	 * Render the hero block: title + featured image + excerpt.
 	 *
-	 * @param WP_Post $post Post.
+	 * Two layouts:
+	 *
+	 *   stacked (default) — featured image is a 16:9 banner above the
+	 *   title + excerpt block. Suits editorial CPTs (events, courses,
+	 *   articles) where the image acts as a visual lead-in.
+	 *
+	 *   split — featured image is side-by-side with the title + excerpt
+	 *   on desktop (50/50 grid, 1:1 aspect ratio). Stacks to single column
+	 *   on mobile. Suits profile-shaped CPTs (real estate listings,
+	 *   attorney bios, team members) where the image and text carry
+	 *   equal visual weight. The image_position flag swaps left/right.
+	 *
+	 * Without a featured image, both layouts collapse to a clean text-
+	 * only hero — no empty image slot. The .pre-hero--has-image class
+	 * is added when an image is present so CSS can branch its grid
+	 * behavior on it.
+	 *
+	 * Document order: image first when present, then text block. Mobile
+	 * stacks naturally in this order; desktop split with image-right
+	 * uses CSS `order` to flip the visual position without changing
+	 * screen-reader reading order.
+	 *
+	 * @param WP_Post $post           Post being rendered.
+	 * @param string  $layout         'stacked' | 'split'.
+	 * @param string  $image_position 'left' | 'right' (only meaningful for split).
+	 * @param string  $image_aspect   'square' | 'landscape' | 'wide' (only meaningful for split).
 	 */
-	private function render_hero( WP_Post $post ) {
+	private function render_hero( WP_Post $post, $layout = 'stacked', $image_position = 'left', $image_aspect = 'square' ) {
 		$has_thumbnail = has_post_thumbnail( $post->ID );
 		$excerpt       = $post->post_excerpt;
 		$title         = get_the_title( $post );
 
+		// Defensive normalization — the renderer should never crash on a
+		// stored CPT definition with malformed values, even if the
+		// validator somehow let a bad value through.
+		$layout         = in_array( $layout, array( 'stacked', 'split' ), true ) ? $layout : 'stacked';
+		$image_position = in_array( $image_position, array( 'left', 'right' ), true ) ? $image_position : 'left';
+		$image_aspect   = in_array( $image_aspect, array( 'square', 'landscape', 'wide' ), true ) ? $image_aspect : 'square';
+
+		$hero_classes = array( 'pre-hero', 'pre-hero--' . $layout );
+		if ( $layout === 'split' ) {
+			$hero_classes[] = 'pre-hero--image-' . $image_position;
+			// Aspect only meaningful for split — stacked is always 16:9.
+			// Emit unconditionally on split so CSS can branch even when
+			// the post has no thumbnail (the empty media slot still
+			// reserves correct shape on the grid).
+			$hero_classes[] = 'pre-hero--aspect-' . $image_aspect;
+		}
+		if ( $has_thumbnail ) {
+			$hero_classes[] = 'pre-hero--has-image';
+		}
+
 		?>
-		<header class="pre-hero">
+		<header class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>">
 			<div class="pre-hero__inner">
-				<h1 class="pre-hero__title"><?php echo esc_html( $title ); ?></h1>
-
-				<?php if ( $excerpt !== '' ) : ?>
-					<p class="pre-hero__excerpt"><?php echo esc_html( $excerpt ); ?></p>
-				<?php endif; ?>
-
 				<?php if ( $has_thumbnail ) : ?>
 					<div class="pre-hero__media">
 						<?php
-						// Alt-text fallback: when the attachment has no
-						// alt text saved at upload time, use the post
-						// title. Empty alt on a content image is an
-						// accessibility issue — a meaningful description
-						// is always better than the screen reader saying
-						// nothing.
+						// Alt-text fallback: attachment alt wins; fall back
+						// to the post title when no alt is saved.
 						$thumb_id  = get_post_thumbnail_id( $post->ID );
 						$saved_alt = trim( (string) get_post_meta( $thumb_id, '_wp_attachment_image_alt', true ) );
 						$args      = array( 'class' => 'pre-hero__image' );
 						if ( $saved_alt === '' ) {
 							$args['alt'] = $title;
 						}
-						echo get_the_post_thumbnail( $post->ID, 'large', $args );
+						// Pick the size that matches the layout. Stacked is a
+						// full-width banner so we want the largest available
+						// source. Split is capped at 640px wide for the
+						// largest aspect (16:9), so `large` (1024px max
+						// bound) covers all three split aspect variants
+						// without forcing the browser to scale down a 2MB
+						// hero image.
+						$image_size = $layout === 'stacked' ? 'full' : 'large';
+						echo get_the_post_thumbnail( $post->ID, $image_size, $args );
 						?>
 					</div>
 				<?php endif; ?>
+
+				<div class="pre-hero__text">
+					<h1 class="pre-hero__title"><?php echo esc_html( $title ); ?></h1>
+
+					<?php if ( $excerpt !== '' ) : ?>
+						<p class="pre-hero__excerpt"><?php echo esc_html( $excerpt ); ?></p>
+					<?php endif; ?>
+				</div>
 			</div>
 		</header>
 		<?php

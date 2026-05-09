@@ -523,13 +523,21 @@ class PRE_Renderer {
 
 		// If we have a post-ID reference, resolve it through WordPress's
 		// permalink resolver. This is what makes the link domain-portable.
-		// get_permalink() returns false for trashed/non-existent posts — in
-		// that case we fall back to the stored URL string so the item still
-		// renders something the user can investigate.
+		// We also gate on the linked post being PUBLISHED — for non-existent
+		// post_ids get_post() returns null (clear miss), but for trashed and
+		// draft posts WordPress's get_permalink() still returns a valid
+		// string (sometimes with __trashed appended, depending on rewrite
+		// rules). Publishing a link to a trashed/draft destination would
+		// produce a broken click; better to fall back to the stored literal
+		// `link` field so the UI still renders something the user can
+		// investigate. PT-9-1 in docs/PRESSURE_TESTS.md covers both cases.
 		if ( $link_post_id > 0 ) {
-			$resolved = get_permalink( $link_post_id );
-			if ( is_string( $resolved ) && $resolved !== '' ) {
-				$link = $resolved;
+			$linked = get_post( $link_post_id );
+			if ( $linked instanceof WP_Post && $linked->post_status === 'publish' ) {
+				$resolved = get_permalink( $linked );
+				if ( is_string( $resolved ) && $resolved !== '' ) {
+					$link = $resolved;
+				}
 			}
 		}
 

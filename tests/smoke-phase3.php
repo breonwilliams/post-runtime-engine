@@ -341,6 +341,146 @@ pre_smoke_assert(
 	$expected_home_svg !== '' && strpos( $html, $expected_home_svg ) === false
 );
 
+// =============================================================================
+// PT-9-1 — Trashed / non-existent post referenced via link_post_id.
+// Covers two related code paths:
+//   A) link_post_id → non-existent ID — get_post() returns null, get_permalink()
+//      returns false; renderer must fall back to the literal `link` URL and not
+//      crash, and the cross-CPT default_icon resolution must skip its lookup.
+//   B) link_post_id → trashed ID — get_post() still returns the post object
+//      with post_status='trash'; get_permalink() returns false on most setups.
+//      Renderer must still complete cleanly.
+// =============================================================================
+
+// Setup: create a host post that points its featured-card item at a known-bad
+// link_post_id (99999 — guaranteed to not exist). Reuse the pre_smk_host /
+// pre_smk_link CPTs from PT-A4 (still registered at this point in the suite).
+$res = $dispatch( 'POST', '/posts', array(
+	'post_type'  => 'pre_smk_host',
+	'post_title' => 'Host with bad link_post_id',
+	'groupings'  => array(
+		array(
+			'grouping_key' => 'related',
+			'items'        => array(
+				array(
+					'heading'      => 'Linked to ghost',
+					'link_post_id' => 99999,
+					'link'         => '/some/fallback/url/',
+				),
+			),
+		),
+	),
+) );
+pre_smoke_equals( 'PT-9-1: bad link_post_id post created', 201, $res->get_status() );
+$bad_link_post_id = (int) $res->get_data()['post_id'];
+
+// Render via the connector preview endpoint. If the renderer crashes on a
+// non-existent linked post, this returns a 500 and the suite halts. If it
+// gracefully falls back, we get HTML back.
+$res = $dispatch( 'GET', '/posts/' . $bad_link_post_id . '/preview' );
+pre_smoke_equals( 'PT-9-1A: preview with non-existent link_post_id returns 200', 200, $res->get_status() );
+$html_a = $res->get_data()['html'] ?? '';
+pre_smoke_assert( 'PT-9-1A: preview returns non-empty HTML', is_string( $html_a ) && $html_a !== '' );
+// The renderer should fall back to the literal `link` URL when the post_id
+// can't be resolved. Confirm the literal URL is present in rendered output.
+pre_smoke_assert(
+	'PT-9-1A: literal link URL preserved as fallback',
+	strpos( $html_a, '/some/fallback/url/' ) !== false
+);
+
+// Trashed-post scenario: create a real linked post, point at it, then trash.
+$res = $dispatch( 'POST', '/posts', array(
+	'post_type'  => 'pre_smk_link',
+	'post_title' => 'Will be trashed',
+) );
+$trashable_id = (int) $res->get_data()['post_id'];
+
+$res = $dispatch( 'POST', '/posts', array(
+	'post_type'  => 'pre_smk_host',
+	'post_title' => 'Host with trashed link target',
+	'groupings'  => array(
+		array(
+			'grouping_key' => 'related',
+			'items'        => array(
+				array(
+					'heading'      => 'Linked to trashed',
+					'link_post_id' => $trashable_id,
+					'link'         => '/another/fallback/',
+				),
+			),
+		),
+	),
+) );
+$host_with_trashed_link_id = (int) $res->get_data()['post_id'];
+
+// Trash the linked post directly (mirrors what wp-admin → trash would do).
+wp_trash_post( $trashable_id );
+
+// Render the host post; renderer must not crash.
+$res = $dispatch( 'GET', '/posts/' . $host_with_trashed_link_id . '/preview' );
+pre_smoke_equals( 'PT-9-1B: preview with trashed link_post_id returns 200', 200, $res->get_status() );
+$html_b = $res->get_data()['html'] ?? '';
+pre_smoke_assert( 'PT-9-1B: preview returns non-empty HTML for trashed-link host', is_string( $html_b ) && $html_b !== '' );
+pre_smoke_assert(
+	'PT-9-1B: literal link URL preserved when target is trashed',
+	strpos( $html_b, '/another/fallback/' ) !== false
+);
+
+// =============================================================================
+// PT-9-2 — Deleted attachment referenced as featured image.
+// Renderer's hero must skip the image gracefully (no broken <img> tag,
+// no PHP warning) when the attachment has been hard-deleted from the media
+// library while the post still has _thumbnail_id pointing at the gone ID.
+// =============================================================================
+
+// Create an attachment by inserting a fake media post directly. Avoids
+// requiring a real upload — we just need an attachment ID we can then
+// delete to simulate the gap.
+$attachment_id = wp_insert_post( array(
+	'post_title'     => 'Test attachment',
+	'post_status'    => 'inherit',
+	'post_type'      => 'attachment',
+	'post_mime_type' => 'image/jpeg',
+), true );
+
+if ( ! is_wp_error( $attachment_id ) ) {
+	// Create a host post with this attachment as featured image.
+	$res = $dispatch( 'POST', '/posts', array(
+		'post_type'         => 'pre_smk_host',
+		'post_title'        => 'Host with soon-deleted thumbnail',
+		'featured_image_id' => $attachment_id,
+	) );
+	$thumb_host_id = (int) $res->get_data()['post_id'];
+
+	// Now delete the attachment hard.
+	wp_delete_attachment( $attachment_id, true );
+
+	// Render the host post — should complete without crash.
+	$res = $dispatch( 'GET', '/posts/' . $thumb_host_id . '/preview' );
+	pre_smoke_equals( 'PT-9-2: preview with deleted thumbnail returns 200', 200, $res->get_status() );
+	$html_c = $res->get_data()['html'] ?? '';
+	pre_smoke_assert( 'PT-9-2: preview returns non-empty HTML', is_string( $html_c ) && $html_c !== '' );
+	// The renderer's pre-check on has_post_thumbnail / wp_get_attachment_image
+	// should mean no broken <img> tag is emitted referencing the dead ID.
+	$attachment_id_str = (string) $attachment_id;
+	pre_smoke_assert(
+		'PT-9-2: rendered HTML does not reference deleted attachment ID',
+		strpos( $html_c, '"' . $attachment_id_str . '"' ) === false || strpos( $html_c, 'wp-image-' . $attachment_id_str ) === false
+	);
+
+	// Cleanup the host post; attachment is already gone.
+	wp_delete_post( $thumb_host_id, true );
+}
+
+// =============================================================================
+// PT-9-1 / PT-9-2 cleanup — wipe the new test posts before the broader cleanup.
+// =============================================================================
+foreach ( array( $bad_link_post_id, $trashable_id, $host_with_trashed_link_id ) as $cleanup_id ) {
+	if ( $cleanup_id > 0 ) {
+		wp_delete_post( $cleanup_id, true );
+	}
+}
+
 // 6g. Phase B cleanup — wipe all Phase B test posts + CPTs.
 foreach ( array( $post_id_a, $post_id_b, $post_id_c, $link_target_id, $host_post_id ) as $cleanup_id ) {
 	if ( $cleanup_id > 0 ) {

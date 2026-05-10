@@ -161,13 +161,15 @@ All timestamps are ISO 8601 in UTC: `2026-05-08T14:23:00Z`. The connector reads 
 
 `GET /post-runtime/v1/connector/preflight`
 
-Site-readiness check. Returns version info and a list of registered CPTs with capability flags. Agents call this first to confirm the connector is live and to get the lay of the land before doing anything else.
+Site-readiness check. Returns version info, registered CPTs, capability flags, **and the authoring rulebook** (`critical_rules` + `field_name_hints`) — the latter two distill real authoring failures into machine-readable guidance so agents can author correctly without trial-and-error.
+
+Agents should call preflight before any content-creation work and SHOULD pass `critical_rules` to their planner before generating posts. Skipping preflight means the agent re-discovers each rule the hard way.
 
 **Response:**
 
 ```json
 {
-  "plugin_version": "0.2.0",
+  "plugin_version": "0.3.0",
   "data_version": "0.1.0",
   "wp_version": "6.5.2",
   "rest_namespace": "post-runtime/v1",
@@ -179,11 +181,53 @@ Site-readiness check. Returns version info and a list of registered CPTs with ca
     "can_manage_groupings": true
   },
   "registered_cpts": ["listing", "attorney"],
-  "promptless_active": true
+  "promptless_active": true,
+  "promptless_version": "1.3.2",
+  "critical_rules": {
+    "post_content_is_html": "post_content is plain HTML for the WP editor area, with <p> tags for paragraphs. Do NOT wrap content in <![CDATA[...]]> — that XML idiom belongs to SOAP and WordPress importer XML; in JSON-typed connector parameters it is stored verbatim and leaks into the rendered body. The connector strips a leading <![CDATA[ and trailing ]]> from incoming post_content as a defensive net and adds a \"post_content_cdata_stripped\" warning when it fires — but treat that as a safety net, not a feature.",
+    "groupings_creation_pattern": "Two ways to populate groupings on a post: (1) pass `groupings` inline with create_post for atomic creation in a single call; (2) call set_post_groupings after a bare create_post. Both work. set_post_groupings fully replaces all groupings — to update one grouping without touching others, use the read-modify-write pattern (get_post_groupings → modify → set_post_groupings). update_post also accepts a groupings field for atomic edits.",
+    "cross_cpt_item_icons": "When a grouping item links to another CPT via link_post_id, set per-item icon_id explicitly to reflect what the item IS (e.g. icon_id:\"user\" on a Lead Architect featured-card item that links to an architect post). The renderer's default_icon fallback is link-aware: when link_post_id is set, it tries the LINKED post's CPT default_icon first, then falls back to the host post's default_icon. Setting icon_id explicitly bypasses both fallbacks.",
+    "compact_grid_strips_image": "compact-grid and horizontal-row are icon-only variants by design. Any image_id on an item in these variants is dropped at render time — set icon_id on each item, or rely on the linked-CPT / host-CPT default_icon fallback chain. card-grid and featured-card variants accept either icon_id OR image_id (mutually exclusive; validator rejects both being set on the same item).",
+    "link_post_id_canonical": "For internal links to same-site posts, prefer link_post_id over a literal URL. The renderer resolves it via get_permalink() at render time, which makes stored data domain-portable across staging → production migrations and after permalink-structure changes. The literal `link` field is preserved as a fallback when the referenced post has been trashed/deleted.",
+    "postgrid_grid_balance": "When deploying a Promptless postgrid section that pulls from a PRE CPT, balance posts_per_page against the section's grid_columns to avoid orphan cards. Default postgrid is 3-column — request 3 or 6 items, not 4 or 5. For 4-column layouts request 4 or 8. Promptless's design optimizer does not repair asymmetric counts.",
+    "featured_card_max_one": "featured-card variant has max_items=1 enforced by the validator. featured-card is for ONE prominent item per grouping (a Lead Architect, a Schedule a Tour CTA, a Currently Featured project). For multi-item collections of cards-with-images use card-grid."
+  },
+  "field_name_hints": {
+    "groupings_item_shape": {
+      "compact-grid":   ["heading", "icon_id", "link", "link_post_id", "link_text", "link_target"],
+      "horizontal-row": ["heading", "icon_id"],
+      "card-grid":      ["heading", "supporting_text", "icon_id", "image_id", "link", "link_post_id", "link_text", "link_target"],
+      "featured-card":  ["heading", "supporting_text", "icon_id", "image_id", "link", "link_post_id", "link_text", "link_target"]
+    },
+    "cpt_definition":      ["slug", "label_singular", "label_plural", "supports", "public", "has_archive", "show_in_rest", "show_in_menu", "menu_position", "menu_icon", "taxonomies", "capability_type", "description", "rewrite", "hero_layout", "hero_image_position", "hero_image_aspect", "default_icon"],
+    "grouping_definition": ["key", "label", "description", "default_variant", "default_position", "default_source", "max_items", "heading_required", "supporting_text_required", "link_required", "icon_or_image_required"],
+    "notes": "icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails)."
+  }
 }
 ```
 
-`promptless_active` reports whether Promptless WP is active so the agent knows the design tokens will inherit. When false, the agent may want to warn the operator that styling will use the documented fallbacks instead.
+**Field reference:**
+
+| Field | Type | Purpose |
+|---|---|---|
+| `plugin_version` | string | PRE plugin version. |
+| `data_version` | string | Schema version of the stored CPT/grouping data shape. Bumps when validator-enforced shape changes. |
+| `wp_version` | string | WordPress core version on the host. |
+| `rest_namespace` | string | The REST namespace this connector lives under. |
+| `rest_base` | string | Absolute URL prefix for connector routes. |
+| `user.{id,login,can_manage_cpts,can_manage_groupings}` | object | Authenticated user context + per-action capability flags. |
+| `registered_cpts` | string[] | Slugs of CPTs currently registered through PRE on this site. |
+| `promptless_active` | bool | Whether the Promptless WP plugin is loaded. When false, agents may want to warn the operator that styling will use documented fallbacks. |
+| `promptless_version` | string\|null | Promptless WP version, or `null` when inactive. |
+| `critical_rules` | object | **Authoring rulebook.** Keyed map of `rule_id → human-readable instruction`. Distilled from real authoring failures. Every key is referenced by smoke tests so the suite stays in sync with the rulebook. The connector enforces SOME rules via validation (e.g. `featured_card_max_one`) but several describe AI-side patterns the connector cannot detect at write time (e.g. `cross_cpt_item_icons`, `postgrid_grid_balance`). Agents should ingest these into their planning prompt before generating posts. |
+| `field_name_hints.groupings_item_shape` | object | Per-variant list of accepted field names for grouping items. Field names not in the list are silently dropped by `PRE_Validator`. Use this to avoid invented field names like `title` (the canonical name is `heading`) or `subtitle` (the canonical name is `supporting_text`). |
+| `field_name_hints.cpt_definition` | string[] | Accepted top-level fields on a CPT registration payload. |
+| `field_name_hints.grouping_definition` | string[] | Accepted top-level fields on a grouping definition payload. |
+| `field_name_hints.notes` | string | Cross-cutting notes that don't fit a per-field row. |
+
+**Stability contract for `critical_rules`:** the set of keys is part of the connector contract. A key is removed only after the corresponding smoke-test assertion is removed AND `CHANGELOG.md` documents the removal. New keys are added freely as new authoring failure modes are discovered. Agents should treat unknown keys as informational (read-them-but-don't-crash), not as schema violations.
+
+**Stability contract for `field_name_hints`:** the per-variant arrays mirror `PRE_Validator`'s allow-list. When the validator gains support for a new field name, this list updates in lockstep. When the validator drops a field name, this list updates in lockstep. The `groupings_item_shape` keys (variant names: `compact-grid`, `horizontal-row`, `card-grid`, `featured-card`) match `PRE_Validator::VARIANTS` exactly.
 
 ---
 

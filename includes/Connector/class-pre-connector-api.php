@@ -582,7 +582,7 @@ class PRE_Connector_API {
 
 	public function handle_get_cpt( WP_REST_Request $request ) {
 		$plugin = pre();
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
 			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
@@ -594,7 +594,7 @@ class PRE_Connector_API {
 
 	public function handle_update_cpt( WP_REST_Request $request ) {
 		$plugin = pre();
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
 			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
@@ -637,7 +637,9 @@ class PRE_Connector_API {
 
 	public function handle_delete_cpt( WP_REST_Request $request ) {
 		$plugin     = pre();
-		$slug       = sanitize_key( $request->get_param( 'slug' ) );
+		$slug       = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+		// purge_data is a query-string flag, not a URL-pattern capture, so
+		// it correctly uses get_param.
 		$purge_data = (bool) $request->get_param( 'purge_data' );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
@@ -675,7 +677,7 @@ class PRE_Connector_API {
 
 	public function handle_list_groupings( WP_REST_Request $request ) {
 		$plugin = pre();
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
 			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
@@ -691,7 +693,7 @@ class PRE_Connector_API {
 
 	public function handle_define_grouping( WP_REST_Request $request ) {
 		$plugin = pre();
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
 			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
@@ -716,8 +718,8 @@ class PRE_Connector_API {
 
 	public function handle_get_grouping( WP_REST_Request $request ) {
 		$plugin = pre();
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
-		$key    = sanitize_key( $request->get_param( 'key' ) );
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
 			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
@@ -732,8 +734,8 @@ class PRE_Connector_API {
 
 	public function handle_update_grouping( WP_REST_Request $request ) {
 		$plugin = pre();
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
-		$key    = sanitize_key( $request->get_param( 'key' ) );
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
 			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
@@ -772,8 +774,8 @@ class PRE_Connector_API {
 
 	public function handle_delete_grouping( WP_REST_Request $request ) {
 		$plugin = pre();
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
-		$key    = sanitize_key( $request->get_param( 'key' ) );
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
 			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
@@ -793,7 +795,7 @@ class PRE_Connector_API {
 
 	public function handle_get_post_groupings( WP_REST_Request $request ) {
 		$plugin  = pre();
-		$post_id = (int) $request->get_param( 'id' );
+		$post_id = (int) $this->get_url_param( $request, 'id' );
 
 		$err = $this->require_pre_post( $post_id );
 		if ( is_wp_error( $err ) ) {
@@ -812,7 +814,7 @@ class PRE_Connector_API {
 
 	public function handle_set_post_groupings( WP_REST_Request $request ) {
 		$plugin  = pre();
-		$post_id = (int) $request->get_param( 'id' );
+		$post_id = (int) $this->get_url_param( $request, 'id' );
 
 		$err = $this->require_pre_post( $post_id );
 		if ( is_wp_error( $err ) ) {
@@ -956,7 +958,7 @@ class PRE_Connector_API {
 	 * post_content is stripped with a warning. See critical_rules.
 	 */
 	public function handle_update_post( WP_REST_Request $request ) {
-		$post_id = (int) $request->get_param( 'id' );
+		$post_id = (int) $this->get_url_param( $request, 'id' );
 
 		$err = $this->require_pre_post( $post_id );
 		if ( is_wp_error( $err ) ) {
@@ -1048,7 +1050,7 @@ class PRE_Connector_API {
 	}
 
 	public function handle_preview_post( WP_REST_Request $request ) {
-		$post_id = (int) $request->get_param( 'id' );
+		$post_id = (int) $this->get_url_param( $request, 'id' );
 
 		$err = $this->require_pre_post( $post_id );
 		if ( is_wp_error( $err ) ) {
@@ -1079,6 +1081,48 @@ class PRE_Connector_API {
 	// ========================================================================
 	// Helpers — argument schemas
 	// ========================================================================
+
+	/**
+	 * Read a URL-pattern-derived identifier explicitly, bypassing the
+	 * default parameter resolution order.
+	 *
+	 * Why this exists: WP_REST_Request::get_param() resolves params in
+	 * this order for application/json bodies — JSON → POST → GET → URL
+	 * — which means a body field named the same as a URL pattern capture
+	 * silently overrides the URL value. For PUT/PATCH/DELETE handlers
+	 * that name URL identifiers (e.g. {slug} in /cpts/{slug}, {id} in
+	 * /posts/{id}/groupings), that override has two real consequences:
+	 *
+	 *   1. UX: the immutability check in handle_update_cpt would never
+	 *      reach a 400 error code — instead returning 404 because the
+	 *      body's slug overrode the URL's slug before existence was
+	 *      checked. That's a misleading error code for external agents
+	 *      pattern-matching on the response.
+	 *
+	 *   2. Security: in per-post-auth handlers (set_post_groupings,
+	 *      update_post, etc.) the auth callback and the handler both
+	 *      read `id` via get_param. If a body field overrides URL, the
+	 *      auth check would gate access to the body's id while the
+	 *      handler operates on the URL's id (or vice versa, depending
+	 *      on call order). That's a path to authorization bypass.
+	 *
+	 * Calling get_url_params() directly skips all that — the returned
+	 * array only contains values extracted by the route's regex. By the
+	 * time a handler runs, the route has already matched, so the URL
+	 * param is guaranteed present.
+	 *
+	 * Use this method (or the same get_url_params() pattern in
+	 * non-PRE_Connector_API code) for ANY URL-derived identifier.
+	 * Continue using $request->get_param() for body/query data.
+	 *
+	 * @param WP_REST_Request $request The REST request.
+	 * @param string          $name    URL pattern capture name.
+	 * @return string URL param value, or empty string if missing.
+	 */
+	private function get_url_param( WP_REST_Request $request, $name ) {
+		$url_params = $request->get_url_params();
+		return isset( $url_params[ $name ] ) ? (string) $url_params[ $name ] : '';
+	}
 
 	private function cpt_slug_arg() {
 		return array(

@@ -118,13 +118,24 @@ class PRE_Connector_Auth {
 	 */
 	public static function build_per_post_callback( $route_key ) {
 		return function ( $request ) use ( $route_key ) {
-			$post_id = (int) $request->get_param( 'id' );
+			// SECURITY: read $post_id from the URL pattern explicitly.
+			// $request->get_param( 'id' ) would resolve a JSON body
+			// field named 'id' BEFORE the URL pattern match — for
+			// application/json content-type, WP's parameter-resolution
+			// order is JSON → POST → GET → URL. If body could override
+			// the URL id, an authenticated user could pass the auth
+			// gate against post X (one they own via edit_post) while
+			// the handler operates on post Y from the URL — or vice
+			// versa, depending on which read happened first. Reading
+			// get_url_params() directly forecloses that bypass.
+			$url_params = $request->get_url_params();
+			$post_id    = isset( $url_params['id'] ) ? (int) $url_params['id'] : 0;
 
 			return self::run_permission_stack(
 				$route_key,
 				array(
-					'cap'      => 'edit_post',
-					'meta_id'  => $post_id,
+					'cap'     => 'edit_post',
+					'meta_id' => $post_id,
 				),
 				$request
 			);

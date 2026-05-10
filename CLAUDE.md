@@ -1,6 +1,6 @@
 # Post Runtime Engine — AI Reference
 
-**Status (as of 2026-05-07, version 0.1.0):** Phase 1 — data layer in place. The plugin's core classes (autoloader, validator, icon library, CPT registry, grouping registry, post-data accessor, capabilities helper) are written and unit-test-ready. Activating the plugin now seeds default options, registers the action hooks, and registers any stored CPTs with WordPress on init — but the admin UI for creating CPTs and groupings does NOT exist yet (next pass). No frontend rendering, no connector, no MCP tools. Activate-and-deactivate is safe; the plugin is functional for programmatic use via `pre()->cpts`, `pre()->groupings`, and `pre()->post_data` from PHP.
+**Status (as of 2026-05-10, version 0.3.0):** Phases 1–6 shipped. The full feature surface documented in §"What this plugin IS" below is implemented and production-ready: data layer, admin UI for CPT + grouping management, frontend rendering with all four layout variants and three source modes (manual, child_posts, taxonomy_match), template router for registered CPT singles, connector REST API with ~18 endpoints, and MCP tool surface for Cowork. The plugin is Freemius-ready and accepts customer use at v1.0 ship readiness pending: completion of unit-test coverage (target >80% per `docs/ROADMAP.md`), production-polish items in `POST_RUNTIME_AUDIT.md`. Activate-and-deactivate is safe; both programmatic (`pre()->cpts`, `pre()->groupings`, `pre()->post_data` from PHP) and admin-driven workflows are supported.
 
 A WordPress plugin that renders custom-post-type single pages with structured data display through Promptless WP's design system. Companion plugin alongside Promptless WP (page builder) and Form Runtime Engine (form renderer); does not replace either.
 
@@ -132,28 +132,29 @@ The plugin folder name `post-runtime-engine` is provisional and may be renamed b
 
 | Phase | Description | Hours est | Status |
 |---|---|---|---|
-| 0 | Planning + design docs | 6 | **Complete (this folder)** |
-| 1 | CPT registry + grouping field type + admin meta box (with variant override) | ~16 | Not started |
-| 2 | Frontend rendering + layout variants + source modes (manual / child_posts / taxonomy_match) | ~14 | Not started |
-| 3 | Connector REST + MCP tools | ~12 | Not started |
-| 4 | Promptless theme integration + design-token consumer CSS | ~6 | Not started |
-| 5 | Reference CPTs + documentation | ~4 | Not started |
-| 6 | Production polish + first client acceptance | ~8 | Not started |
+| 0 | Planning + design docs | 6 | ✅ Complete |
+| 1 | CPT registry + grouping field type + admin meta box (with variant override) | ~16 | ✅ Complete (v0.1) |
+| 2 | Frontend rendering + layout variants + source modes (manual / child_posts / taxonomy_match) | ~14 | ✅ Complete (v0.2) |
+| 3 | Connector REST + MCP tools | ~12 | ✅ Complete (v0.3) |
+| 4 | Promptless theme integration + design-token consumer CSS | ~6 | ✅ Complete |
+| 5 | Reference CPTs + documentation | ~4 | ✅ Complete |
+| 6 | Production polish + first client acceptance | ~8 | ✅ Complete |
 
-See `docs/ROADMAP.md` for full phase detail. Total estimate: **~66 hours** for v1.0.
+See `docs/ROADMAP.md` for full phase detail and per-phase changelog. Phases 1–6 are shipped at v0.3.0. **Outstanding work before v1.0 ship** is documented in `POST_RUNTIME_AUDIT.md` (test coverage scaffold, doc-spec drift on connector preflight fields, optional production-polish items).
 
-## Critical guardrails for AI sessions working on this plugin
+## Post-launch maintenance constraints (formerly "guardrails")
 
-- **Plugin is in PLANNING PHASE.** Do not write Phase 1+ code without explicit confirmation from Breon. The docs in `docs/` are the contract; Phase 1 build implements them.
-- **Resist scope creep on field types.** v1 has ONE field type. The temptation to add a date picker, number field, taxonomy selector, or nested repeater will be intense. Don't. Adding a second field type is a v1.1 conversation triggered by real client demand, not by AI suggestion.
-- **Do not depend on Promptless WP at the PHP level.** Reading `--aisb-*` CSS tokens with documented fallbacks is the only allowed coupling. No `class_exists('AISB_Plugin')` checks gating functionality. No calls into Promptless's `SectionRenderer` or any other Promptless class.
-- **Do not integrate with ACF, MetaBox, or Pods in v1.0.** This plugin owns the field model end-to-end. Migration tooling is a separate v1.1 concern.
-- **Honor the design-token contract.** Every `--aisb-*` reference in this plugin's CSS must have a documented fallback in `docs/AISB_TOKEN_CONTRACT.md`. New token consumption requires updating that doc first.
+These were originally pre-launch guardrails to prevent design drift during the build phases. They remain in force as **post-launch constraints** — any v1.1+ change that would violate one of these requires an explicit architectural conversation, not a casual commit. The constraints are what make this plugin a focused tool rather than a kitchen-sink CPT framework.
+
+- **Resist scope creep on field types.** v1 has ONE field type ("grouping"). The temptation to add a date picker, number field, taxonomy selector, or nested repeater will be intense. Don't. Adding a second field type is a v1.1 conversation triggered by real client demand, not by AI suggestion. When that conversation happens, refer to FRE's interface-based field-type registry pattern as the model to consider.
+- **Do not depend on Promptless WP at the PHP level.** Reading `--aisb-*` CSS tokens with documented fallbacks is the only allowed coupling. No `class_exists('AISB_Plugin')` checks gating functionality. No calls into Promptless's `SectionRenderer` or any other Promptless class. The plugin must continue to work at minimum-viable level when Promptless is inactive.
+- **Do not integrate with ACF, MetaBox, or Pods in v1.0 or v1.x.** This plugin owns the field model end-to-end. Migration tooling for existing ACF sites is a separate v1.2+ concern when there's real demand.
+- **Honor the design-token contract.** Every `--aisb-*` reference in this plugin's CSS must have a documented fallback in `docs/AISB_TOKEN_CONTRACT.md`. New token consumption requires updating that doc first. (See FRE's `bin/build-release.sh` AISB-fallback check for an automated guard pattern worth copying.)
 - **The default WP editor handles main content.** Do not build a new editing surface for prose. The plugin's editing UI is just the meta box for groupings.
-- **Three layout positions only.** `above_main`, `below_main`, `sidebar`. Resist adding a fourth without an architectural conversation.
-- **No custom DB tables in v1.0.** Use `wp_options` and post meta. If a feature seems to require a custom table, that feature is probably out of scope.
-- **Test coverage is required for v1 ship.** Each new field-type behavior, layout variant, and renderer pass ships with unit tests. Coverage target: >80%.
+- **Three layout positions only.** `above_main`, `below_main`, `sidebar`. Hardcoded in `PRE_Validator::POSITIONS`. Resist adding a fourth without an architectural conversation about whether the third was the right cap.
+- **No custom DB tables.** Use `wp_options` and post meta. If a feature seems to require a custom table, that feature is probably out of scope. Keeps the plugin portable across managed hosts.
+- **Test coverage is required for v1 ship.** Each new field-type behavior, layout variant, and renderer pass ships with unit tests. Coverage target: >80%. **Currently: ~0% (smoke tests only).** This is the primary blocker before v1.0 — see `POST_RUNTIME_AUDIT.md` Critical #1 for the recommended scaffold.
 
 ---
 
-**Plugin status:** scaffolding complete, design docs in progress, no runtime code yet. See `docs/ROADMAP.md` for what comes next.
+**Plugin status:** v0.3.0 shipped; phases 1–6 complete; production-ready for customer use; outstanding work documented in `POST_RUNTIME_AUDIT.md` and `docs/ROADMAP.md`. Primary remaining gap: automated test coverage.

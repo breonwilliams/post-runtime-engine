@@ -133,11 +133,30 @@
 }
 
 /*
- * Neo-Brutalist mode. Promptless WP toggles this via the body class
- * `aisb-neo-brutalist-cards` (matching FRE's neo-brutalist consumer).
- * When on, cards get bold borders + an offset shadow. The two card-chrome
- * variables are the only ones that change — colors and spacing keep their
- * normal mode treatment.
+ * Neo-Brutalist mode. Promptless WP toggles this via two body classes
+ * applied as a pair, mapping to the two variants the user picks in
+ * Promptless's Global Settings:
+ *
+ *   • `.aisb-neo-brutalist-cards` alone        → "lifted" variant
+ *     (thick border + offset shadow — the classic neo-brutalist treatment)
+ *
+ *   • `.aisb-neo-brutalist-cards` plus
+ *     `.aisb-neo-brutalist-cards-outline`     → "outline" variant
+ *     (thick border only, no shadow — the minimal treatment)
+ *
+ * To stay visually consistent with how Promptless renders its own Features
+ * cards (the design reference), PRE matches Promptless's token choices:
+ *   - Border color = section border color (--pre-color-border, which
+ *     resolves to --aisb-color-border light / --aisb-color-dark-border
+ *     in dark mode). NOT --aisb-neo-brutalist-primary-border, which
+ *     defaults to black and breaks visual harmony with custom palettes.
+ *   - Shadow uses the SAME border color, so the offset shadow reads as
+ *     "the card lifted off its own border", not "a foreign black shadow".
+ *
+ * Dark mode flows through automatically because --pre-color-border
+ * already switches to --aisb-color-dark-border under .aisb-section--dark
+ * .pre-single in the dark-mode :root block above. No extra dark-mode
+ * selectors needed for the neo-brutalist case.
  */
 body.aisb-neo-brutalist-cards .pre-single {
 	--pre-card-border-width: var(--aisb-neo-border-width, 4px);
@@ -145,7 +164,25 @@ body.aisb-neo-brutalist-cards .pre-single {
 		var(--aisb-neo-shadow-offset, 8px)
 		var(--aisb-neo-shadow-offset, 8px)
 		0
-		var(--aisb-neo-brutalist-primary-border, #000000);
+		var(--pre-color-border);
+}
+
+/* Outline variant: same thick border, no offset shadow. The shadow var
+ * is set to `none` so any descendant card that consumes --pre-card-shadow
+ * naturally drops its lift. */
+body.aisb-neo-brutalist-cards.aisb-neo-brutalist-cards-outline .pre-single {
+	--pre-card-shadow: none;
+}
+
+/* Stacking context for cards in lifted variant. Without this, the offset
+ * shadow can land behind sibling cards' surfaces in tightly-packed grids
+ * (compact-grid, card-grid). Mirrors the same fix in Promptless's
+ * neo-brutalist.css. Outline variant doesn't strictly need it, but
+ * applying universally keeps the behavior predictable. */
+body.aisb-neo-brutalist-cards .pre-grouping__item,
+body.aisb-neo-brutalist-cards .pre-footer__list > li {
+	position: relative;
+	z-index: 1;
 }
 
 /* ----------------------------------------------------------------------- */

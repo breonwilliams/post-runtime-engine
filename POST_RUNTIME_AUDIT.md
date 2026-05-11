@@ -69,6 +69,22 @@ Findings graded **Critical** (blocks healthy growth), **Important** (worth doing
 
 **Recommended fix:** add a `critical_rules` field section + a `field_name_hints` field section to the spec, with example payloads. ~1 hour.
 
+### I-NEW. PRE MCP wrapper input schemas are out of sync with the REST connector contract
+
+**Discovered:** 2026-05-10 during the connector pressure test on staging.
+
+**Where:** the gap is in the Node.js MCP wrapper package (separate repo, not in this plugin folder). Specifically, the input schemas for at least `postruntime_register_cpt` are missing fields that the WordPress plugin's REST connector accepts and the preflight `field_name_hints.cpt_definition` advertises. Confirmed missing from the MCP wrapper's `register_cpt` schema: `description`, `show_in_menu`, `menu_position`, `hierarchical`. Likely also affected: `update_cpt` (same input shape), and `define_grouping` / `update_grouping` (parallel pattern — needs audit).
+
+**Why it matters:** the MCP server uses JSON Schema with `additionalProperties: false`, so any property not in the wrapper's schema is silently stripped before the request reaches WordPress. Users see no error — the call returns 201, the response shows the field as empty/default, and the data they sent simply isn't persisted. This is the worst kind of bug because there's no signal: the user has to manually compare what they sent against what came back to notice.
+
+**How discovered:** during pressure testing, I called `postruntime_register_cpt` with a `description` value. The 201 response showed `"description": ""`. Round-trip test on the WP-side registry (added in this audit cycle as `test_register_persists_description_field`) confirms the WP plugin handles description correctly. The drop happened in the MCP wrapper layer.
+
+**Recommended fix:** locate the PRE MCP wrapper repo. For each tool, derive the input schema from the WP plugin's preflight `field_name_hints` rather than maintaining a separate hand-authored list. Concretely: read `field_name_hints.cpt_definition` for `register_cpt` / `update_cpt`, `field_name_hints.grouping_definition` for `define_grouping` / `update_grouping`, and the corresponding shapes for post / item handlers. Bump the MCP package version, redeploy via the user's Claude Desktop setup, retest description round-trip via pressure test.
+
+**Effort:** ~2-3 hours including the parallel audit of FRE and Promptless MCP wrappers (which may have the same drift pattern given they were authored in parallel by the same approach).
+
+**Priority:** HIGH for the next session. Silent field-stripping in customer-onboarding flows means workflows are quietly broken without a way to detect it from the user-facing output alone.
+
 ### I3. Pre-Phase-2 expectations need reconciling with v0.3.0 reality
 
 **Where:** the CLAUDE.md "Phased build status" table claims phases 1–6 are "Not started." Per the ROADMAP and on-disk evidence, multiple phases are complete. This is the same drift as D1 but worth calling out separately because it blocks accurate future planning — a contributor planning "Phase 4" may not realize it's already shipped in part.

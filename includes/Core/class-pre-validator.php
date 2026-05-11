@@ -255,8 +255,8 @@ class PRE_Validator {
 			if ( ! in_array( $definition['hero_layout'], $valid_layouts, true ) ) {
 				return new WP_Error(
 					'pre_invalid_hero_layout',
-					/* translators: %1$s: the invalid layout; %2$s: list of allowed layouts */
 					sprintf(
+						/* translators: %1$s: the invalid layout; %2$s: list of allowed layouts */
 						__( 'CPT hero_layout %1$s is not one of: %2$s', 'post-runtime-engine' ),
 						is_string( $definition['hero_layout'] ) ? $definition['hero_layout'] : 'non-string',
 						implode( ', ', $valid_layouts )
@@ -274,8 +274,8 @@ class PRE_Validator {
 			if ( ! in_array( $definition['hero_image_position'], $valid_positions, true ) ) {
 				return new WP_Error(
 					'pre_invalid_hero_image_position',
-					/* translators: %1$s: the invalid position; %2$s: list of allowed positions */
 					sprintf(
+						/* translators: %1$s: the invalid position; %2$s: list of allowed positions */
 						__( 'CPT hero_image_position %1$s is not one of: %2$s', 'post-runtime-engine' ),
 						is_string( $definition['hero_image_position'] ) ? $definition['hero_image_position'] : 'non-string',
 						implode( ', ', $valid_positions )
@@ -294,8 +294,8 @@ class PRE_Validator {
 			if ( ! in_array( $definition['hero_image_aspect'], $valid_aspects, true ) ) {
 				return new WP_Error(
 					'pre_invalid_hero_image_aspect',
-					/* translators: %1$s: the invalid aspect; %2$s: list of allowed aspects */
 					sprintf(
+						/* translators: %1$s: the invalid aspect; %2$s: list of allowed aspects */
 						__( 'CPT hero_image_aspect %1$s is not one of: %2$s', 'post-runtime-engine' ),
 						is_string( $definition['hero_image_aspect'] ) ? $definition['hero_image_aspect'] : 'non-string',
 						implode( ', ', $valid_aspects )
@@ -321,9 +321,9 @@ class PRE_Validator {
 			if ( ! PRE_Icon_Library::has( $definition['default_icon'] ) ) {
 				return new WP_Error(
 					'pre_invalid_default_icon',
-					/* translators: %s: the unknown icon ID */
 					sprintf(
-						__( 'CPT default_icon %s is not a registered icon. See PRE_Icon_Library for the available set.', 'post-runtime-engine' ),
+						/* translators: %s: the unknown icon ID */
+						__( 'CPT default_icon "%s" is not a registered icon. Call the connector\'s GET /icons endpoint (or postruntime_list_icons via MCP) to discover the 53 available icon IDs (e.g. "home", "user", "info", "shield", "calendar"). Icons can also be browsed by category in PRE_Icon_Library.', 'post-runtime-engine' ),
 						$definition['default_icon']
 					)
 				);
@@ -393,8 +393,8 @@ class PRE_Validator {
 			|| ! in_array( $definition['default_variant'], self::VARIANTS, true ) ) {
 			return new WP_Error(
 				'pre_invalid_default_variant',
-				/* translators: %1$s: the invalid variant; %2$s: list of allowed variants */
 				sprintf(
+					/* translators: %1$s: the invalid variant; %2$s: list of allowed variants */
 					__( 'Grouping default_variant %1$s is not one of: %2$s', 'post-runtime-engine' ),
 					isset( $definition['default_variant'] ) ? (string) $definition['default_variant'] : 'null',
 					implode( ', ', self::VARIANTS )
@@ -407,8 +407,8 @@ class PRE_Validator {
 			|| ! in_array( $definition['default_position'], self::POSITIONS, true ) ) {
 			return new WP_Error(
 				'pre_invalid_default_position',
-				/* translators: %1$s: the invalid position; %2$s: list of allowed positions */
 				sprintf(
+					/* translators: %1$s: the invalid position; %2$s: list of allowed positions */
 					__( 'Grouping default_position %1$s is not one of: %2$s', 'post-runtime-engine' ),
 					isset( $definition['default_position'] ) ? (string) $definition['default_position'] : 'null',
 					implode( ', ', self::POSITIONS )
@@ -707,7 +707,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_unknown_icon',
 					/* translators: %s: the unknown icon ID */
-					sprintf( __( 'Unknown icon: %s', 'post-runtime-engine' ), $item['icon_id'] )
+					sprintf( __( 'Grouping item icon_id "%s" is not a registered icon. Call the connector\'s GET /icons endpoint (or postruntime_list_icons via MCP) to discover the 53 available icon IDs across 13 categories (Property, Business & Legal, Medical, Travel, etc.).', 'post-runtime-engine' ), $item['icon_id'] )
 				);
 			}
 		}
@@ -841,8 +841,8 @@ class PRE_Validator {
 			if ( ! in_array( $source, self::SOURCE_MODES, true ) ) {
 				return new WP_Error(
 					'pre_invalid_source_string',
-					/* translators: %1$s: invalid source; %2$s: list of allowed sources */
 					sprintf(
+						/* translators: %1$s: invalid source; %2$s: list of allowed sources */
 						__( 'Source %1$s is not one of: %2$s', 'post-runtime-engine' ),
 						$source,
 						implode( ', ', self::SOURCE_MODES )

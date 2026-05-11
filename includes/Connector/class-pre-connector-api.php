@@ -166,7 +166,7 @@ class PRE_Connector_API {
 	 * @return string 'production' | 'staging' | 'development'
 	 */
 	private static function detect_env_hint() {
-		$host = parse_url( home_url(), PHP_URL_HOST );
+		$host = wp_parse_url( home_url(), PHP_URL_HOST );
 		if ( ! $host ) {
 			return 'production';
 		}
@@ -436,6 +436,7 @@ class PRE_Connector_API {
 			'link_post_id_canonical'       => 'For internal links to same-site posts, prefer link_post_id over a literal URL. The renderer resolves it via get_permalink() at render time, which makes stored data domain-portable across staging → production migrations and after permalink-structure changes. The literal `link` field is preserved as a fallback when the referenced post has been trashed/deleted.',
 			'postgrid_grid_balance'        => 'When deploying a Promptless postgrid section that pulls from a PRE CPT, balance posts_per_page against the section\'s grid_columns to avoid orphan cards. Default postgrid is 3-column — request 3 or 6 items, not 4 or 5. For 4-column layouts request 4 or 8. Promptless\'s design optimizer does not repair asymmetric counts.',
 			'featured_card_max_one'        => 'featured-card variant has max_items=1 enforced by the validator. featured-card is for ONE prominent item per grouping (a Lead Architect, a Schedule a Tour CTA, a Currently Featured project). For multi-item collections of cards-with-images use card-grid.',
+			'icon_ids_must_be_registered'  => 'CPT default_icon and grouping item icon_id MUST be IDs from the curated 53-icon library — there is no free-text icon support, no Iconify or Font Awesome integration, no SVG passthrough. Before your first call that takes an icon parameter, fetch the catalogue: GET /icons (or postruntime_list_icons via MCP). Examples by category: General (check, star, info, shield), Property (home, bed, bath, building), Business (briefcase, gavel, scale), Medical (stethoscope, pill), People (user, users), Travel (airplane, mountain). Sending an unregistered ID returns 422 pre_invalid_default_icon or pre_unknown_icon — both errors now include the discovery instruction inline.',
 		);
 	}
 
@@ -1000,8 +1001,8 @@ class PRE_Connector_API {
 			if ( ! in_array( $status, $valid, true ) ) {
 				return $this->error_response(
 					'pre_invalid_post_status',
-					/* translators: %1$s: invalid status; %2$s: list of valid statuses */
 					sprintf(
+						/* translators: %1$s: invalid status; %2$s: list of valid statuses */
 						__( 'post_status %1$s is not one of: %2$s', 'post-runtime-engine' ),
 						$status,
 						implode( ', ', $valid )

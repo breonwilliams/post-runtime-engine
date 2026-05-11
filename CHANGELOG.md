@@ -4,6 +4,25 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.3.1] — 2026-05-10
+
+Connector pressure-test cycle on the Northcraft staging fixture surfaced three issues — two real bugs, one ergonomics gap. All three are addressed here. A separate finding about the PRE MCP wrapper input schemas being out of sync with the WordPress connector contract is documented in `POST_RUNTIME_AUDIT.md` as I-NEW; that fix lives in the Node.js MCP wrapper repo, not this plugin.
+
+### Fixed
+
+- **Renderer's main content body was empty in REST preview contexts.** `PRE_Renderer::render_internal()` called `setup_postdata( $post )` before invoking `the_content()`, which is sufficient inside a normal theme loop but NOT in REST contexts where the global `$post` is unset. WordPress's `setup_postdata()` only updates the *derived* globals (`$id`, `$authordata`, `$page`, etc.) — it does not set the global `$post` itself. Without the global, `the_content()` → `get_post()` returned empty and the rendered HTML had a present-but-empty `<div class="pre-content"></div>`. The renderer now explicitly assigns `$GLOBALS['post']` (with backup-and-restore) around the `the_content()` call. Frontend rendering inside a theme template was unaffected; only the connector's `preview_post` endpoint and any direct programmatic call from outside a loop were affected. Discovered during the connector pressure test on 2026-05-10. Regression test: `RendererTest::test_render_includes_post_content_when_no_global_post_is_set`.
+
+### Changed
+
+- **Validator error messages for unknown icons now point at the discovery endpoint.** Both `pre_invalid_default_icon` (CPT-level) and `pre_unknown_icon` (per-item) errors now include "call the connector's GET /icons endpoint (or postruntime_list_icons via MCP) to discover the 53 available icon IDs" plus a few category examples. Previously the error said "See PRE_Icon_Library for the available set" which is correct but unhelpful for AI agents that don't have direct file access. Pairs with the new `icon_ids_must_be_registered` critical rule below so the contract is visible in two places: at preflight time (proactive) and on rejection (corrective).
+- **`critical_rules.icon_ids_must_be_registered` added to preflight.** Documents that the icon library is curated 53-icon (no Iconify, no Font Awesome, no SVG passthrough), instructs agents to call `GET /icons` on first connection, and lists per-category examples. Any MCP wrapper that auto-derives tool descriptions from preflight will pick this up; hand-coded MCP wrappers should add it manually to their `register_cpt` and `define_grouping` tool descriptions.
+
+### Added (test coverage)
+
+- **`CPTRegistryTest::test_register_persists_description_field`** — round-trip test for the CPT `description` field through `register()` → `get()`. Pins the WP-side handling. (The pressure test discovered the field appeared to drop, but root cause was traced to the MCP wrapper schema, not the WP plugin. This test guarantees the WP side stays correct so the MCP fix flows through end-to-end.)
+- **`CPTRegistryTest::test_register_defaults_description_to_empty_when_omitted`** — pins the merge_defaults contract for `description`.
+- **`RendererTest::test_render_includes_post_content_when_no_global_post_is_set`** — regression test for the REST-context content rendering bug. Defensively unsets `$GLOBALS['post']` before render, asserts a unique content marker appears in the rendered HTML.
+
 ## [0.3.0] — 2026-05-08
 
 Driven by findings from a real hosted-environment pressure test (Northcraft Architects fixture on Bluehost staging). Two real bugs and one architectural gap surfaced during agentic content authoring of two cross-linked CPTs with multiple groupings. This release encodes the rules-of-the-road into the connector itself so the same mistakes can't reproduce, ships defensive sanitization for the most common authoring slip, fixes a renderer semantic, and extends the smoke test suite to lock the new behavior in.

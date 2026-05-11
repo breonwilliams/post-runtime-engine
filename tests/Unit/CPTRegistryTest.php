@@ -103,6 +103,42 @@ class CPTRegistryTest extends UnitTestCase {
         $this->assertSame( 'Property', $second['label_singular'], 'Updates must be reflected in subsequent get().' );
     }
 
+    /**
+     * Regression for the 2026-05-10 connector pressure-test finding where
+     * register_cpt appeared to drop the `description` field. The actual
+     * cause turned out to be the MCP wrapper's tool schema (separate
+     * Node.js package) not exposing `description` as an input property
+     * — so the value never reached the WordPress endpoint. This test
+     * pins that the WP-side plumbing IS correct: register() with a
+     * description persists it, get() returns it. If the MCP schema is
+     * later updated to forward description and this test still passes,
+     * the fix flows through end-to-end.
+     */
+    public function test_register_persists_description_field() {
+        $this->registry->register( 'listing', $this->valid_definition( array(
+            'description' => 'Real estate listings shown on the Properties page.',
+        ) ) );
+
+        $stored = $this->registry->get( 'listing' );
+
+        $this->assertSame(
+            'Real estate listings shown on the Properties page.',
+            $stored['description'],
+            'description must round-trip through register() → get(). If this fails, the registry or merge_defaults() is dropping the field.'
+        );
+    }
+
+    public function test_register_defaults_description_to_empty_when_omitted() {
+        $this->registry->register( 'listing', $this->valid_definition() );
+        $stored = $this->registry->get( 'listing' );
+
+        $this->assertSame(
+            '',
+            $stored['description'],
+            'Omitted description must default to empty string (WP register_post_type contract).'
+        );
+    }
+
     public function test_register_rejects_reserved_slug() {
         $result = $this->registry->register( 'page', $this->valid_definition( array( 'slug' => 'page' ) ) );
         $this->assertInstanceOf( '\\WP_Error', $result );

@@ -352,7 +352,10 @@ class PRE_Meta_Box {
 					if ( $image_id > 0 && $thumb_url ) {
 						echo '<img src="' . esc_url( $thumb_url ) . '" alt="">';
 					} elseif ( $icon_id !== '' && PRE_Icon_Library::has( $icon_id ) ) {
-						echo PRE_Icon_Library::render( $icon_id ); // SVG output, escaped at source.
+						// PRE_Icon_Library::render() returns a <span> wrapper with esc_attr()'d class
+						// and plugin-curated SVG content (no user input). Output is intentionally raw HTML.
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+						echo PRE_Icon_Library::render( $icon_id );
 					} else {
 						echo '<span class="pre-item__preview-empty" aria-hidden="true">+</span>';
 					}

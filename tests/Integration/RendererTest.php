@@ -214,6 +214,55 @@ class RendererTest extends IntegrationTestCase {
         $this->assertLessThan( $bottom_pos, $content_pos, 'Main content wrapper must appear before below_main grouping.' );
     }
 
+    /**
+     * Regression test for the 2026-05-10 connector pressure-test finding
+     * where preview_post returned an empty <div class="pre-content"></div>
+     * even when the post had real content stored.
+     *
+     * Root cause: the renderer called setup_postdata( $post ) but did NOT
+     * set the global $post itself. WordPress's setup_postdata only updates
+     * the derived globals ($id, $authordata, $page, etc.) — the global
+     * $post variable has to be set separately. Without that, the_content()
+     * → get_post() reads an unset/stale global and returns empty.
+     *
+     * The fix in PRE_Renderer pins $GLOBALS['post'] explicitly around the
+     * the_content() call. This test pins that fix in place — if anyone
+     * removes the GLOBALS assignment, the assertion fires.
+     *
+     * The test simulates the REST-context call site: no global $post set,
+     * no the_post() loop in progress. Without the fix, the rendered HTML
+     * is missing the post_content; with the fix, it's present.
+     */
+    public function test_render_includes_post_content_when_no_global_post_is_set() {
+        // Defensively unset the global $post to simulate the REST request
+        // context where no theme template loop has primed it. This is the
+        // exact condition where the bug surfaced on 2026-05-10.
+        unset( $GLOBALS['post'] );
+
+        // Update the post with a unique, recognizable content string so we
+        // can assert on its presence specifically (not just on a non-empty
+        // pre-content div, which could be filled by some default).
+        wp_update_post( array(
+            'ID'           => $this->post_id,
+            'post_content' => '<p>RENDER_CONTENT_MARKER_CONNECTOR_FIX</p>',
+        ) );
+        clean_post_cache( $this->post_id );
+
+        $html = $this->capture_render( $this->post_id );
+
+        $this->assertStringContainsString(
+            'class="pre-content"',
+            $html,
+            'pre-content wrapper must always render for editor-supporting CPTs.'
+        );
+        $this->assertStringContainsString(
+            'RENDER_CONTENT_MARKER_CONNECTOR_FIX',
+            $html,
+            'the_content() must emit the post_content even when called outside a theme loop. '
+            . 'If this fails, someone removed the $GLOBALS[\'post\'] assignment in PRE_Renderer::render_internal().'
+        );
+    }
+
     public function test_render_pulls_sidebar_groupings_into_aside_element() {
         // Add a sidebar grouping definition + per-post entry.
         $this->define_test_grouping( 'pre_test_listing', array(

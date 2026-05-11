@@ -340,12 +340,41 @@ class PRE_Renderer {
 					<?php if ( post_type_supports( $post->post_type, 'editor' ) ) : ?>
 						<div class="pre-content">
 							<?php
-							// the_content() handles autop, blocks, shortcodes,
-							// embeds — same filters any theme uses. We just
-							// need to set up postdata first.
+							// Why both `$GLOBALS['post'] = $post` AND
+							// `setup_postdata( $post )`:
+							//
+							//   the_content() ultimately calls get_post()
+							//   without arguments, which reads the global
+							//   `$post`. setup_postdata( $post ) ONLY
+							//   updates the derived globals ($id, $page,
+							//   $authordata, $more, $pages, $multipage,
+							//   $preview, etc.) — it does NOT set the
+							//   global $post itself. In a normal theme
+							//   loop, the_post() updates the global $post
+							//   AND calls setup_postdata; outside a loop
+							//   (e.g. our REST preview endpoint, or
+							//   render() being called from a theme template
+							//   that hasn't started the loop yet), neither
+							//   global is set unless we set it explicitly.
+							//
+							//   Without the GLOBALS assignment, the_content()
+							//   silently returned empty in REST preview
+							//   contexts, producing an empty <div class=
+							//   "pre-content"></div> in the rendered HTML
+							//   — discovered during the 2026-05-10 connector
+							//   pressure test on the staging site.
+							//
+							//   Backup-and-restore the global so we don't
+							//   leave the request thread with a $post that
+							//   doesn't match its calling context (e.g.
+							//   shortcode renders in widgets / sidebars
+							//   that come after this render).
+							$pre_render_original_post = isset( $GLOBALS['post'] ) ? $GLOBALS['post'] : null;
+							$GLOBALS['post']          = $post;
 							setup_postdata( $post );
 							the_content();
 							wp_reset_postdata();
+							$GLOBALS['post'] = $pre_render_original_post;
 							?>
 						</div>
 					<?php endif; ?>
@@ -692,7 +721,13 @@ class PRE_Renderer {
 		<li class="<?php echo esc_attr( $item_classes ); ?>">
 			<?php if ( $media_html !== '' ) : ?>
 				<div class="pre-grouping__media<?php echo esc_attr( $media_class_modifier ); ?>">
-					<?php echo $media_html; // SVG/img already escaped at source. ?>
+					<?php
+					// $media_html comes from PRE_Icon_Library::render() or wp_get_attachment_image()
+					// — both produce sanitized HTML. Class attributes are esc_attr()'d at source
+					// and SVG content is plugin-curated (no user input). Output is intentionally raw.
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo $media_html;
+					?>
 				</div>
 			<?php endif; ?>
 

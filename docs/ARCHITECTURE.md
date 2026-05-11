@@ -2,6 +2,8 @@
 
 This is the technical design contract for the plugin. Phase 1+ code MUST follow this design. Disagreements are resolved by editing this doc, not by writing different code.
 
+> **💼 Licensing note (clarified 2026-05-10):** This plugin is **FREE**. References to "premium gating," "premium-only," or Freemius in this document are stale planning language from before the business model was decided. Connector endpoints are gated by WP user capability + the per-site connector enable toggle — NEVER by license state. Only Promptless WP uses Freemius. See `CLAUDE.md` § "Premium-tier feature" (renamed "Free plugin") for the canonical statement.
+
 ## High-level shape
 
 ```

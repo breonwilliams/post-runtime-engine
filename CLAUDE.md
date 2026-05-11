@@ -1,6 +1,8 @@
 # Post Runtime Engine — AI Reference
 
-**Status (as of 2026-05-10, version 0.3.0):** Phases 1–6 shipped. The full feature surface documented in §"What this plugin IS" below is implemented and production-ready: data layer, admin UI for CPT + grouping management, frontend rendering with all four layout variants and three source modes (manual, child_posts, taxonomy_match), template router for registered CPT singles, connector REST API with ~18 endpoints, and MCP tool surface for Cowork. The plugin is Freemius-ready and accepts customer use at v1.0 ship readiness pending: completion of unit-test coverage (target >80% per `docs/ROADMAP.md`), production-polish items in `POST_RUNTIME_AUDIT.md`. Activate-and-deactivate is safe; both programmatic (`pre()->cpts`, `pre()->groupings`, `pre()->post_data` from PHP) and admin-driven workflows are supported.
+**Status (as of 2026-05-10, version 0.3.1):** Phases 1–6 shipped. The full feature surface documented in §"What this plugin IS" below is implemented and production-ready: data layer, admin UI for CPT + grouping management, frontend rendering with all four layout variants and three source modes (manual, child_posts, taxonomy_match), template router for registered CPT singles, connector REST API with ~18 endpoints, and MCP tool surface for Cowork. The plugin accepts customer use at v1.0 ship readiness pending: completion of unit-test coverage (target >80% per `docs/ROADMAP.md`), production-polish items in `POST_RUNTIME_AUDIT.md`. Activate-and-deactivate is safe; both programmatic (`pre()->cpts`, `pre()->groupings`, `pre()->post_data` from PHP) and admin-driven workflows are supported.
+
+> **💼 Licensing model (clarified 2026-05-10):** This plugin is **FREE**. No Freemius, no premium tier, no license gates anywhere in the codebase. Only Promptless WP uses Freemius. PRE, FRE, and FlowMint are all free and exist to add value to Promptless rather than compete as standalone commercial products. Earlier planning docs (`docs/ARCHITECTURE.md`, `docs/ROADMAP.md`) contain stale "Premium-tier feature" / "Freemius-ready" language from when the model was undecided — **ignore those references in favor of this statement**. Connector endpoints are gated only by WP user capability (`manage_options` or finer-grained PRE caps) plus the per-site connector enable toggle. Do NOT add license checks when extending features.
 
 A WordPress plugin that renders custom-post-type single pages with structured data display through Promptless WP's design system. Companion plugin alongside Promptless WP (page builder) and Form Runtime Engine (form renderer); does not replace either.
 
@@ -111,7 +113,7 @@ These were settled in conversation with the founder before any code is written. 
 
 8. **No custom DB tables.** All data in `wp_options` (CPT registry + grouping definitions) and post meta (per-post values + layout positions). Same constraint Promptless WP honors — keeps the plugin portable across managed hosts.
 
-9. **Premium-tier feature.** Uses Freemius like Promptless does. Free tier (if any) is TBD during Phase 1; the connector is premium-only following Promptless's pattern.
+9. **Free plugin.** No Freemius, no premium tier, no license gates. Only Promptless WP is sold; PRE, FRE, and FlowMint are all free and exist to add value to the Promptless ecosystem. The connector and every endpoint are gated by WP user capability + the per-site connector enable toggle — never by license state. (Clarified 2026-05-10. Earlier planning docs treated this as TBD or premium; that's superseded.)
 
 10. **One-way CSS dependency on Promptless WP.** This plugin reads tokens documented in `docs/AISB_TOKEN_CONTRACT.md`. Promptless WP has zero knowledge of this plugin's existence. Same pattern as FRE.
 

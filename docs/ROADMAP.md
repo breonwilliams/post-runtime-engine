@@ -1,6 +1,8 @@
 # Post Runtime Engine — Roadmap
 
-**Document status:** Phases 0–6 shipped in v0.1.0. v0.2.0 layered on hero layouts + smart-token routing + variant intent + default_icon. v0.3.0 hardens the connector authoring contract from real hosted-pressure-test findings: critical_rules + field_name_hints in preflight, CDATA sanitization, link-aware cross-CPT icon resolution, update_post tool, _site envelope.
+**Document status:** Phases 0–6 shipped in v0.1.0. v0.2.0 layered on hero layouts + smart-token routing + variant intent + default_icon. v0.3.0 hardens the connector authoring contract from real hosted-pressure-test findings: critical_rules + field_name_hints in preflight, CDATA sanitization, link-aware cross-CPT icon resolution, update_post tool, _site envelope. v0.3.1 ships renderer global-$post fix and icon validator hints from a 2026-05-10 pressure test.
+
+> **💼 Licensing note (clarified 2026-05-10):** This plugin is **FREE**. References below to "premium gating," "premium-license gating," or "Freemius wiring" are stale planning language from when the business model was undecided. Only Promptless WP is sold via Freemius. PRE, FRE, and FlowMint are all free plugins. Connector endpoints are gated by WP user capability + the per-site connector enable toggle — never by license state. See `CLAUDE.md` for the canonical statement.
 **Author:** Breon Williams + Claude (planning + build sessions)
 **Last updated:** 2026-05-08
 **Plugin name:** Post Runtime Engine (PRE) — confirmed

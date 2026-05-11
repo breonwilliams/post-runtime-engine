@@ -144,6 +144,12 @@ The plugin folder name `post-runtime-engine` is provisional and may be renamed b
 
 See `docs/ROADMAP.md` for full phase detail and per-phase changelog. Phases 1–6 are shipped at v0.3.0. **Outstanding work before v1.0 ship** is documented in `POST_RUNTIME_AUDIT.md` (test coverage scaffold, doc-spec drift on connector preflight fields, optional production-polish items).
 
+## Releasing New Versions
+
+**Canonical release procedure: [`RELEASE.md`](RELEASE.md)** at the plugin root. That document is the single source of truth — version-stamp locations, pre-release checklist, build commands, tag pattern, `gh release create` invocation, post-release verification.
+
+**One-line summary:** update version stamps in `post-runtime-engine.php` (header + `PRE_VERSION` constant), `readme.txt` (Stable tag + Upgrade Notice), and `CHANGELOG.md` → commit → `git tag v0.4.0` → `git push --tags` → `./bin/build-release.sh` → `gh release create v0.4.0 build/post-runtime-engine.zip --notes-file CHANGELOG.md`.
+
 ## Post-launch maintenance constraints (formerly "guardrails")
 
 These were originally pre-launch guardrails to prevent design drift during the build phases. They remain in force as **post-launch constraints** — any v1.1+ change that would violate one of these requires an explicit architectural conversation, not a casual commit. The constraints are what make this plugin a focused tool rather than a kitchen-sink CPT framework.

@@ -4,7 +4,7 @@ Tags: custom post types, cpt, page builder, post template, structured content
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 0.3.1
+Stable tag: 0.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -50,6 +50,15 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 
 == Changelog ==
 
+= 0.3.2 =
+* New: Dual-format icon system. `icon_id` and `default_icon` now accept BOTH the existing curated 53-icon library AND any Iconify code in `collection:name` form (e.g. `mdi:home`, `logos:wordpress`, `material-symbols:business-outline`, `fa6-solid:tooth`). Curated IDs render as inline SVG (zero network), Iconify codes render via the `<iconify-icon>` web component. ~200,000 additional icons across 100+ Iconify sets, browseable at icon-sets.iconify.design. Restores icon vocabulary parity with Promptless WP for connector-driven page-building workflows.
+* New: Admin meta-box icon control rewritten as a monospace text input + a 28-px-thumb quick-pick row of the curated 53. Type any Iconify code; the preview updates live. Click a quick-pick to insert a curated ID. Single picker covers both formats.
+* New: Connector `GET /icons` response gains an `iconify` block (format pattern, browse URL, full legacy → Iconify map, render-pattern hint) and a per-icon `iconify_code` field so AI consumers learn the dual-format contract in one round trip. The MCP `postruntime_list_icons` description rewritten accordingly.
+* New: `PRE_Icon_Library::is_valid_id()`, `is_iconify_format()`, `legacy_to_iconify()`, `get_legacy_iconify_map()`, plus `MAX_ICONIFY_LENGTH` constant. Public surface so themes / third-party plugins can validate icon IDs the same way the plugin does.
+* Changed: Validator switches from `PRE_Icon_Library::has()` to `is_valid_id()` at both call sites (CPT default_icon, grouping item icon_id). Error messages now point at both discovery paths.
+* Changed: Frontend asset enqueue adds the iconify-icon web-component module (~20kb gzipped, jsdelivr CDN) on registered CPT singles so Iconify codes paint correctly without per-page detection. Same module Promptless WP enqueues — browser caches one copy across pages.
+* Internal: 15 new smoke assertions in `tests/smoke-phase1.php` + two new unit-test methods in `tests/Unit/ValidatorTest.php` covering accept (5 Iconify formats) and reject (6 malformed shapes including over-length and uppercase) paths.
+
 = 0.3.1 =
 * Plugin-checker compliance pass: relocated translator comments to satisfy `WordPress.WP.I18n.MissingTranslatorsComment`, swapped `parse_url()` for `wp_parse_url()`, added `phpcs:ignore` reasons to trusted-internal output sites where the Icon Library's SVG is surfaced.
 
@@ -63,6 +72,9 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.3.2 =
+Icon system is now dual-format: existing curated IDs keep working alongside any Iconify code (200,000+ icons). Admin meta-box dropdown becomes a text input + quick-pick row. No data migration; existing post meta renders unchanged. Restores icon vocabulary parity with Promptless WP for connector workflows. Recommended for all users.
 
 = 0.3.1 =
 Compatibility update — passes WordPress.org Plugin Check cleanly. No feature or behavior changes.

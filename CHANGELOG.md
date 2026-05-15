@@ -4,9 +4,33 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
-## [Unreleased]
+## [0.3.2] — 2026-05-15
 
-Dual-format icon system (legacy curated IDs + Iconify codes) implemented and tested in-place — version bump deferred to the next incremental release cycle. The implementation lives on disk; bump and tag when the next batch of changes is ready to ship.
+Adds **dual-format icon system** alongside the existing curated 53-icon library. `icon_id` and `default_icon` now accept ANY Iconify code in `collection:name` form (e.g. `mdi:home`, `logos:wordpress`, `material-symbols:business-outline`, `fa6-solid:tooth`) in addition to the legacy curated IDs. ~200,000 additional icons across 100+ Iconify sets, browseable at icon-sets.iconify.design. Restores icon vocabulary parity with Promptless WP for connector-driven page-building workflows.
+
+### Added
+
+- **`PRE_Icon_Library::is_valid_id()`** — public accessor returning true for both legacy curated IDs and well-formed Iconify codes. Replaces direct `has()` checks at validator + renderer call sites.
+- **`PRE_Icon_Library::is_iconify_format()`** — shape check (`collection:name` regex, sanitize-key-safe slugs on both sides of a single colon, MAX_ICONIFY_LENGTH = 100). Mirrors the JS-side check in `meta-box.js` for symmetric server/client validation.
+- **`PRE_Icon_Library::legacy_to_iconify()`** — translates a curated ID to its Iconify equivalent (used by the quick-pick row and the `/icons` response's `legacy_map`). Passes Iconify codes through unchanged; returns empty for unknown input.
+- **`PRE_Icon_Library::get_legacy_iconify_map()`** — full curated → Iconify map (53 entries targeting `mdi:*` for visual consistency with the curated SVGs).
+- **`<iconify-icon>` web-component enqueue** in both admin (`PRE_Meta_Box::enqueue_assets`) and frontend (`PRE_Frontend_Assets::enqueue`). Sourced from the jsdelivr CDN as an ES module; cached site-wide. Same module Promptless WP enqueues, so when both plugins are active the browser shares one cached copy.
+- **Iconify support metadata in `GET /icons`** — response now carries an `iconify` block (`supported`, `format`, `pattern`, `max_length`, `browse_url`, `render_pattern`, `legacy_map`, `note`) so connector consumers learn the contract in one round trip. Each curated icon entry also carries its `iconify_code` equivalent for cross-format awareness.
+- **Smoke + unit test coverage** — `tests/smoke-phase1.php` gains 15 new Iconify assertions. `tests/Unit/ValidatorTest.php` gains `test_validate_grouping_item_accepts_iconify_code_in_icon_id` (5 different sets) and `test_validate_grouping_item_rejects_invalid_iconify_format` (6 malformed shapes including over-length, trailing colon, whitespace, uppercase).
+
+### Changed
+
+- **`icon_id` and `default_icon` validation accepts Iconify codes alongside legacy IDs.** Validator switches from `PRE_Icon_Library::has()` to `is_valid_id()`. Save-time errors (`pre_invalid_default_icon`, `pre_unknown_icon`) now point at BOTH discovery paths.
+- **Renderer dispatches on format.** `PRE_Icon_Library::render()` returns an inline `<span><svg/></span>` for legacy IDs and `<iconify-icon icon="…"></iconify-icon>` for Iconify codes (component fetches from api.iconify.design at paint time with graceful fallback for missing icons).
+- **Admin meta-box icon control: `<select>` → text input + quick-pick row.** The 53-icon dropdown was a hard ceiling on the user's icon vocabulary. Replaced with a monospace text input that accepts any Iconify code (matches Promptless WP's existing UX). A 28-px-thumb quick-pick grid below the input renders the curated 53 as one-click shortcuts. Preview tile updates live. Save handler swaps `sanitize_key()` (which would strip colons) for `sanitize_text_field()` + the validator's strict pattern check.
+- **`critical_rules.icon_ids_must_be_registered`** rewritten to describe the dual-format contract.
+- **`postruntime_list_icons` MCP description** rewritten to surface the iconify block.
+
+### Migration notes
+
+- **No data migration required.** Existing post meta keeps storing legacy curated IDs verbatim; renderer dual-dispatch handles them.
+- **Frontend cost.** `<iconify-icon>` script (~20kb gzipped) now enqueued on every registered CPT single. Browser caches site-wide after first request.
+- **`PRE_Icon_Library::has()` remains supported** for narrow "is this in the curated library specifically" checks. New code should prefer `is_valid_id()`.
 
 ## [0.3.1] — 2026-05-10
 

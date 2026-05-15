@@ -188,6 +188,26 @@ pre_smoke_assert( 'icon library includes "scale"', isset( $icons['scale'] ) );
 pre_smoke_assert( 'PRE_Icon_Library::has() works for known id', PRE_Icon_Library::has( 'phone' ) );
 pre_smoke_assert( 'PRE_Icon_Library::has() rejects unknown id', ! PRE_Icon_Library::has( 'no-such-icon' ) );
 
+// 2b. Iconify support — both formats valid, invalid shapes rejected.
+pre_smoke_assert( 'is_valid_id accepts legacy curated id "home"', PRE_Icon_Library::is_valid_id( 'home' ) );
+pre_smoke_assert( 'is_valid_id accepts Iconify code "mdi:home"', PRE_Icon_Library::is_valid_id( 'mdi:home' ) );
+pre_smoke_assert( 'is_valid_id accepts Iconify code with hyphens "material-symbols:account-circle"', PRE_Icon_Library::is_valid_id( 'material-symbols:account-circle' ) );
+pre_smoke_assert( 'is_valid_id accepts brand-set Iconify code "logos:wordpress"', PRE_Icon_Library::is_valid_id( 'logos:wordpress' ) );
+pre_smoke_assert( 'is_valid_id rejects malformed "mdi:"', ! PRE_Icon_Library::is_valid_id( 'mdi:' ) );
+pre_smoke_assert( 'is_valid_id rejects malformed ":home"', ! PRE_Icon_Library::is_valid_id( ':home' ) );
+pre_smoke_assert( 'is_valid_id rejects whitespace "mdi:home extra"', ! PRE_Icon_Library::is_valid_id( 'mdi:home extra' ) );
+pre_smoke_assert( 'is_valid_id rejects unknown freeform "totally-not-an-icon"', ! PRE_Icon_Library::is_valid_id( 'totally-not-an-icon' ) );
+pre_smoke_assert( 'is_iconify_format accepts "fa6-solid:tooth"', PRE_Icon_Library::is_iconify_format( 'fa6-solid:tooth' ) );
+pre_smoke_assert( 'is_iconify_format rejects bare curated id', ! PRE_Icon_Library::is_iconify_format( 'home' ) );
+pre_smoke_assert( 'legacy_to_iconify maps "home" → "mdi:home"', PRE_Icon_Library::legacy_to_iconify( 'home' ) === 'mdi:home' );
+pre_smoke_assert( 'legacy_to_iconify passes Iconify code through unchanged', PRE_Icon_Library::legacy_to_iconify( 'logos:wordpress' ) === 'logos:wordpress' );
+pre_smoke_assert( 'legacy_to_iconify returns empty for unknown', PRE_Icon_Library::legacy_to_iconify( 'no-such-icon' ) === '' );
+pre_smoke_assert( 'render returns inline SVG span for curated id', strpos( PRE_Icon_Library::render( 'home' ), '<span' ) === 0 );
+pre_smoke_assert( 'render returns iconify-icon web component for Iconify code', strpos( PRE_Icon_Library::render( 'mdi:home' ), '<iconify-icon' ) === 0 );
+pre_smoke_assert( 'render returns empty for unrecognized id', PRE_Icon_Library::render( 'no-such-icon' ) === '' );
+pre_smoke_assert( 'get_legacy_iconify_map returns array', is_array( PRE_Icon_Library::get_legacy_iconify_map() ) );
+pre_smoke_assert( 'legacy map has same key count as curated icons', count( PRE_Icon_Library::get_legacy_iconify_map() ) === count( PRE_Icon_Library::get_all() ) );
+
 // 3. CPT registration — happy path.
 $result = $plugin->cpts->register(
 	PRE_SMOKE_CPT_SLUG,

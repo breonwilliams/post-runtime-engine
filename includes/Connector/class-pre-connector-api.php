@@ -485,7 +485,7 @@ class PRE_Connector_API {
 			'link_post_id_canonical'       => 'For internal links to same-site posts, prefer link_post_id over a literal URL. The renderer resolves it via get_permalink() at render time, which makes stored data domain-portable across staging → production migrations and after permalink-structure changes. The literal `link` field is preserved as a fallback when the referenced post has been trashed/deleted.',
 			'postgrid_grid_balance'        => 'Postgrid sections render posts_per_page items in a grid_columns grid. Promptless\'s design optimizer (LayoutOptimizer::apply_postgrid_grid_balance, v1.4+) auto-balances these for you when only one is explicit: send `posts_per_page: 4` and the optimizer picks `grid_columns: "4"`; send `grid_columns: "4"` and the optimizer picks `posts_per_page: 8`. When BOTH are explicit, defer-to-explicit applies (your asymmetric pair like 5+3 is honored as-is). When NEITHER is explicit, the renderer\'s defaults align (6+3). Awkward post counts are handled by minimizing orphan slots: 5 → 3 cols (1 orphan), 7 → 4 cols (1 orphan). Bypass entirely by passing design_options.apply_design_strategy:false.',
 			'featured_card_max_one'        => 'featured-card variant has max_items=1 enforced by the validator. featured-card is for ONE prominent item per grouping (a Lead Architect, a Schedule a Tour CTA, a Currently Featured project). For multi-item collections of cards-with-images use card-grid.',
-			'icon_ids_must_be_registered'  => 'CPT default_icon and grouping item icon_id MUST be IDs from the curated 53-icon library — there is no free-text icon support, no Iconify or Font Awesome integration, no SVG passthrough. Before your first call that takes an icon parameter, fetch the catalogue: GET /icons (or postruntime_list_icons via MCP). Examples by category: General (check, star, info, shield), Property (home, bed, bath, building), Business (briefcase, gavel, scale), Medical (stethoscope, pill), People (user, users), Travel (airplane, mountain). Sending an unregistered ID returns 422 pre_invalid_default_icon or pre_unknown_icon — both errors now include the discovery instruction inline.',
+			'icon_ids_must_be_registered'  => 'CPT default_icon and grouping item icon_id accept TWO formats, both verified by PRE_Icon_Library::is_valid_id(): (1) A legacy curated ID from the built-in 53-icon library — e.g. `home`, `shield`, `briefcase` — renders as an inline SVG (zero network requests, fastest paint). Call GET /icons (or postruntime_list_icons via MCP) to discover them. (2) Any Iconify code in `collection:name` form — e.g. `mdi:home`, `logos:wordpress`, `material-symbols:business-outline`, `heroicons:user-circle`, `fa6-solid:tooth` — renders as an `<iconify-icon>` web component, fetching SVG from api.iconify.design at paint time. 200,000+ icons across 100+ sets; browse at https://icon-sets.iconify.design/. Prefer Iconify codes for parity with Promptless WP (which already uses Iconify everywhere) and for industry-specific glyphs the curated 53 do not cover. Both formats pass through the same validator and renderer; an invalid format (anything that does not match either) returns 422 pre_invalid_default_icon or pre_unknown_icon at write time. The /icons response includes an `iconify` block with the format pattern + a legacy → Iconify map for cross-format awareness.',
 			'choosing_a_source_mode'       => 'Four source modes are available — see source_modes in this preflight for the full descriptor. Quick chooser: (1) Use manual when each post curates its own items (e.g. a Listing\'s Features grouping where the agent picks specific selling points). (2) Use child_posts when the relationship is hierarchical and natural in WordPress (a Course post with Lesson child posts). (3) Use taxonomy_match when the relationship is "shares a category / tag / region" (related Articles in same topic). (4) Use meta_match when the relationship is a stored entity ID — "more from this agent" with meta_key=_agent_id, "other openings from this employer" with _employer_id, "other locations of this business" with _business_id. meta_match short-circuits to empty when the current post has no value for the configured meta_key, so it is safe to enable on a CPT before every post has the meta populated.',
 		);
 	}
@@ -514,9 +514,22 @@ class PRE_Connector_API {
 	}
 
 	/**
-	 * GET /icons — full icon catalogue (without SVG markup, to keep
-	 * payload size sane). Agents that need the SVG render the post or
-	 * fetch the catalogue at template-time, not at planning-time.
+	 * GET /icons — curated icon catalogue (without SVG markup, to keep
+	 * payload size sane) PLUS Iconify support metadata. Connector
+	 * consumers can use either:
+	 *
+	 *   - A legacy curated ID from the `icons[]` list (`home`, `shield`,
+	 *     `briefcase`, …) — renders the inline SVG. Best for fast paint
+	 *     and predictable visual style across a curated palette.
+	 *
+	 *   - An Iconify code in `collection:name` form (`mdi:home`,
+	 *     `logos:wordpress`, `material-symbols:business`, …) — renders
+	 *     the iconify-icon web component. Best for industry-specific or
+	 *     brand-specific glyphs the curated set doesn't cover.
+	 *
+	 * The `iconify` block in the response carries the format pattern, the
+	 * browse URL, and the legacy → Iconify mapping so an agent can pick
+	 * the right shape for the content without an additional round trip.
 	 */
 	public function handle_list_icons( WP_REST_Request $request ) {
 		$icons       = array();
@@ -524,10 +537,13 @@ class PRE_Connector_API {
 
 		foreach ( PRE_Icon_Library::get_all() as $id => $icon ) {
 			$icons[] = array(
-				'id'       => $id,
-				'label'    => $icon['label'],
-				'category' => $icon['category'],
-				'tags'     => $icon['tags'],
+				'id'           => $id,
+				'label'        => $icon['label'],
+				'category'     => $icon['category'],
+				'tags'         => $icon['tags'],
+				'iconify_code' => isset( PRE_Icon_Library::get_legacy_iconify_map()[ $id ] )
+					? PRE_Icon_Library::get_legacy_iconify_map()[ $id ]
+					: null,
 			);
 			$cat_seen[ $icon['category'] ] = true;
 		}
@@ -535,6 +551,16 @@ class PRE_Connector_API {
 		return rest_ensure_response( array(
 			'icons'      => $icons,
 			'categories' => array_keys( $cat_seen ),
+			'iconify'    => array(
+				'supported'      => true,
+				'format'         => 'collection:name',
+				'pattern'        => '^[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_-]*$',
+				'max_length'     => PRE_Icon_Library::MAX_ICONIFY_LENGTH,
+				'browse_url'     => 'https://icon-sets.iconify.design/',
+				'render_pattern' => '<iconify-icon icon="…"></iconify-icon>',
+				'note'           => 'icon_id accepts BOTH a curated id from icons[] (renders inline SVG) and any Iconify code in collection:name form (renders via iconify-icon web component; SVG fetched from api.iconify.design at paint time with graceful fallback for missing icons). Recommended for connector workflows: prefer Iconify codes for parity with Promptless WP (which already uses Iconify everywhere) and for industry-specific glyphs the curated 53 do not cover (logos:wordpress, mdi:hammer-wrench, fa6-solid:tooth, etc.).',
+				'legacy_map'     => PRE_Icon_Library::get_legacy_iconify_map(),
+			),
 		) );
 	}
 

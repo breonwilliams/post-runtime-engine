@@ -105,6 +105,23 @@ class PRE_Meta_Box {
 			true
 		);
 
+		// Iconify web-component bundle from the jsdelivr CDN. Required so
+		// the icon picker preview can render Iconify codes (`mdi:home`,
+		// `logos:wordpress`, etc.) live as the user types. The component
+		// self-registers; no init code needed. Same module Promptless WP
+		// uses, so when both plugins are active the browser caches one copy.
+		// Type="module" because iconify-icon ships as an ES module — WordPress
+		// honors the script_loader_tag filter so adding the attribute via
+		// wp_script_add_data() makes WP emit type="module".
+		wp_enqueue_script(
+			'pre-iconify-icon',
+			'https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js',
+			array(),
+			'2.1.0',
+			true
+		);
+		wp_script_add_data( 'pre-iconify-icon', 'type', 'module' );
+
 		// Localize icon SVGs, REST search endpoint, and nonce so the JS can
 		// render previews and run authenticated post-search queries without a
 		// page-roundtrip per character.
@@ -354,9 +371,14 @@ class PRE_Meta_Box {
 					<?php
 					if ( $image_id > 0 && $thumb_url ) {
 						echo '<img src="' . esc_url( $thumb_url ) . '" alt="">';
-					} elseif ( $icon_id !== '' && PRE_Icon_Library::has( $icon_id ) ) {
-						// PRE_Icon_Library::render() returns a <span> wrapper with esc_attr()'d class
-						// and plugin-curated SVG content (no user input). Output is intentionally raw HTML.
+					} elseif ( $icon_id !== '' && PRE_Icon_Library::is_valid_id( $icon_id ) ) {
+						// PRE_Icon_Library::render() returns either a <span> wrapper
+						// with esc_attr()'d class + plugin-curated SVG (legacy
+						// icons) OR a <iconify-icon> web component with the
+						// icon attribute esc_attr()'d (Iconify codes). The
+						// web component fetches SVG from api.iconify.design at
+						// paint time; legacy SVGs ship inline. Output is
+						// intentionally raw HTML for both paths.
 						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 						echo PRE_Icon_Library::render( $icon_id );
 					} else {
@@ -366,18 +388,71 @@ class PRE_Meta_Box {
 				</div>
 
 				<div class="pre-item__media-controls">
-					<select class="pre-item__icon-select" data-target="icon" aria-label="<?php esc_attr_e( 'Choose icon', 'post-runtime-engine' ); ?>">
-						<option value=""><?php esc_html_e( 'No icon', 'post-runtime-engine' ); ?></option>
-						<?php foreach ( PRE_Icon_Library::get_grouped_by_category() as $cat => $cat_icons ) : ?>
-							<optgroup label="<?php echo esc_attr( $cat ); ?>">
-								<?php foreach ( $cat_icons as $icon_key => $icon ) : ?>
-									<option value="<?php echo esc_attr( $icon_key ); ?>" <?php selected( $icon_id, $icon_key ); ?>>
-										<?php echo esc_html( $icon['label'] ); ?>
-									</option>
-								<?php endforeach; ?>
-							</optgroup>
+					<?php
+					// Iconify text input — replaces the curated dropdown. Accepts
+					// either a legacy curated ID (`home`, `users`) or an Iconify
+					// code (`mdi:home`, `logos:wordpress`). Storage is the same
+					// field as before so existing post data continues to render.
+					// See PRE_Icon_Library::is_iconify_format() for the validation
+					// pattern; meta-box.js validates the same shape client-side
+					// for instant feedback.
+					?>
+					<input
+						type="text"
+						class="pre-item__icon-input"
+						name="<?php echo esc_attr( $base ); ?>[icon_id]"
+						value="<?php echo esc_attr( $icon_id ); ?>"
+						placeholder="<?php esc_attr_e( 'mdi:home or "home"', 'post-runtime-engine' ); ?>"
+						maxlength="100"
+						aria-label="<?php esc_attr_e( 'Icon — Iconify code or curated ID', 'post-runtime-engine' ); ?>"
+						spellcheck="false"
+						autocomplete="off">
+
+					<p class="pre-item__icon-help description">
+						<?php
+						printf(
+							/* translators: %s: Iconify icon-sets URL */
+							wp_kses(
+								__( 'Any <a href="%s" target="_blank" rel="noopener">Iconify code</a> (200,000+ icons) or a curated quick-pick below.', 'post-runtime-engine' ),
+								array(
+									'a' => array(
+										'href'   => array(),
+										'target' => array(),
+										'rel'    => array(),
+									),
+								)
+							),
+							esc_url( 'https://icon-sets.iconify.design/' )
+						);
+						?>
+					</p>
+
+					<div class="pre-item__icon-quickpicks" role="group" aria-label="<?php esc_attr_e( 'Common icons quick-pick', 'post-runtime-engine' ); ?>">
+						<?php
+						// Curated quick-pick row — small visual grid of the 53
+						// built-ins. Clicking a button writes the LEGACY ID into
+						// the text input above (legacy IDs continue to ship
+						// inline SVG; no network request for the curated set).
+						// JS keeps the input + preview in sync; users can still
+						// type any Iconify code manually.
+						foreach ( PRE_Icon_Library::get_all() as $icon_key => $icon ) :
+							$is_selected = ( $icon_id === $icon_key );
+							$button_class = 'pre-item__icon-quickpick' . ( $is_selected ? ' is-selected' : '' );
+							?>
+							<button
+								type="button"
+								class="<?php echo esc_attr( $button_class ); ?>"
+								data-icon-id="<?php echo esc_attr( $icon_key ); ?>"
+								title="<?php echo esc_attr( $icon['label'] ); ?>"
+								aria-label="<?php echo esc_attr( $icon['label'] ); ?>"
+								aria-pressed="<?php echo $is_selected ? 'true' : 'false'; ?>">
+								<?php
+								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+								echo PRE_Icon_Library::render( $icon_key );
+								?>
+							</button>
 						<?php endforeach; ?>
-					</select>
+					</div>
 
 					<div class="pre-item__media-buttons">
 						<button type="button" class="button-link pre-pick-image">
@@ -389,7 +464,6 @@ class PRE_Meta_Box {
 					</div>
 				</div>
 
-				<input type="hidden" class="pre-item__icon-input" name="<?php echo esc_attr( $base ); ?>[icon_id]" value="<?php echo esc_attr( $icon_id ); ?>">
 				<input type="hidden" class="pre-item__image-input" name="<?php echo esc_attr( $base ); ?>[image_id]" value="<?php echo esc_attr( (string) $image_id ); ?>">
 			</div>
 
@@ -519,7 +593,15 @@ class PRE_Meta_Box {
 					}
 
 					$image_id        = isset( $raw_item['image_id'] ) ? (int) $raw_item['image_id'] : 0;
-					$icon_id         = isset( $raw_item['icon_id'] ) ? sanitize_key( $raw_item['icon_id'] ) : '';
+					// icon_id accepts BOTH legacy curated IDs (sanitize_key shape)
+					// AND Iconify codes (`collection:name` — sanitize_key would
+					// strip the colon and break Iconify). sanitize_text_field +
+					// the validator's is_valid_id() check is the right shape:
+					// strip control chars / extra whitespace, then let the
+					// validator enforce the strict pattern. Anything that fails
+					// validation is rejected at save with a meaningful error,
+					// not silently transformed into garbage here.
+					$icon_id         = isset( $raw_item['icon_id'] ) ? trim( sanitize_text_field( (string) $raw_item['icon_id'] ) ) : '';
 					$heading         = isset( $raw_item['heading'] ) ? sanitize_text_field( $raw_item['heading'] ) : '';
 					$supporting_text = isset( $raw_item['supporting_text'] ) ? sanitize_textarea_field( $raw_item['supporting_text'] ) : '';
 					$link            = isset( $raw_item['link'] ) ? trim( (string) $raw_item['link'] ) : '';

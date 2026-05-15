@@ -708,11 +708,15 @@ class PRE_Renderer {
 				$media_html           = $image_html;
 				$media_class_modifier = ' pre-grouping__media--image';
 			}
-		} elseif ( $icon_id !== '' && PRE_Icon_Library::has( $icon_id ) ) {
-			// Icon ID stored but the icon was removed from the library after
-			// the data was saved — PRE_Icon_Library::has() returns false and
-			// this branch is skipped. Item renders without media; graceful
-			// degradation rather than fatal error.
+		} elseif ( $icon_id !== '' && PRE_Icon_Library::is_valid_id( $icon_id ) ) {
+			// Icon ID stored. is_valid_id() recognizes BOTH legacy curated
+			// IDs (e.g. "home", "users") AND Iconify codes (e.g. "mdi:home",
+			// "logos:wordpress"). PRE_Icon_Library::render() picks the right
+			// code path — inline SVG span for legacy, <iconify-icon> web
+			// component for Iconify codes. If the icon was removed from the
+			// curated library AND the stored value doesn't match Iconify
+			// format, is_valid_id() returns false and this branch is
+			// skipped — item renders without media (graceful degradation).
 			$media_html           = PRE_Icon_Library::render( $icon_id, 'pre-grouping__icon' );
 			$media_class_modifier = ' pre-grouping__media--icon';
 		}

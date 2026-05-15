@@ -180,6 +180,64 @@ class ValidatorTest extends UnitTestCase {
     // Grouping item validation — the meat of authoring quality
     // -----------------------------------------------------------------
 
+    public function test_validate_grouping_item_accepts_iconify_code_in_icon_id() {
+        // Fix #2 (v0.4.0): icon_id accepts Iconify codes alongside legacy
+        // curated IDs. mdi:home should pass through the validator unchanged
+        // and render via <iconify-icon> at render time.
+        $definition = array(
+            'key'             => 'features',
+            'label'           => 'Features',
+            'default_variant' => 'card-grid',
+        );
+
+        $cases = array(
+            'mdi:home',
+            'logos:wordpress',
+            'material-symbols:business-outline',
+            'heroicons:arrow-right-circle',
+            'fa6-solid:tooth',
+        );
+        foreach ( $cases as $code ) {
+            $result = $this->validator->validate_grouping_item(
+                array(
+                    'heading' => 'Item',
+                    'icon_id' => $code,
+                ),
+                $definition
+            );
+            $this->assertTrue( $result, sprintf( 'Iconify code "%s" should validate', $code ) );
+        }
+    }
+
+    public function test_validate_grouping_item_rejects_invalid_iconify_format() {
+        // Malformed inputs that look like Iconify but aren't — still rejected.
+        $definition = array(
+            'key'             => 'features',
+            'label'           => 'Features',
+            'default_variant' => 'card-grid',
+        );
+
+        $invalid_cases = array(
+            'mdi:'                         => 'trailing colon',
+            ':home'                        => 'leading colon',
+            'mdi: home'                    => 'whitespace inside',
+            'MDI:HOME'                     => 'uppercase rejected (sanitize-key shape)',
+            'not.an.icon'                  => 'dots, no colon',
+            str_repeat( 'a', 101 ) . ':b'  => 'over MAX_ICONIFY_LENGTH',
+        );
+        foreach ( $invalid_cases as $bad => $reason ) {
+            $result = $this->validator->validate_grouping_item(
+                array(
+                    'heading' => 'Item',
+                    'icon_id' => $bad,
+                ),
+                $definition
+            );
+            $this->assertInstanceOf( '\\WP_Error', $result, sprintf( 'Should reject "%s" (%s)', $bad, $reason ) );
+            $this->assertSame( 'pre_unknown_icon', $result->get_error_code(), sprintf( 'Wrong error code for "%s"', $bad ) );
+        }
+    }
+
     public function test_validate_grouping_item_rejects_both_icon_id_and_image_id() {
         // From critical_rules.compact_grid_strips_image rationale:
         // icon_id and image_id are mutually exclusive on a single item.

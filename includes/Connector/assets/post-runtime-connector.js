@@ -48,7 +48,7 @@ const TOOLS = [
   {
     name: "postruntime_list_icons",
     description:
-      "Browse the curated 53-icon library. Returns icon entries with id, label, category (one of 13: General, Property & Real Estate, Business & Legal, Education, Communication, Location & Time, Commerce, People, Food & Hospitality, Medical & Health, Creative & Media, Fitness & Wellness, Travel), and search tags. The actual SVG markup isn't included to keep payload small. Pick icons by id when populating grouping items (e.g. `bed`, `bath`, `gavel`, `stethoscope`).",
+      "Browse the curated 53-icon library AND learn the Iconify support contract. Returns: (1) icons[] — each entry has id, label, category (one of 13: General, Property & Real Estate, Business & Legal, Education, Communication, Location & Time, Commerce, People, Food & Hospitality, Medical & Health, Creative & Media, Fitness & Wellness, Travel), search tags, and iconify_code (the Material Design Icons equivalent in collection:name form). (2) iconify block — confirms Iconify codes are accepted ANYWHERE the curated ids are (icon_id on grouping items, default_icon on CPTs), with the format pattern, browse URL, and full legacy → Iconify mapping. Curated ids render inline SVG (fastest paint); Iconify codes render via the iconify-icon web component (any of 200,000+ icons across 100+ sets at icon-sets.iconify.design — pick mdi:hammer-wrench for plumbing, logos:wordpress for WordPress, fa6-solid:tooth for dental, etc.). Prefer Iconify codes for industry-specific glyphs the curated set doesn't cover and for parity with Promptless WP. Both formats pass through the same validator.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
@@ -124,7 +124,7 @@ const TOOLS = [
         default_icon: {
           type: "string",
           description:
-            "Optional icon ID from PRE_Icon_Library used as a fallback when a grouping item resolves to no media. Especially relevant for compact-grid and horizontal-row variants (which are icon-only by design): if an auto-source item from a post that has no _pre_icon meta would otherwise render iconless, this default fills in. Pick a generic shape that fits the CPT (e.g. 'home' for listings, 'user' for team members). Leave empty to render those items without media. Use postruntime_list_icons to discover available IDs.",
+            "Optional fallback icon used when a grouping item resolves to no media. Accepts EITHER a legacy curated id (e.g. 'home', 'user', 'shield' — call postruntime_list_icons to discover all 53 inline-SVG icons) OR any Iconify code in collection:name form (e.g. 'mdi:home', 'logos:wordpress', 'fa6-solid:tooth' — 200,000+ icons at icon-sets.iconify.design). Especially relevant for compact-grid and horizontal-row variants (icon-only by design). Pick a generic shape that fits the CPT (e.g. 'mdi:home' for listings, 'mdi:account' for team members). Leave empty to render iconless.",
         },
       },
       required: ["slug", "label_singular", "label_plural"],
@@ -161,7 +161,7 @@ const TOOLS = [
         hero_layout: { type: "string", enum: ["stacked", "split"] },
         hero_image_position: { type: "string", enum: ["left", "right"] },
         hero_image_aspect: { type: "string", enum: ["square", "landscape", "wide"] },
-        default_icon: { type: "string", description: "Icon ID from PRE_Icon_Library, or empty string to remove the fallback." },
+        default_icon: { type: "string", description: "Curated icon id (e.g. 'home') OR Iconify code in collection:name form (e.g. 'mdi:home'), or empty string to remove the fallback. See postruntime_list_icons." },
       },
       required: ["slug", "connector_version"],
     },

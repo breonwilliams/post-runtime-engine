@@ -341,12 +341,12 @@ class PRE_Validator {
 					__( 'CPT default_icon must be a string icon ID.', 'post-runtime-engine' )
 				);
 			}
-			if ( ! PRE_Icon_Library::has( $definition['default_icon'] ) ) {
+			if ( ! PRE_Icon_Library::is_valid_id( $definition['default_icon'] ) ) {
 				return new WP_Error(
 					'pre_invalid_default_icon',
 					sprintf(
 						/* translators: %s: the unknown icon ID */
-						__( 'CPT default_icon "%s" is not a registered icon. Call the connector\'s GET /icons endpoint (or postruntime_list_icons via MCP) to discover the 53 available icon IDs (e.g. "home", "user", "info", "shield", "calendar"). Icons can also be browsed by category in PRE_Icon_Library.', 'post-runtime-engine' ),
+						__( 'CPT default_icon "%s" is not a valid icon identifier. Accepts either a legacy curated ID (e.g. "home", "user", "shield" — call postruntime_list_icons to discover all 53) OR an Iconify code in `collection:name` form (e.g. "mdi:home", "logos:wordpress", "material-symbols:business" — browse 200,000+ icons at icon-sets.iconify.design).', 'post-runtime-engine' ),
 						$definition['default_icon']
 					)
 				);
@@ -715,7 +715,12 @@ class PRE_Validator {
 			}
 		}
 
-		// icon_id — must be a string in the registered icon library.
+		// icon_id — must be a string AND either a legacy curated ID or a
+		// well-formed Iconify code (`collection:name`). Iconify codes are
+		// validated by shape only (regex), not against the live Iconify
+		// registry — the registry lives at api.iconify.design and is fetched
+		// at render time with graceful fallback for missing icons, so typos
+		// produce a placeholder rather than a save-time crash.
 		if ( $has_icon ) {
 			if ( ! is_string( $item['icon_id'] ) ) {
 				return new WP_Error(
@@ -724,13 +729,13 @@ class PRE_Validator {
 				);
 			}
 
-			// PRE_Icon_Library is autoloaded; defer to it for the actual
-			// registry of valid icons.
-			if ( class_exists( 'PRE_Icon_Library' ) && ! PRE_Icon_Library::has( $item['icon_id'] ) ) {
+			// PRE_Icon_Library is autoloaded; defer to it for the dual-format
+			// recognition logic.
+			if ( class_exists( 'PRE_Icon_Library' ) && ! PRE_Icon_Library::is_valid_id( $item['icon_id'] ) ) {
 				return new WP_Error(
 					'pre_unknown_icon',
 					/* translators: %s: the unknown icon ID */
-					sprintf( __( 'Grouping item icon_id "%s" is not a registered icon. Call the connector\'s GET /icons endpoint (or postruntime_list_icons via MCP) to discover the 53 available icon IDs across 13 categories (Property, Business & Legal, Medical, Travel, etc.).', 'post-runtime-engine' ), $item['icon_id'] )
+					sprintf( __( 'Grouping item icon_id "%s" is not a valid icon identifier. Accepts either a legacy curated ID (e.g. "home", "user", "calendar" — 53 built-in icons; call postruntime_list_icons to see them all) OR an Iconify code in `collection:name` form (e.g. "mdi:home", "logos:wordpress" — 200,000+ icons at icon-sets.iconify.design).', 'post-runtime-engine' ), $item['icon_id'] )
 				);
 			}
 		}

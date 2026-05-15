@@ -58,5 +58,30 @@ class PRE_Frontend_Assets {
 			array(),
 			PRE_VERSION
 		);
+
+		// Iconify web-component bundle. Loaded on every registered CPT single
+		// so any grouping item carrying an Iconify icon code (e.g. `mdi:home`,
+		// `logos:wordpress`) renders the right SVG. The component fetches
+		// SVGs from api.iconify.design at paint time with aggressive
+		// browser-level caching; pages that use only the legacy curated
+		// icons (which ship inline) pay the cost of one module download
+		// (~20kb gzipped) but no network roundtrip per icon.
+		//
+		// We could conditionally enqueue this by scanning the post's meta
+		// for any non-legacy icon_id, but the scan would itself be a
+		// per-page cost on every page load — the always-on enqueue is
+		// cheaper in practice, and the browser caches the module
+		// site-wide after the first request.
+		//
+		// Same module Promptless WP enqueues for its sections; when both
+		// plugins are active the browser caches one copy across pages.
+		wp_enqueue_script(
+			'pre-iconify-icon',
+			'https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js',
+			array(),
+			'2.1.0',
+			true
+		);
+		wp_script_add_data( 'pre-iconify-icon', 'type', 'module' );
 	}
 }

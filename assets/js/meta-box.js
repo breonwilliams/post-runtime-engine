@@ -4,7 +4,9 @@
  * Responsibilities:
  *   - Add / remove / reorder grouping items
  *   - Open WordPress media library for image selection
- *   - Update icon preview when the icon dropdown changes
+ *   - Sync icon preview when the icon text input changes or a quick-pick
+ *     button is clicked (live update; both legacy curated IDs and Iconify
+ *     codes render through the same preview span)
  *   - Hide "Add item" when max_items is reached
  *   - Inline post search on the link field (jQuery UI Autocomplete +
  *     /wp/v2/search). Lazy-initialized on first focus per input so we
@@ -64,12 +66,28 @@
 			renumberIndices($list, $grouping.data('grouping-key'));
 		});
 
-		// Icon dropdown change.
-		$grouping.on('change', '.pre-item__icon-select', function () {
-			var $select = $(this);
-			var $item   = $select.closest('.pre-item');
-			var iconId  = $select.val();
+		// Icon text input — live preview while typing. Debounced lightly via
+		// the browser's input event coalescing; no setTimeout needed because
+		// setItemIcon is cheap (DOM swap of a single span / web component).
+		$grouping.on('input change', '.pre-item__icon-input', function () {
+			var $input = $(this);
+			var $item  = $input.closest('.pre-item');
+			var iconId = ($input.val() || '').trim();
 			setItemIcon($item, iconId);
+		});
+
+		// Quick-pick button click — writes the legacy curated ID into the
+		// text input above and updates the preview. Users can still type
+		// any Iconify code manually after picking.
+		$grouping.on('click', '.pre-item__icon-quickpick', function (e) {
+			e.preventDefault();
+			var $btn   = $(this);
+			var $item  = $btn.closest('.pre-item');
+			var iconId = $btn.data('icon-id') || '';
+			$item.find('.pre-item__icon-input').val(iconId);
+			setItemIcon($item, iconId);
+			$item.find('.pre-item__icon-quickpick').removeClass('is-selected').attr('aria-pressed', 'false');
+			$btn.addClass('is-selected').attr('aria-pressed', 'true');
 		});
 
 		// Pick image (opens WP media library).
@@ -281,29 +299,69 @@
 	}
 
 	/**
-	 * Update the icon preview and hidden inputs when the dropdown changes.
-	 * Selecting an icon clears any existing image (mutual exclusion).
+	 * Update the icon preview to reflect the current icon_id text input value.
+	 * Selecting/typing an icon clears any existing image (mutual exclusion).
+	 *
+	 * Recognizes both representations:
+	 *   - Legacy curated ID (e.g. "home") → render the inline SVG bundled
+	 *     in window.preMetaBox.icons[iconId].svg
+	 *   - Iconify code (e.g. "mdi:home", "logos:wordpress") → render a
+	 *     <iconify-icon> web component; the iconify-icon script loaded on
+	 *     this admin screen fetches the SVG from the Iconify CDN at paint
+	 *     time. Invalid format (no colon, weird chars) → empty placeholder.
 	 */
 	function setItemIcon($item, iconId) {
-		var $iconInput  = $item.find('.pre-item__icon-input');
 		var $imageInput = $item.find('.pre-item__image-input');
 		var $preview    = $item.find('.pre-item__preview');
 
-		$iconInput.val(iconId || '');
+		iconId = (iconId || '').trim();
 
-		if (iconId && icons[iconId]) {
-			// Selecting an icon clears the image.
-			$imageInput.val('0');
-			$preview.html(icons[iconId].svg).attr('data-icon-id', iconId);
-		} else if (!iconId) {
-			// "No icon" selected. If no image, show empty placeholder.
+		if (iconId === '') {
 			if (!$imageInput.val() || $imageInput.val() === '0') {
 				$preview.html('<span class="pre-item__preview-empty">—</span>');
 			}
 			$preview.attr('data-icon-id', '');
+			updatePickImageButtonLabel($item);
+			return;
+		}
+
+		// Picking ANY icon clears the image (mutual exclusion enforced by
+		// the validator; the UI mirrors it so users don't see both at once).
+		$imageInput.val('0');
+		$preview.attr('data-icon-id', iconId);
+
+		if (icons[iconId]) {
+			// Legacy curated ID — inline SVG. Cheapest paint path.
+			$preview.html(icons[iconId].svg);
+		} else if (isIconifyCode(iconId)) {
+			// Iconify code — web component fetches from api.iconify.design.
+			// Build via createElement so attribute escaping is the DOM's
+			// responsibility (no innerHTML injection of a user-typed value).
+			var el = document.createElement('iconify-icon');
+			el.setAttribute('icon', iconId);
+			el.setAttribute('aria-hidden', 'true');
+			$preview.empty().append(el);
+		} else {
+			// Doesn't match any known shape — placeholder. Save will fail
+			// with a clear validator error rather than store junk.
+			$preview.html('<span class="pre-item__preview-empty" aria-hidden="true">?</span>');
 		}
 
 		updatePickImageButtonLabel($item);
+	}
+
+	/**
+	 * Iconify code shape check — mirrors PRE_Icon_Library::is_iconify_format()
+	 * in PHP. `collection:name` where both sides are sanitize-key-safe slugs
+	 * (lowercase letters, digits, hyphens, underscores), one colon separator,
+	 * no whitespace. Hyphens are required because Iconify icon names use
+	 * them (`account-group`, `arrow-right-circle`, etc.).
+	 */
+	function isIconifyCode(value) {
+		if (typeof value !== 'string' || value.length === 0 || value.length > 100) {
+			return false;
+		}
+		return /^[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_-]*$/.test(value);
 	}
 
 	/**
@@ -332,11 +390,12 @@
 	function setItemImage($item, attachment) {
 		var $imageInput  = $item.find('.pre-item__image-input');
 		var $iconInput   = $item.find('.pre-item__icon-input');
-		var $iconSelect  = $item.find('.pre-item__icon-select');
 		var $preview     = $item.find('.pre-item__preview');
 
 		$imageInput.val(attachment.id);
 		$iconInput.val('');
+		// Clear any active quick-pick highlight when switching to image mode.
+		$item.find('.pre-item__icon-quickpick').removeClass('is-selected').attr('aria-pressed', 'false');
 		$iconSelect.val('');
 
 		var thumbUrl = (attachment.sizes && attachment.sizes.thumbnail && attachment.sizes.thumbnail.url)
@@ -352,7 +411,7 @@
 	function clearItemMedia($item) {
 		$item.find('.pre-item__icon-input').val('');
 		$item.find('.pre-item__image-input').val('0');
-		$item.find('.pre-item__icon-select').val('');
+		$item.find('.pre-item__icon-quickpick').removeClass('is-selected').attr('aria-pressed', 'false');
 		$item.find('.pre-item__preview').html('<span class="pre-item__preview-empty">—</span>').attr('data-icon-id', '');
 		updatePickImageButtonLabel($item);
 	}

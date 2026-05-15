@@ -4,6 +4,10 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [Unreleased]
+
+Dual-format icon system (legacy curated IDs + Iconify codes) implemented and tested in-place — version bump deferred to the next incremental release cycle. The implementation lives on disk; bump and tag when the next batch of changes is ready to ship.
+
 ## [0.3.1] — 2026-05-10
 
 Connector pressure-test cycle on the Northcraft staging fixture surfaced three issues — two real bugs, one ergonomics gap. All three are addressed here. A separate finding about the PRE MCP wrapper input schemas being out of sync with the WordPress connector contract is documented in `POST_RUNTIME_AUDIT.md` as I-NEW; that fix lives in the Node.js MCP wrapper repo, not this plugin.

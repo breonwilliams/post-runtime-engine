@@ -56,6 +56,40 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Static icon registry.
+ *
+ * ----------------------------------------------------------------------
+ * Iconify support (added 2026-05-15)
+ * ----------------------------------------------------------------------
+ *
+ * The plugin now accepts ANY Iconify icon code (≈200,000 icons across 100+
+ * sets) anywhere the curated set was previously accepted. Both representations
+ * are valid in storage:
+ *
+ *   - **Legacy curated ID** — e.g. `home`, `users`, `briefcase`. Bound to
+ *     the 53 inline SVGs declared in default_icons() below. Renders as a
+ *     `<span aria-hidden><svg>...</svg></span>` blob.
+ *
+ *   - **Iconify code** — e.g. `mdi:home`, `logos:wordpress`, `material-symbols:business`.
+ *     `collection:name` format (sanitize_key-safe characters on both sides
+ *     of a single colon). Renders as a `<iconify-icon icon="..."></iconify-icon>`
+ *     web component. The web component fetches the SVG from api.iconify.design
+ *     on first paint (cached aggressively).
+ *
+ * Why both? The 53 curated icons stay because (a) they ship inline so there's
+ * no network request, (b) existing post data referencing them must continue
+ * to render after the upgrade, and (c) hand-authoring an "agency-built
+ * directory site" with the picker UI is faster when the most common picks are
+ * one click away. Iconify joins because connector-driven workflows (Claude
+ * building pages from a brief) need access to any icon the content calls for
+ * — a WordPress site, a stripe-payment icon, an industry-specific glyph that
+ * isn't in the curated 53.
+ *
+ * The legacy IDs are TRANSPARENTLY MAPPED to Iconify equivalents via
+ * `legacy_to_iconify()` so the public surface stays consistent: callers
+ * pass `home` and get either the inline curated SVG OR (via
+ * `as_iconify_code('home')` → `mdi:home`) the Iconify web component. The
+ * inline curated SVG is preferred when both are available — same render
+ * cost, no network.
  */
 class PRE_Icon_Library {
 
@@ -67,6 +101,113 @@ class PRE_Icon_Library {
 	 * @var array<string,array>|null
 	 */
 	private static $cache = null;
+
+	/**
+	 * Legacy curated-ID → Iconify-code mapping. Lets connector consumers
+	 * write either `home` or `mdi:home` and both render identically (the
+	 * legacy path wins because the SVG ships inline). The mapping target
+	 * is also what the admin meta box's quick-pick row inserts when the
+	 * user clicks one of the curated icons.
+	 *
+	 * Picked from Material Design Icons (`mdi:*`) for cross-set visual
+	 * consistency — the curated SVGs were originally drawn in a
+	 * Lucide / Heroicons-inspired aesthetic; mdi shares that 24px line
+	 * style closer than the official Lucide Iconify set's rounded corners.
+	 *
+	 * @var array<string,string>
+	 */
+	private const LEGACY_TO_ICONIFY = array(
+		// General-purpose primitives.
+		'check'       => 'mdi:check',
+		'star'        => 'mdi:star',
+		'heart'       => 'mdi:heart',
+		'info'        => 'mdi:information-outline',
+		'arrow-right' => 'mdi:arrow-right',
+		'shield'      => 'mdi:shield',
+		// Property & real estate.
+		'bed'         => 'mdi:bed',
+		'bath'        => 'mdi:bathtub-outline',
+		'ruler'       => 'mdi:ruler',
+		'home'        => 'mdi:home',
+		'car'         => 'mdi:car',
+		'pool'        => 'mdi:pool',
+		'building'    => 'mdi:office-building',
+		'key'         => 'mdi:key',
+		// Business & legal.
+		'scale'       => 'mdi:scale-balance',
+		'gavel'       => 'mdi:gavel',
+		'briefcase'   => 'mdi:briefcase',
+		'award'       => 'mdi:trophy-award',
+		// Education.
+		'graduation'  => 'mdi:school',
+		'book'        => 'mdi:book-open-variant',
+		'lightbulb'   => 'mdi:lightbulb-on-outline',
+		// Communication.
+		'phone'       => 'mdi:phone',
+		'mail'        => 'mdi:email',
+		'message'     => 'mdi:message-text',
+		// Location & time.
+		'map-pin'     => 'mdi:map-marker',
+		'globe'       => 'mdi:earth',
+		'compass'     => 'mdi:compass',
+		'calendar'    => 'mdi:calendar',
+		'clock'       => 'mdi:clock-outline',
+		// Commerce.
+		'dollar'      => 'mdi:currency-usd',
+		'tag'         => 'mdi:tag',
+		// People.
+		'user'        => 'mdi:account',
+		'users'       => 'mdi:account-group',
+		// Food & hospitality.
+		'utensils'    => 'mdi:silverware-fork-knife',
+		'coffee'      => 'mdi:coffee',
+		'wine'        => 'mdi:glass-wine',
+		'chef-hat'    => 'mdi:chef-hat',
+		// Medical & health.
+		'stethoscope' => 'mdi:stethoscope',
+		'heart-pulse' => 'mdi:heart-pulse',
+		'pill'        => 'mdi:pill',
+		'tooth'       => 'mdi:tooth-outline',
+		'hospital'    => 'mdi:hospital-building',
+		// Creative & media.
+		'camera'      => 'mdi:camera',
+		'palette'     => 'mdi:palette',
+		'code'        => 'mdi:code-tags',
+		'image'       => 'mdi:image',
+		'pen-tool'    => 'mdi:fountain-pen',
+		// Fitness & wellness.
+		'dumbbell'    => 'mdi:dumbbell',
+		'leaf'        => 'mdi:leaf',
+		'water-drop'  => 'mdi:water',
+		// Travel.
+		'airplane'    => 'mdi:airplane',
+		'suitcase'    => 'mdi:bag-suitcase',
+		'mountain'    => 'mdi:terrain',
+	);
+
+	/**
+	 * Iconify-code format pattern. Strict on purpose — we don't accept
+	 * arbitrary strings (which would let typos / garbage through), only
+	 * the canonical `collection:name` shape where each side is a
+	 * sanitize_key-safe slug (lowercase letters, digits, hyphens,
+	 * underscores). One colon separator. No whitespace.
+	 *
+	 * Hyphen support is REQUIRED — Iconify icon names routinely use hyphens
+	 * (e.g. `mdi:account-group`, `material-symbols:business-outline`,
+	 * `heroicons:arrow-right-circle`). sanitize_key would strip those, so
+	 * we validate via regex instead.
+	 *
+	 * @var string
+	 */
+	private const ICONIFY_FORMAT_PATTERN = '/^[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_-]*$/';
+
+	/**
+	 * Max accepted length of an icon identifier (combined collection:name).
+	 * Iconify codes in the wild top out around ~50 chars; 100 is a
+	 * comfortable ceiling that blocks obvious abuse (someone pasting a JWT
+	 * into the field) without rejecting legitimate codes.
+	 */
+	const MAX_ICONIFY_LENGTH = 100;
 
 	/**
 	 * Get the full icon registry, keyed by icon ID.
@@ -174,26 +315,136 @@ class PRE_Icon_Library {
 	}
 
 	/**
-	 * Render an icon's SVG. Returns an empty string for unknown IDs so
+	 * Render an icon. Returns an empty string for unrecognized IDs so
 	 * callers can safely echo without conditional checks.
 	 *
-	 * @param string $id    Icon ID.
+	 * Resolution order:
+	 *   1. If the ID matches a legacy curated icon → return inline SVG span.
+	 *   2. If the ID parses as an Iconify code (`collection:name`) →
+	 *      return `<iconify-icon>` web component.
+	 *   3. Otherwise → return empty string.
+	 *
+	 * Legacy IDs win when both representations are available — the inline
+	 * SVG ships with the plugin (no network), while Iconify codes fetch
+	 * the SVG from api.iconify.design on first paint (cached after that).
+	 *
+	 * @param string $id    Icon ID (legacy curated name OR Iconify code).
 	 * @param string $class Optional CSS class to add to the wrapper.
-	 * @return string SVG markup or empty string.
+	 * @return string Render-ready HTML or empty string.
 	 */
 	public static function render( $id, $class = '' ) {
-		$icon = self::get( $id );
-		if ( ! $icon ) {
+		if ( ! is_string( $id ) || $id === '' ) {
 			return '';
 		}
 
-		$class_attr = '';
-		if ( $class !== '' ) {
-			$class_attr = ' class="' . esc_attr( $class ) . '"';
+		// Legacy curated icon — inline SVG path.
+		$icon = self::get( $id );
+		if ( $icon ) {
+			$class_attr = '';
+			if ( $class !== '' ) {
+				$class_attr = ' class="' . esc_attr( $class ) . '"';
+			}
+			// Wrap in a span with aria-hidden=true; the heading carries semantic meaning.
+			return '<span' . $class_attr . ' aria-hidden="true">' . $icon['svg'] . '</span>';
 		}
 
-		// Wrap in a span with aria-hidden=true; the heading carries semantic meaning.
-		return '<span' . $class_attr . ' aria-hidden="true">' . $icon['svg'] . '</span>';
+		// Iconify code — web component path. The PRE_Frontend_Assets enqueue
+		// loads the iconify-icon JS module from the jsdelivr CDN when any
+		// grouping item has a non-empty icon_id, so the component is
+		// available by the time the page paints.
+		if ( self::is_iconify_format( $id ) ) {
+			$class_attr = '';
+			if ( $class !== '' ) {
+				$class_attr = ' class="' . esc_attr( $class ) . '"';
+			}
+			return '<iconify-icon icon="' . esc_attr( $id ) . '"' . $class_attr . ' aria-hidden="true"></iconify-icon>';
+		}
+
+		return '';
+	}
+
+	/**
+	 * Check whether a string parses as an Iconify icon code.
+	 *
+	 * @param string $value Candidate string.
+	 * @return bool True when the value has the canonical `collection:name`
+	 *              shape AND fits within MAX_ICONIFY_LENGTH.
+	 */
+	public static function is_iconify_format( $value ) {
+		if ( ! is_string( $value ) || $value === '' ) {
+			return false;
+		}
+		if ( strlen( $value ) > self::MAX_ICONIFY_LENGTH ) {
+			return false;
+		}
+		return (bool) preg_match( self::ICONIFY_FORMAT_PATTERN, $value );
+	}
+
+	/**
+	 * Translate a legacy curated ID to its Iconify equivalent.
+	 *
+	 * Returns the legacy ID's mapped Iconify code if known; returns the
+	 * input untouched if it's already an Iconify code; returns an empty
+	 * string for unknown values.
+	 *
+	 * Used by the admin meta-box quick-pick row (which stores Iconify
+	 * codes going forward) and by code paths that want to normalize
+	 * legacy IDs without forcing a write.
+	 *
+	 * @param string $id Legacy curated ID OR Iconify code.
+	 * @return string Iconify code OR empty string.
+	 */
+	public static function legacy_to_iconify( $id ) {
+		if ( ! is_string( $id ) || $id === '' ) {
+			return '';
+		}
+		if ( isset( self::LEGACY_TO_ICONIFY[ $id ] ) ) {
+			return self::LEGACY_TO_ICONIFY[ $id ];
+		}
+		if ( self::is_iconify_format( $id ) ) {
+			return $id;
+		}
+		return '';
+	}
+
+	/**
+	 * Check whether an icon identifier is recognized by ANY supported path.
+	 *
+	 * Returns true for both legacy curated IDs and well-formed Iconify
+	 * codes. Iconify codes are not verified against the Iconify registry
+	 * because (a) that would require a network call on every validate
+	 * (the registry is fetched from api.iconify.design at render time
+	 * with graceful fallback for typos), and (b) Iconify ships missing-
+	 * icon fallback SVGs so a typo renders a placeholder rather than
+	 * crashing the page.
+	 *
+	 * Replaces the original `has()` check at validator + renderer call
+	 * sites; the old `has()` is kept for narrow "is this in the curated
+	 * library" checks.
+	 *
+	 * @param string $id Icon ID.
+	 * @return bool
+	 */
+	public static function is_valid_id( $id ) {
+		if ( ! is_string( $id ) || $id === '' ) {
+			return false;
+		}
+		if ( self::has( $id ) ) {
+			return true;
+		}
+		return self::is_iconify_format( $id );
+	}
+
+	/**
+	 * Return the full legacy → Iconify mapping. Consumed by the admin
+	 * quick-pick row, the connector's `postruntime_list_icons` response
+	 * (so AI consumers know the curated palette in the Iconify dialect),
+	 * and the docs auto-generator.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function get_legacy_iconify_map() {
+		return self::LEGACY_TO_ICONIFY;
 	}
 
 	/**

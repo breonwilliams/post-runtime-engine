@@ -410,7 +410,56 @@ class PRE_Connector_API {
 			// this list will be silently ignored on write — the canonical
 			// shape is enforced by PRE_Validator::validate_grouping_item.
 			'field_name_hints' => self::get_field_name_hints(),
+			// Allowed source modes + per-mode required parameter set. Surfaced
+			// here so AI consumers can discover the meta_match mode added in
+			// data-version 0.3.0 without having to read the validator source.
+			'source_modes'     => self::get_source_modes_descriptor(),
 		) );
+	}
+
+	/**
+	 * Allowed source modes and the parameter shape each mode requires.
+	 *
+	 * Mirrors PRE_Validator::SOURCE_MODES + the per-mode validation rules in
+	 * PRE_Validator::validate_source_value(). Each entry documents the form
+	 * (string vs. object), required + optional params, and a one-line use
+	 * case so AI consumers can choose the right mode without trial and error.
+	 *
+	 * @return array<string,array>
+	 */
+	private static function get_source_modes_descriptor() {
+		return array(
+			'manual'         => array(
+				'form'        => 'string',
+				'value'       => 'manual',
+				'description' => 'Items entered explicitly per post via the admin meta box or set_post_groupings.',
+			),
+			'child_posts'    => array(
+				'form'        => 'string',
+				'value'       => 'child_posts',
+				'description' => 'Auto-populates from posts whose post_parent equals the current post (same CPT). The CPT must have hierarchical = true.',
+			),
+			'taxonomy_match' => array(
+				'form'        => 'object',
+				'shape'       => array(
+					'type'                  => 'taxonomy_match',
+					'taxonomy'              => '<taxonomy slug, required>',
+					'limit'                 => '<int 1-100, optional, defaults to 6>',
+					'exclude_self'          => '<bool, optional, defaults to true>',
+				),
+				'description' => 'Auto-populates from posts in the same CPT that share at least one term with the current post in the named taxonomy. Use for "related X by topic / category / tag" patterns.',
+			),
+			'meta_match'     => array(
+				'form'        => 'object',
+				'shape'       => array(
+					'type'                  => 'meta_match',
+					'meta_key'              => '<post-meta key, required, max 64 chars, may start with single underscore>',
+					'limit'                 => '<int 1-100, optional, defaults to 6>',
+					'exclude_self'          => '<bool, optional, defaults to true>',
+				),
+				'description' => 'Auto-populates from posts in the same CPT whose value for the named meta_key equals the current post\'s value for the same key. Use for "more from this entity" patterns where the relationship is a stored ID rather than a taxonomy term — e.g. _agent_id (real estate), _employer_id (jobs), _business_id (multi-location), _brand_id (products).',
+			),
+		);
 	}
 
 	/**
@@ -437,6 +486,7 @@ class PRE_Connector_API {
 			'postgrid_grid_balance'        => 'When deploying a Promptless postgrid section that pulls from a PRE CPT, balance posts_per_page against the section\'s grid_columns to avoid orphan cards. Default postgrid is 3-column — request 3 or 6 items, not 4 or 5. For 4-column layouts request 4 or 8. Promptless\'s design optimizer does not repair asymmetric counts.',
 			'featured_card_max_one'        => 'featured-card variant has max_items=1 enforced by the validator. featured-card is for ONE prominent item per grouping (a Lead Architect, a Schedule a Tour CTA, a Currently Featured project). For multi-item collections of cards-with-images use card-grid.',
 			'icon_ids_must_be_registered'  => 'CPT default_icon and grouping item icon_id MUST be IDs from the curated 53-icon library — there is no free-text icon support, no Iconify or Font Awesome integration, no SVG passthrough. Before your first call that takes an icon parameter, fetch the catalogue: GET /icons (or postruntime_list_icons via MCP). Examples by category: General (check, star, info, shield), Property (home, bed, bath, building), Business (briefcase, gavel, scale), Medical (stethoscope, pill), People (user, users), Travel (airplane, mountain). Sending an unregistered ID returns 422 pre_invalid_default_icon or pre_unknown_icon — both errors now include the discovery instruction inline.',
+			'choosing_a_source_mode'       => 'Four source modes are available — see source_modes in this preflight for the full descriptor. Quick chooser: (1) Use manual when each post curates its own items (e.g. a Listing\'s Features grouping where the agent picks specific selling points). (2) Use child_posts when the relationship is hierarchical and natural in WordPress (a Course post with Lesson child posts). (3) Use taxonomy_match when the relationship is "shares a category / tag / region" (related Articles in same topic). (4) Use meta_match when the relationship is a stored entity ID — "more from this agent" with meta_key=_agent_id, "other openings from this employer" with _employer_id, "other locations of this business" with _business_id. meta_match short-circuits to empty when the current post has no value for the configured meta_key, so it is safe to enable on a CPT before every post has the meta populated.',
 		);
 	}
 

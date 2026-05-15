@@ -62,9 +62,16 @@ class PRE_Source_Resolver {
 			return array();
 		}
 
-		// Array source: { type, ...params }. Currently only taxonomy_match.
-		if ( is_array( $source ) && ( $source['type'] ?? '' ) === 'taxonomy_match' ) {
-			return $this->resolve_taxonomy_match( $post, $source, $def );
+		// Array source: { type, ...params }. Two object-form modes:
+		// taxonomy_match (terms) and meta_match (post meta).
+		if ( is_array( $source ) ) {
+			$type = $source['type'] ?? '';
+			if ( $type === 'taxonomy_match' ) {
+				return $this->resolve_taxonomy_match( $post, $source, $def );
+			}
+			if ( $type === 'meta_match' ) {
+				return $this->resolve_meta_match( $post, $source, $def );
+			}
 		}
 
 		return array();
@@ -132,6 +139,76 @@ class PRE_Source_Resolver {
 					'taxonomy' => $taxonomy,
 					'field'    => 'term_id',
 					'terms'    => $current_terms,
+				),
+			),
+		);
+
+		if ( $exclude_self ) {
+			$args['exclude'] = array( $post->ID );
+		}
+
+		$matched = get_posts( $args );
+		return array_map( array( $this, 'post_to_item' ), $matched );
+	}
+
+	/**
+	 * Resolve meta_match source. Returns items from posts whose configured
+	 * meta_key value equals the current post's value for the same key.
+	 *
+	 * Mirrors how taxonomy_match works: reads a parameter from the current
+	 * post and finds related posts in the same CPT. Use cases:
+	 *   - "More listings from this agent"  (meta_key: '_agent_id')
+	 *   - "Other openings from this employer"  (meta_key: '_employer_id')
+	 *   - "Other locations of this business"  (meta_key: '_business_id')
+	 *
+	 * If the current post has no value for the meta_key (or the value is
+	 * an empty string), the resolver returns an empty array — same fail-safe
+	 * behavior as taxonomy_match when the post has no terms.
+	 *
+	 * @param WP_Post $post   Current post.
+	 * @param array   $source Source config ({type, meta_key, limit, exclude_self}).
+	 * @param array   $def    Grouping definition.
+	 * @return array<int,array>
+	 */
+	private function resolve_meta_match( WP_Post $post, array $source, array $def ) {
+		$meta_key = isset( $source['meta_key'] ) ? (string) $source['meta_key'] : '';
+		if ( $meta_key === '' ) {
+			return array();
+		}
+
+		$current_value = get_post_meta( $post->ID, $meta_key, true );
+
+		// Empty / unset values short-circuit. Matching against "" would return
+		// every post that ALSO has no value for the key — which is virtually
+		// every post in the CPT. That's never what the user wants.
+		if ( $current_value === '' || $current_value === null || $current_value === false ) {
+			return array();
+		}
+
+		// Arrays / objects are out of scope for the v1 mirror-current-post
+		// shape. Real-world uses (agent_id, employer_id, business_id) are
+		// scalar identifiers. Returning empty here prevents accidentally
+		// serializing an array into the meta_query value.
+		if ( is_array( $current_value ) || is_object( $current_value ) ) {
+			return array();
+		}
+
+		$limit        = isset( $source['limit'] ) ? (int) $source['limit'] : null;
+		$limit        = $limit !== null && $limit > 0 ? min( $limit, self::MAX_LIMIT ) : $this->effective_limit( $def );
+		$exclude_self = ! isset( $source['exclude_self'] ) || $source['exclude_self'];
+
+		$args = array(
+			'post_type'        => $post->post_type,
+			'post_status'      => 'publish',
+			'numberposts'      => $limit,
+			'orderby'          => 'date',
+			'order'            => 'DESC',
+			'suppress_filters' => false,
+			'meta_query'       => array(
+				array(
+					'key'     => $meta_key,
+					'value'   => $current_value,
+					'compare' => '=',
 				),
 			),
 		);

@@ -24,9 +24,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'PRE_VERSION', '0.3.1' );
 
 // Minimum data-storage schema version. Bumped when option / post-meta shapes
-// change in a way that requires migration. Triggers PRE_Upgrader (added in a
-// later phase). For Phase 1 this is informational only.
-define( 'PRE_DATA_VERSION', '0.1.0' );
+// change in a way that requires migration, or when a new capability needs to
+// be granted on existing installs. The plugin compares this constant to the
+// stored `pre_data_version` option on every page load and runs upgrade tasks
+// when they don't match.
+//
+// Version history (data-version, not plugin-version):
+//   0.1.0 — initial Phase 1 schema (CPT registry + grouping definitions)
+//   0.2.0 — capability upgrade: scoped `pre_manage_cpts` granted to
+//           administrator role (replaces raw `manage_options` checks)
+//   0.3.0 — meta_match source mode + auto-registration of meta_match meta
+//           keys via register_post_meta() on init priority 6. No data
+//           migration required — purely additive runtime behavior.
+define( 'PRE_DATA_VERSION', '0.3.0' );
 
 // Plugin paths and URLs.
 define( 'PRE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -153,8 +163,20 @@ final class Post_Runtime_Engine {
 		// already registered.
 		add_action( 'init', array( $this, 'register_post_types' ), 5 );
 
+		// Auto-register post-meta keys referenced by meta_match grouping
+		// definitions. Runs at priority 6 — after CPTs are registered, so
+		// the meta is correctly scoped to the parent CPT. See method
+		// docblock for the full rationale.
+		add_action( 'init', array( $this, 'register_meta_match_keys' ), 6 );
+
 		// Load the text domain for translations.
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
+
+		// Run lightweight data-version upgrade tasks (capability grants,
+		// option migrations) on every admin/CLI request. The check itself is
+		// a single get_option() call — cheap to run, only writes when the
+		// stored version differs from PRE_DATA_VERSION.
+		add_action( 'plugins_loaded', array( $this, 'maybe_run_data_upgrade' ), 5 );
 	}
 
 	/**
@@ -273,6 +295,114 @@ final class Post_Runtime_Engine {
 	}
 
 	/**
+	 * Auto-register post-meta keys referenced by meta_match grouping sources.
+	 *
+	 * The meta_match source mode (added in v0.4.0) reads a configured post-meta
+	 * key on the current post and finds sibling posts whose value matches.
+	 * For the resolver to be useful, those meta keys need to be writable on
+	 * the posts themselves.
+	 *
+	 * On sites that use ACF / MetaBox / Pods, the field plugin already
+	 * registers the meta and exposes it via REST. On sites without one of
+	 * those plugins, the meta key would be unwritable through the REST API
+	 * (WordPress filters out unregistered meta from the `meta` field on
+	 * /wp/v2/{cpt}/{id} POST). That's a real production friction — the user
+	 * defines a meta_match grouping, then has no way to populate the values
+	 * via the connector.
+	 *
+	 * This method closes the gap by walking every grouping definition for
+	 * every registered CPT, finding meta_match groupings, and calling
+	 * register_post_meta() with show_in_rest=true and an edit_post auth
+	 * callback. Idempotent — register_post_meta() with the same args is a
+	 * no-op on subsequent calls.
+	 *
+	 * Runs on init priority 6, after CPTs are registered (priority 5) so the
+	 * post type exists when register_post_meta is called against it.
+	 *
+	 * Sites that prefer to manage these meta keys through their own field
+	 * plugin can disable this auto-registration via the
+	 * `pre_auto_register_meta_match_keys` filter (return false).
+	 */
+	public function register_meta_match_keys() {
+		if ( ! $this->cpts || ! $this->groupings ) {
+			return;
+		}
+
+		/**
+		 * Filter whether PRE auto-registers post-meta keys referenced by
+		 * meta_match grouping sources. Return false to disable when a field
+		 * plugin (ACF, MetaBox, Pods) already manages these keys.
+		 *
+		 * @param bool $enabled Default true.
+		 */
+		if ( ! apply_filters( 'pre_auto_register_meta_match_keys', true ) ) {
+			return;
+		}
+
+		// Track which (cpt, key) pairs we've already registered this request
+		// so a key referenced by multiple groupings isn't re-registered (cheap
+		// but pointless).
+		static $registered = array();
+
+		foreach ( $this->cpts->get_all() as $cpt_slug => $_def ) {
+			if ( ! post_type_exists( $cpt_slug ) ) {
+				continue;
+			}
+
+			$groupings = $this->groupings->get_all( $cpt_slug );
+			if ( ! is_array( $groupings ) ) {
+				continue;
+			}
+
+			foreach ( $groupings as $grouping ) {
+				$source = $grouping['default_source'] ?? null;
+				if ( ! is_array( $source ) || ( $source['type'] ?? '' ) !== 'meta_match' ) {
+					continue;
+				}
+
+				$meta_key = isset( $source['meta_key'] ) ? (string) $source['meta_key'] : '';
+				if ( $meta_key === '' ) {
+					continue;
+				}
+
+				$dedupe_key = $cpt_slug . '|' . $meta_key;
+				if ( isset( $registered[ $dedupe_key ] ) ) {
+					continue;
+				}
+				$registered[ $dedupe_key ] = true;
+
+				register_post_meta(
+					$cpt_slug,
+					$meta_key,
+					array(
+						'single'        => true,
+						'type'          => 'string',
+						'show_in_rest'  => true,
+						'description'   => sprintf(
+							/* translators: %s: meta key */
+							__( 'Auto-registered by Post Runtime Engine for meta_match grouping: %s', 'post-runtime-engine' ),
+							$meta_key
+						),
+						'auth_callback' => static function ( $allowed, $meta_key, $object_id ) {
+							// Standard per-post permission check. Mirrors WP core's
+							// default for registered meta on edit_post-gated CPTs.
+							return current_user_can( 'edit_post', (int) $object_id );
+						},
+					)
+				);
+
+				/**
+				 * Fires after a meta_match meta key is auto-registered.
+				 *
+				 * @param string $cpt_slug CPT the meta is attached to.
+				 * @param string $meta_key The registered meta key.
+				 */
+				do_action( 'pre_meta_match_key_registered', $cpt_slug, $meta_key );
+			}
+		}
+	}
+
+	/**
 	 * Load the plugin text domain for translations.
 	 */
 	public function load_textdomain() {
@@ -294,8 +424,9 @@ final class Post_Runtime_Engine {
 	 * request after activation will rebuild rules naturally.
 	 */
 	public function on_activation() {
-		// Seed the data-version option so PRE_Upgrader (added later) knows
-		// the install's starting point.
+		// Seed the data-version option so the upgrade handler knows the
+		// install's starting point. Existing installs already have the
+		// option set; only fresh installs hit this branch.
 		if ( get_option( 'pre_data_version' ) === false ) {
 			add_option( 'pre_data_version', PRE_DATA_VERSION );
 		}
@@ -305,10 +436,58 @@ final class Post_Runtime_Engine {
 			add_option( 'pre_cpts', array() );
 		}
 
+		// Grant the scoped `pre_manage_cpts` capability to the default roles
+		// (administrator only by default). Idempotent — safe to call on
+		// re-activation. The maybe_run_data_upgrade() handler also calls this
+		// on every version bump so existing installs pick it up without a
+		// manual deactivate/reactivate.
+		PRE_Capabilities::grant_default_capabilities();
+
 		/**
 		 * Fires after the plugin is activated.
 		 */
 		do_action( 'pre_activated' );
+	}
+
+	/**
+	 * Run lightweight data-version upgrade tasks when the stored version
+	 * differs from PRE_DATA_VERSION.
+	 *
+	 * Runs on `plugins_loaded` (priority 5) so option access is available but
+	 * subsystems that depend on the upgrade having completed (admin pages,
+	 * connector routes) initialize afterward.
+	 *
+	 * Each upgrade step is idempotent: callers may execute the same step
+	 * twice without harm. The version comparison short-circuits when the
+	 * stored version already matches, so steady-state cost is one
+	 * get_option() call per request.
+	 */
+	public function maybe_run_data_upgrade() {
+		$stored_version = get_option( 'pre_data_version', '0.0.0' );
+
+		if ( version_compare( $stored_version, PRE_DATA_VERSION, '>=' ) ) {
+			return;
+		}
+
+		// 0.2.0 — Grant the scoped `pre_manage_cpts` capability. Existing
+		// installs that previously relied on `manage_options` need this so
+		// administrators retain access after the constant value changed.
+		// Idempotent; safe to run on every upgrade boot.
+		if ( version_compare( $stored_version, '0.2.0', '<' ) ) {
+			PRE_Capabilities::grant_default_capabilities();
+		}
+
+		// Persist the new version so subsequent requests skip the upgrade
+		// branch entirely.
+		update_option( 'pre_data_version', PRE_DATA_VERSION );
+
+		/**
+		 * Fires after a data-version upgrade completes.
+		 *
+		 * @param string $stored_version Previous stored version.
+		 * @param string $new_version    Version we just upgraded to.
+		 */
+		do_action( 'pre_data_version_upgraded', $stored_version, PRE_DATA_VERSION );
 	}
 
 	/**

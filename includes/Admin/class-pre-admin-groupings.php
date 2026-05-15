@@ -214,6 +214,10 @@ class PRE_Admin_Groupings {
 				$tax = $source['taxonomy'] ?? '?';
 				return 'taxonomy_match: ' . $tax;
 			}
+			if ( $source['type'] === 'meta_match' ) {
+				$key = $source['meta_key'] ?? '?';
+				return 'meta_match: ' . $key;
+			}
 			return $source['type'];
 		}
 		return '—';
@@ -416,13 +420,16 @@ class PRE_Admin_Groupings {
 							<option value="taxonomy_match" <?php selected( $values['source_type'], 'taxonomy_match' ); ?>>
 								<?php esc_html_e( 'Taxonomy match — auto-populated from posts sharing a taxonomy term', 'post-runtime-engine' ); ?>
 							</option>
+							<option value="meta_match" <?php selected( $values['source_type'], 'meta_match' ); ?>>
+								<?php esc_html_e( 'Meta match — auto-populated from posts whose meta field equals this post\'s value', 'post-runtime-engine' ); ?>
+							</option>
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'For "child_posts" the parent CPT must have hierarchical = true. For "taxonomy_match" you must specify a taxonomy slug below.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'For "child_posts" the parent CPT must have hierarchical = true. For "taxonomy_match" specify a taxonomy slug below. For "meta_match" specify the post-meta key that identifies related posts (e.g., _agent_id, _employer_id).', 'post-runtime-engine' ); ?>
 						</p>
 					</td>
 				</tr>
-				<tr class="pre-source-taxonomy-row">
+				<tr class="pre-source-row pre-source-row--taxonomy">
 					<th scope="row">
 						<label for="pre_source_taxonomy"><?php esc_html_e( 'Taxonomy slug', 'post-runtime-engine' ); ?></label>
 					</th>
@@ -438,7 +445,24 @@ class PRE_Admin_Groupings {
 						</p>
 					</td>
 				</tr>
-				<tr class="pre-source-taxonomy-row">
+				<tr class="pre-source-row pre-source-row--meta">
+					<th scope="row">
+						<label for="pre_source_meta_key"><?php esc_html_e( 'Post-meta key', 'post-runtime-engine' ); ?></label>
+					</th>
+					<td>
+						<input
+							type="text"
+							id="pre_source_meta_key"
+							name="source_meta_key"
+							class="regular-text code"
+							value="<?php echo esc_attr( $values['source_meta_key'] ); ?>"
+							maxlength="64">
+						<p class="description">
+							<?php esc_html_e( 'Only used when source mode is "meta_match". The resolver reads the current post\'s value for this meta key and returns other posts in the same CPT whose value matches. Underscore-prefixed keys (private meta) are allowed. Examples: _agent_id, _employer_id, _business_id.', 'post-runtime-engine' ); ?>
+						</p>
+					</td>
+				</tr>
+				<tr class="pre-source-row pre-source-row--auto">
 					<th scope="row">
 						<label for="pre_source_limit"><?php esc_html_e( 'Item limit', 'post-runtime-engine' ); ?></label>
 					</th>
@@ -456,7 +480,7 @@ class PRE_Admin_Groupings {
 						</p>
 					</td>
 				</tr>
-				<tr class="pre-source-taxonomy-row">
+				<tr class="pre-source-row pre-source-row--auto">
 					<th scope="row"><?php esc_html_e( 'Self-reference', 'post-runtime-engine' ); ?></th>
 					<td>
 						<label>
@@ -505,17 +529,39 @@ class PRE_Admin_Groupings {
 		</form>
 
 		<script>
-			// Hide the taxonomy-specific fields unless source_type is taxonomy_match.
+			// Toggle source-specific row visibility based on source_type.
+			//
+			//   .pre-source-row--auto      → shown for taxonomy_match + meta_match
+			//                                (limit, exclude_self — common to both)
+			//   .pre-source-row--taxonomy  → shown for taxonomy_match only
+			//                                (taxonomy slug input)
+			//   .pre-source-row--meta      → shown for meta_match only
+			//                                (meta_key input)
+			//
+			// Manual + child_posts hide all source-config rows.
 			(function () {
 				var select = document.getElementById('pre_source_type');
 				if (!select) return;
-				var rows = document.querySelectorAll('.pre-source-taxonomy-row');
-				function sync() {
-					var show = select.value === 'taxonomy_match';
+
+				var rowsAuto     = document.querySelectorAll('.pre-source-row--auto');
+				var rowsTaxonomy = document.querySelectorAll('.pre-source-row--taxonomy');
+				var rowsMeta     = document.querySelectorAll('.pre-source-row--meta');
+
+				function setVisible(rows, show) {
 					rows.forEach(function (r) {
 						r.style.display = show ? '' : 'none';
 					});
 				}
+
+				function sync() {
+					var v = select.value;
+					var isTaxonomy = (v === 'taxonomy_match');
+					var isMeta     = (v === 'meta_match');
+					setVisible(rowsTaxonomy, isTaxonomy);
+					setVisible(rowsMeta, isMeta);
+					setVisible(rowsAuto, isTaxonomy || isMeta);
+				}
+
 				select.addEventListener('change', sync);
 				sync();
 			})();
@@ -616,6 +662,12 @@ class PRE_Admin_Groupings {
 			'max_items'                => isset( $_POST['max_items'] ) && $_POST['max_items'] !== '' ? max( 1, min( 100, (int) $_POST['max_items'] ) ) : null,
 			'source_type'              => isset( $_POST['source_type'] ) ? sanitize_key( wp_unslash( $_POST['source_type'] ) ) : 'manual',
 			'source_taxonomy'          => isset( $_POST['source_taxonomy'] ) ? sanitize_key( wp_unslash( $_POST['source_taxonomy'] ) ) : '',
+			// Meta keys allow a single leading underscore (private-meta convention)
+			// so we sanitize trim + lowercase manually rather than using
+			// sanitize_key (which would strip the leading underscore).
+			'source_meta_key'          => isset( $_POST['source_meta_key'] )
+				? strtolower( trim( wp_unslash( (string) $_POST['source_meta_key'] ) ) )
+				: '',
 			'source_limit'             => isset( $_POST['source_limit'] ) && $_POST['source_limit'] !== '' ? max( 1, min( 100, (int) $_POST['source_limit'] ) ) : null,
 			'source_exclude_self'      => ! empty( $_POST['source_exclude_self'] ),
 			'heading_required'         => ! empty( $_POST['heading_required'] ),
@@ -650,7 +702,8 @@ class PRE_Admin_Groupings {
 		}
 
 		// Build the default_source value. String form for manual / child_posts;
-		// object form for taxonomy_match. Validator decides if the shape is OK.
+		// object form for taxonomy_match + meta_match. Validator decides if
+		// the shape is OK.
 		switch ( $values['source_type'] ) {
 			case 'manual':
 				$definition['default_source'] = 'manual';
@@ -662,6 +715,17 @@ class PRE_Admin_Groupings {
 				$source = array(
 					'type'         => 'taxonomy_match',
 					'taxonomy'     => $values['source_taxonomy'],
+					'exclude_self' => $values['source_exclude_self'],
+				);
+				if ( $values['source_limit'] !== null ) {
+					$source['limit'] = $values['source_limit'];
+				}
+				$definition['default_source'] = $source;
+				break;
+			case 'meta_match':
+				$source = array(
+					'type'         => 'meta_match',
+					'meta_key'     => $values['source_meta_key'],
 					'exclude_self' => $values['source_exclude_self'],
 				);
 				if ( $values['source_limit'] !== null ) {
@@ -696,6 +760,7 @@ class PRE_Admin_Groupings {
 			'max_items'                => $definition['max_items'] ?? null,
 			'source_type'              => is_array( $source ) ? ( $source['type'] ?? 'manual' ) : (string) $source,
 			'source_taxonomy'          => is_array( $source ) ? ( $source['taxonomy'] ?? '' ) : '',
+			'source_meta_key'          => is_array( $source ) ? ( $source['meta_key'] ?? '' ) : '',
 			'source_limit'             => is_array( $source ) ? ( $source['limit'] ?? null ) : null,
 			'source_exclude_self'      => is_array( $source ) ? ( $source['exclude_self'] ?? true ) : true,
 			'heading_required'         => isset( $definition['heading_required'] ) ? (bool) $definition['heading_required'] : true,

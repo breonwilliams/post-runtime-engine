@@ -587,9 +587,84 @@ $result = $plugin->post_data->set_groupings(
 );
 pre_smoke_assert( 'child_posts source accepted', $result === true );
 
+// 14b. Source modes — meta_match string form is rejected (added in
+// data-version 0.3.0 alongside the meta_match resolver).
+pre_smoke_wp_error(
+	'meta_match as bare string is rejected',
+	$plugin->post_data->set_groupings(
+		$post_id,
+		array(
+			array(
+				'grouping_key' => PRE_SMOKE_GROUPING_KEY,
+				'source'       => 'meta_match',
+			),
+		)
+	),
+	'pre_meta_match_needs_object'
+);
+
+// 14c. Source modes — meta_match object form is accepted with valid meta_key.
+$result = $plugin->post_data->set_groupings(
+	$post_id,
+	array(
+		array(
+			'grouping_key' => PRE_SMOKE_GROUPING_KEY,
+			'source'       => array(
+				'type'         => 'meta_match',
+				'meta_key'     => '_agent_id',
+				'limit'        => 6,
+				'exclude_self' => true,
+			),
+			'items'        => array(),
+		),
+	),
+	'smoke-test'
+);
+pre_smoke_assert( 'meta_match object form accepted', $result === true );
+
+// 14d. Source modes — meta_match object form rejects missing meta_key.
+pre_smoke_wp_error(
+	'meta_match without meta_key is rejected',
+	$plugin->post_data->set_groupings(
+		$post_id,
+		array(
+			array(
+				'grouping_key' => PRE_SMOKE_GROUPING_KEY,
+				'source'       => array( 'type' => 'meta_match' ),
+			),
+		)
+	),
+	'pre_invalid_source_meta_key'
+);
+
 // 15. Capability helpers.
 pre_smoke_assert( 'edit_cap_for() returns a string', is_string( PRE_Capabilities::edit_cap_for( PRE_SMOKE_CPT_SLUG ) ) );
-pre_smoke_assert( 'PRE_Capabilities::MANAGE_CAP is manage_options', PRE_Capabilities::MANAGE_CAP === 'manage_options' );
+pre_smoke_assert( 'PRE_Capabilities::MANAGE_CAP is pre_manage_cpts', PRE_Capabilities::MANAGE_CAP === 'pre_manage_cpts' );
+pre_smoke_assert( 'default_roles() returns array containing administrator', in_array( 'administrator', PRE_Capabilities::default_roles(), true ) );
+pre_smoke_assert( 'required_capability() resolves through filter', is_string( PRE_Capabilities::required_capability() ) && PRE_Capabilities::required_capability() !== '' );
+
+// Verify that the upgrade handler granted the capability to administrators.
+$admin_role = get_role( 'administrator' );
+pre_smoke_assert(
+	'administrator role has pre_manage_cpts after upgrade',
+	$admin_role && $admin_role->has_cap( PRE_Capabilities::MANAGE_CAP )
+);
+
+// 15b. meta_match auto-registration — verify register_meta_match_keys()
+// registered the meta key for the smoke-test grouping.
+$registered_meta = get_registered_meta_keys( 'post', PRE_SMOKE_CPT_SLUG );
+$meta_match_grouping = $plugin->groupings->get( PRE_SMOKE_CPT_SLUG, PRE_SMOKE_GROUPING_KEY );
+if ( is_array( $meta_match_grouping )
+	&& isset( $meta_match_grouping['default_source']['type'] )
+	&& $meta_match_grouping['default_source']['type'] === 'meta_match' ) {
+	$expected_key = $meta_match_grouping['default_source']['meta_key'] ?? '';
+	pre_smoke_assert(
+		'meta_match meta_key auto-registered for CPT',
+		$expected_key !== '' && isset( $registered_meta[ $expected_key ] )
+	);
+} else {
+	pre_smoke_assert( 'meta_match auto-registration test setup', true );
+}
 
 // 16. Validator — link validation.
 $validator = new PRE_Validator();

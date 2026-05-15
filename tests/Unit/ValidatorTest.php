@@ -51,11 +51,11 @@ class ValidatorTest extends UnitTestCase {
         );
     }
 
-    public function test_source_modes_constant_lists_exactly_three_modes() {
+    public function test_source_modes_constant_lists_exactly_four_modes() {
         $this->assertSame(
-            array( 'manual', 'child_posts', 'taxonomy_match' ),
+            array( 'manual', 'child_posts', 'taxonomy_match', 'meta_match' ),
             \PRE_Validator::SOURCE_MODES,
-            'SOURCE_MODES must list exactly the three documented modes.'
+            'SOURCE_MODES must list exactly the four documented modes (manual, child_posts, taxonomy_match, meta_match).'
         );
     }
 
@@ -325,6 +325,108 @@ class ValidatorTest extends UnitTestCase {
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
         $this->assertSame( 'pre_invalid_source_limit', $result->get_error_code() );
+    }
+
+    // -----------------------------------------------------------------
+    // Source value validation — meta_match
+    //
+    // meta_match mirrors taxonomy_match's shape rules: bare-string form
+    // is rejected because the meta_key is required, and the object form
+    // validates the meta_key + optional limit + optional exclude_self.
+    // The meta_key validation tolerates a single leading underscore (the
+    // WordPress private-meta convention) but otherwise enforces the
+    // sanitize_key canonical form.
+    // -----------------------------------------------------------------
+
+    public function test_validate_source_value_rejects_meta_match_as_bare_string() {
+        $result = $this->validator->validate_source_value( 'meta_match' );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame(
+            'pre_meta_match_needs_object',
+            $result->get_error_code(),
+            'Bare-string "meta_match" must fail — the meta_key is required and not defaultable.'
+        );
+    }
+
+    public function test_validate_source_value_accepts_meta_match_object_with_meta_key() {
+        $result = $this->validator->validate_source_value( array(
+            'type'         => 'meta_match',
+            'meta_key'     => '_agent_id',
+            'limit'        => 6,
+            'exclude_self' => true,
+        ) );
+        $this->assertTrue( $result, 'Fully-formed meta_match object must validate cleanly.' );
+    }
+
+    public function test_validate_source_value_accepts_meta_match_with_underscore_prefix() {
+        $result = $this->validator->validate_source_value( array(
+            'type'     => 'meta_match',
+            'meta_key' => '_employer_id',
+        ) );
+        $this->assertTrue( $result, 'A single leading underscore (private-meta convention) must be accepted.' );
+    }
+
+    public function test_validate_source_value_accepts_meta_match_without_underscore() {
+        $result = $this->validator->validate_source_value( array(
+            'type'     => 'meta_match',
+            'meta_key' => 'brand_id',
+        ) );
+        $this->assertTrue( $result, 'Public-meta keys (no underscore prefix) must also be accepted.' );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_object_without_meta_key() {
+        $result = $this->validator->validate_source_value( array(
+            'type' => 'meta_match',
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pre_invalid_source_meta_key', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_with_empty_meta_key() {
+        $result = $this->validator->validate_source_value( array(
+            'type'     => 'meta_match',
+            'meta_key' => '',
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pre_invalid_source_meta_key', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_with_uppercase_meta_key() {
+        $result = $this->validator->validate_source_value( array(
+            'type'     => 'meta_match',
+            'meta_key' => 'AgentId',  // sanitize_key would lowercase + drop chars; we reject silent transforms
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pre_invalid_source_meta_key', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_with_meta_key_too_long() {
+        $result = $this->validator->validate_source_value( array(
+            'type'     => 'meta_match',
+            'meta_key' => str_repeat( 'a', 65 ),  // MAX_META_KEY_LENGTH is 64
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pre_invalid_source_meta_key_length', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_with_invalid_limit() {
+        $result = $this->validator->validate_source_value( array(
+            'type'     => 'meta_match',
+            'meta_key' => '_agent_id',
+            'limit'    => 0,
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pre_invalid_source_limit', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_with_non_bool_exclude_self() {
+        $result = $this->validator->validate_source_value( array(
+            'type'         => 'meta_match',
+            'meta_key'     => '_agent_id',
+            'exclude_self' => 'yes',  // string instead of bool
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pre_invalid_source_exclude_self', $result->get_error_code() );
     }
 
     // -----------------------------------------------------------------

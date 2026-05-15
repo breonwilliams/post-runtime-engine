@@ -2,17 +2,30 @@
 /**
  * Capability mapping for Post Runtime Engine.
  *
- * Helpers for resolving CPT capability requirements at admin permission
- * checkpoints. CPTs registered through this plugin set `map_meta_cap => true`
- * and a `capability_type` (default `post`), which causes WordPress to derive
- * the standard `edit_*`, `publish_*`, `delete_*` capabilities automatically.
+ * Centralizes the plugin's custom capability so callers never hard-code the
+ * string. All site-config checkpoints (CPT registration, grouping definitions,
+ * connector site-config endpoints, plugin admin UI) go through the
+ * MANAGE_CAP constant.
  *
- * In v1.0 this class is a thin set of static helpers — it does NOT add or
- * remove role capabilities at activation/deactivation time. The default
- * `capability_type=post` reuses the existing `edit_posts` / `publish_posts`
- * capabilities, which administrators and editors already have. v1.1 may
- * introduce a per-CPT custom capability set with role-grant logic; until
- * then, capability checks resolve against WP core's built-in role grants.
+ * Capability model:
+ *   - `pre_manage_cpts`: Controls access to CPT registration, grouping
+ *     definition CRUD, plugin admin UI, and the Cowork connector's site-config
+ *     endpoints. Per-post grouping editing falls back to the standard
+ *     CPT-derived capabilities (`edit_posts` / `edit_post`) which administrators
+ *     and editors already have.
+ *
+ * Granted to the `administrator` role by default on install and upgrade.
+ * Admins can delegate to additional roles via the
+ * `pre_default_manage_cpts_roles` filter (fires at activation/upgrade) or by
+ * calling `add_cap()` from a small mu-plugin. The `pre_manage_capability`
+ * filter remains available for runtime overrides (e.g., mapping the check to
+ * `manage_options` on a site that explicitly wants to keep the legacy
+ * behavior).
+ *
+ * Family alignment: mirrors FRE_Capabilities (`fre_manage_forms`) and
+ * FMW_Capabilities (`flowmint_manage_workflows`). Each plugin in the
+ * Promptless ecosystem owns a scoped capability so multi-user sites can
+ * delegate per-plugin access without granting site-wide `manage_options`.
  *
  * @package PostRuntimeEngine
  */
@@ -28,14 +41,97 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PRE_Capabilities {
 
 	/**
-	 * Capability required to manage CPT registrations and grouping
-	 * definitions through the admin UI or the connector.
+	 * Capability required to manage CPT registrations, grouping definitions,
+	 * plugin settings, and connector site-config endpoints.
 	 *
-	 * Site-level configuration (CPT registry, grouping definitions, plugin
-	 * settings) maps to `manage_options` because adding or removing a CPT
-	 * is a site-shaping action, not a content action.
+	 * Use `current_user_can( PRE_Capabilities::MANAGE_CAP )` everywhere a
+	 * check is needed. Do not hard-code the string elsewhere.
+	 *
+	 * Default-granted to `administrator` on activation and on every plugin
+	 * version upgrade. Override the filter `pre_default_manage_cpts_roles` to
+	 * grant additional roles at install time, or `pre_manage_capability` for
+	 * runtime overrides.
+	 *
+	 * @var string
 	 */
-	const MANAGE_CAP = 'manage_options';
+	const MANAGE_CAP = 'pre_manage_cpts';
+
+	/**
+	 * Roles that receive MANAGE_CAP by default on install and upgrade.
+	 *
+	 * Extendable via the `pre_default_manage_cpts_roles` filter so site owners
+	 * can opt additional roles in at activation time rather than granting the
+	 * capability manually after the fact.
+	 *
+	 * @return array Array of role slugs.
+	 */
+	public static function default_roles() {
+		/**
+		 * Filters the roles that receive the MANAGE_CAP capability by default.
+		 *
+		 * Fires during activation and plugin-version upgrades. Does not fire on
+		 * every page load.
+		 *
+		 * @param array $roles Default roles (administrator only by default).
+		 */
+		return apply_filters(
+			'pre_default_manage_cpts_roles',
+			array( 'administrator' )
+		);
+	}
+
+	/**
+	 * Grant the MANAGE_CAP capability to the default roles.
+	 *
+	 * Idempotent: WordPress's `add_cap()` is safe to call repeatedly. Only
+	 * persists to the database when the capability is not already present
+	 * on the role.
+	 *
+	 * Called from:
+	 *   - Plugin activation hook (fresh installs and re-activations)
+	 *   - Plugin version upgrade handler (so existing installs pick up the
+	 *     capability the first time they boot a version that grants it)
+	 */
+	public static function grant_default_capabilities() {
+		foreach ( self::default_roles() as $role_slug ) {
+			$role = get_role( $role_slug );
+
+			if ( null === $role ) {
+				continue;
+			}
+
+			if ( ! $role->has_cap( self::MANAGE_CAP ) ) {
+				$role->add_cap( self::MANAGE_CAP );
+			}
+		}
+	}
+
+	/**
+	 * Remove the MANAGE_CAP capability from every role.
+	 *
+	 * Called only during plugin uninstall. Iterates all roles (not just the
+	 * default-granted ones) because admins may have delegated the capability
+	 * to custom roles; uninstall must clean up all traces.
+	 */
+	public static function revoke_all_capabilities() {
+		$roles = wp_roles();
+
+		if ( ! $roles instanceof WP_Roles ) {
+			return;
+		}
+
+		foreach ( array_keys( $roles->role_objects ) as $role_slug ) {
+			$role = get_role( $role_slug );
+
+			if ( null === $role ) {
+				continue;
+			}
+
+			if ( $role->has_cap( self::MANAGE_CAP ) ) {
+				$role->remove_cap( self::MANAGE_CAP );
+			}
+		}
+	}
 
 	/**
 	 * Resolve the `edit_post` capability for a given CPT slug.
@@ -84,20 +180,40 @@ class PRE_Capabilities {
 
 	/**
 	 * Whether the current user can manage Post Runtime Engine site config
-	 * (CPT registrations, grouping definitions, plugin settings).
+	 * (CPT registrations, grouping definitions, plugin settings, connector
+	 * site-config endpoints).
 	 *
 	 * @return bool
 	 */
 	public static function current_user_can_manage() {
+		return current_user_can( self::required_capability() );
+	}
+
+	/**
+	 * Resolve the runtime capability required to manage the plugin.
+	 *
+	 * Defensively wraps the `pre_manage_capability` filter so call sites get
+	 * a single source of truth. Returns the constant directly when no filter
+	 * is registered.
+	 *
+	 * @return string Capability slug.
+	 */
+	public static function required_capability() {
 		/**
 		 * Filter the capability required to manage Post Runtime Engine
-		 * configuration. Default is `manage_options`. Tighten or loosen
-		 * according to your site's role model.
+		 * configuration. Default is `pre_manage_cpts`. Override to map the
+		 * check to `manage_options` (legacy behavior) or to a custom
+		 * capability your role model already uses.
 		 *
 		 * @param string $cap Capability name.
 		 */
 		$cap = apply_filters( 'pre_manage_capability', self::MANAGE_CAP );
-		return current_user_can( $cap );
+
+		if ( ! is_string( $cap ) || $cap === '' ) {
+			return self::MANAGE_CAP;
+		}
+
+		return $cap;
 	}
 
 	/**

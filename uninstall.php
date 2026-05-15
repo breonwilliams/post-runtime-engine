@@ -50,6 +50,14 @@ delete_option( 'pre_cpts' );
 delete_option( 'pre_settings' );
 delete_option( 'pre_data_version' );
 
+// Revoke the scoped `pre_manage_cpts` capability from every role. Mirrors the
+// FRE / FlowMint pattern: capability lifecycle tracks plugin lifecycle so the
+// site doesn't carry orphan capability grants after uninstall. Manually
+// requires the class file because the plugin's autoloader does not run during
+// uninstall.
+require_once __DIR__ . '/includes/Core/class-pre-capabilities.php';
+PRE_Capabilities::revoke_all_capabilities();
+
 // Remove per-CPT grouping definition options.
 foreach ( array_keys( $cpts ) as $cpt_slug ) {
 	$cpt_slug = sanitize_key( $cpt_slug );

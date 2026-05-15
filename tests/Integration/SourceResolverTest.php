@@ -288,6 +288,196 @@ class SourceResolverTest extends IntegrationTestCase {
     }
 
     // -----------------------------------------------------------------
+    // meta_match source
+    // -----------------------------------------------------------------
+
+    public function test_meta_match_returns_sibling_posts_with_matching_meta_value() {
+        // Tag the parent with an _agent_id, then create two siblings with
+        // the same _agent_id (matches) and one with a different _agent_id
+        // (no match).
+        update_post_meta( $this->parent_id, '_agent_id', 'agent-42' );
+
+        $sibling_match_one = $this->factory->post->create( array(
+            'post_type'   => 'pre_test_listing',
+            'post_title'  => 'Match One',
+            'post_status' => 'publish',
+        ) );
+        $sibling_match_two = $this->factory->post->create( array(
+            'post_type'   => 'pre_test_listing',
+            'post_title'  => 'Match Two',
+            'post_status' => 'publish',
+        ) );
+        $sibling_no_match = $this->factory->post->create( array(
+            'post_type'   => 'pre_test_listing',
+            'post_title'  => 'No Match',
+            'post_status' => 'publish',
+        ) );
+        update_post_meta( $sibling_match_one, '_agent_id', 'agent-42' );
+        update_post_meta( $sibling_match_two, '_agent_id', 'agent-42' );
+        update_post_meta( $sibling_no_match, '_agent_id', 'agent-99' );
+
+        $entry = array(
+            'grouping_key' => 'features',
+            'source'       => array(
+                'type'         => 'meta_match',
+                'meta_key'     => '_agent_id',
+                'exclude_self' => true,
+            ),
+        );
+
+        $items = $this->resolver->resolve( $entry, $this->minimal_def(), get_post( $this->parent_id ) );
+
+        $this->assertCount(
+            2,
+            $items,
+            'meta_match must return only siblings whose meta value matches the parent.'
+        );
+
+        $headings = array_map( function ( $i ) { return $i['heading']; }, $items );
+        $this->assertContains( 'Match One', $headings );
+        $this->assertContains( 'Match Two', $headings );
+        $this->assertNotContains( 'No Match', $headings, 'Posts with a different meta value must not be included.' );
+        $this->assertNotContains(
+            'Parent Listing',
+            $headings,
+            'exclude_self=true (default) must skip the post being rendered.'
+        );
+    }
+
+    public function test_meta_match_includes_self_when_exclude_self_false() {
+        update_post_meta( $this->parent_id, '_agent_id', 'agent-42' );
+
+        $sibling = $this->factory->post->create( array(
+            'post_type'   => 'pre_test_listing',
+            'post_title'  => 'Sibling',
+            'post_status' => 'publish',
+        ) );
+        update_post_meta( $sibling, '_agent_id', 'agent-42' );
+
+        $entry = array(
+            'grouping_key' => 'features',
+            'source'       => array(
+                'type'         => 'meta_match',
+                'meta_key'     => '_agent_id',
+                'exclude_self' => false,
+            ),
+        );
+
+        $items = $this->resolver->resolve( $entry, $this->minimal_def(), get_post( $this->parent_id ) );
+
+        $headings = array_map( function ( $i ) { return $i['heading']; }, $items );
+        $this->assertContains( 'Parent Listing', $headings, 'exclude_self=false must include the parent.' );
+        $this->assertContains( 'Sibling', $headings );
+    }
+
+    public function test_meta_match_returns_empty_when_parent_has_no_meta_value() {
+        // Parent has no _agent_id at all. Resolver must short-circuit to
+        // empty rather than match every post that ALSO has no value.
+        $sibling_unset = $this->factory->post->create( array(
+            'post_type'   => 'pre_test_listing',
+            'post_title'  => 'Sibling Without Meta',
+            'post_status' => 'publish',
+        ) );
+
+        $entry = array(
+            'grouping_key' => 'features',
+            'source'       => array(
+                'type'     => 'meta_match',
+                'meta_key' => '_agent_id',
+            ),
+        );
+
+        $items = $this->resolver->resolve( $entry, $this->minimal_def(), get_post( $this->parent_id ) );
+
+        $this->assertSame(
+            array(),
+            $items,
+            'Empty parent meta value must short-circuit to empty array (would otherwise match every empty-meta post in the CPT).'
+        );
+    }
+
+    public function test_meta_match_returns_empty_when_parent_meta_value_is_empty_string() {
+        update_post_meta( $this->parent_id, '_agent_id', '' );
+
+        $sibling_match = $this->factory->post->create( array(
+            'post_type'   => 'pre_test_listing',
+            'post_title'  => 'Sibling',
+            'post_status' => 'publish',
+        ) );
+        update_post_meta( $sibling_match, '_agent_id', '' );
+
+        $entry = array(
+            'grouping_key' => 'features',
+            'source'       => array(
+                'type'     => 'meta_match',
+                'meta_key' => '_agent_id',
+            ),
+        );
+
+        $items = $this->resolver->resolve( $entry, $this->minimal_def(), get_post( $this->parent_id ) );
+
+        $this->assertSame( array(), $items, 'Empty-string meta value must short-circuit to empty.' );
+    }
+
+    public function test_meta_match_respects_explicit_limit_param() {
+        update_post_meta( $this->parent_id, '_agent_id', 'agent-42' );
+
+        for ( $i = 1; $i <= 5; $i++ ) {
+            $sibling_id = $this->factory->post->create( array(
+                'post_type'   => 'pre_test_listing',
+                'post_title'  => 'Sibling ' . $i,
+                'post_status' => 'publish',
+            ) );
+            update_post_meta( $sibling_id, '_agent_id', 'agent-42' );
+        }
+
+        $entry = array(
+            'grouping_key' => 'features',
+            'source'       => array(
+                'type'         => 'meta_match',
+                'meta_key'     => '_agent_id',
+                'limit'        => 2,
+                'exclude_self' => true,
+            ),
+        );
+
+        $items = $this->resolver->resolve( $entry, $this->minimal_def(), get_post( $this->parent_id ) );
+
+        $this->assertCount( 2, $items, 'Explicit limit must cap resolved items.' );
+    }
+
+    public function test_meta_match_only_matches_same_post_type() {
+        // Sanity check: meta_match constrains to the parent's post_type.
+        // A different CPT with the same meta value must NOT be returned.
+        update_post_meta( $this->parent_id, '_agent_id', 'agent-42' );
+
+        // Create a post in a different CPT with the same meta value.
+        $foreign = $this->factory->post->create( array(
+            'post_type'   => 'post', // different post type
+            'post_title'  => 'Foreign Match',
+            'post_status' => 'publish',
+        ) );
+        update_post_meta( $foreign, '_agent_id', 'agent-42' );
+
+        $entry = array(
+            'grouping_key' => 'features',
+            'source'       => array(
+                'type'     => 'meta_match',
+                'meta_key' => '_agent_id',
+            ),
+        );
+
+        $items = $this->resolver->resolve( $entry, $this->minimal_def(), get_post( $this->parent_id ) );
+
+        $headings = array_map( function ( $i ) { return $i['heading']; }, $items );
+        $this->assertNotContains(
+            'Foreign Match',
+            $headings,
+            'meta_match must scope to the parent\'s post_type — cross-CPT matches are out of scope for v1.'
+        );
+    }
+
+    // -----------------------------------------------------------------
     // Fallthrough behavior
     // -----------------------------------------------------------------
 

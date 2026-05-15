@@ -193,7 +193,7 @@ const TOOLS = [
   {
     name: "postruntime_define_grouping",
     description:
-      "Define a grouping (named cluster of items with shared layout) for a CPT. featured-card variant REQUIRES max_items=1 (the validator enforces this). Source modes: 'manual' (items stored explicitly per post), 'child_posts' (auto-populated from hierarchical children), or {type:'taxonomy_match',taxonomy:'<slug>'} (auto-populated from posts sharing a taxonomy term). For taxonomy_match, the taxonomy must already exist on the site.",
+      "Define a grouping (named cluster of items with shared layout) for a CPT. featured-card variant REQUIRES max_items=1 (the validator enforces this). Source modes: 'manual' (items stored explicitly per post), 'child_posts' (auto-populated from hierarchical children), {type:'taxonomy_match',taxonomy:'<slug>'} (auto-populated from posts sharing a taxonomy term — the taxonomy must already exist), or {type:'meta_match',meta_key:'<key>'} (auto-populated from posts in the same CPT whose value for the post-meta key matches the current post's value — typical use cases: 'more from this agent' / 'other openings from this employer' / 'other locations of this business'; the meta_key may start with a single underscore for WordPress private meta).",
     inputSchema: {
       type: "object",
       properties: {
@@ -217,8 +217,24 @@ const TOOLS = [
               properties: {
                 type: { type: "string", enum: ["taxonomy_match"] },
                 taxonomy: { type: "string" },
+                limit: { type: "integer", minimum: 1, maximum: 100 },
+                exclude_self: { type: "boolean" },
               },
               required: ["type", "taxonomy"],
+            },
+            {
+              type: "object",
+              properties: {
+                type: { type: "string", enum: ["meta_match"] },
+                meta_key: {
+                  type: "string",
+                  maxLength: 64,
+                  description: "Post-meta key whose value identifies related posts. Lowercase alphanumeric + underscores; may start with a single underscore for private meta.",
+                },
+                limit: { type: "integer", minimum: 1, maximum: 100 },
+                exclude_self: { type: "boolean" },
+              },
+              required: ["type", "meta_key"],
             },
           ],
         },
@@ -482,6 +498,52 @@ function makeRequest(method, path, body = null) {
 }
 
 // ---------------------------------------------------------------------------
+// MCP framework workaround: JSON pre-parse for object-typed params.
+//
+// Several tool params declare a JSON `oneOf` schema that mixes string and
+// object types (e.g. `default_source` — either "manual" / "child_posts" or
+// {type:"taxonomy_match",...} / {type:"meta_match",...}). The MCP framework
+// surfaces these unions as the looser "any" type (`{}`) when forwarding the
+// tool definition to the model, and string values arrive verbatim — even
+// when the model passes JSON that's intended to be an object.
+//
+// Without this normalization, calling postruntime_define_grouping with
+// `default_source` set to {"type":"meta_match","meta_key":"_agent_id"}
+// arrives at PRE's REST validator as the literal string
+// '{"type":"meta_match","meta_key":"_agent_id"}', which is rejected with
+// pre_invalid_source_string. Pre-parsing here makes the MCP path symmetric
+// with the direct REST path so AI agents can use both interchangeably.
+//
+// Safe to call on any value: returns the original value when not a JSON
+// string, returns the parsed object when it is, and never throws.
+function maybeParseJsonObjectString(value) {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch (e) {
+    // Not valid JSON — leave the validator to reject it with a useful
+    // error message rather than swallowing the data here.
+    return value;
+  }
+}
+
+// Walk a groupings array (per-post entries) and pre-parse the `source` field
+// on each entry — same MCP framework gap as above, but applied to nested
+// items. Items array values stay as-is; only `source` is touched.
+function normalizeGroupingsArray(groupings) {
+  if (!Array.isArray(groupings)) return groupings;
+  return groupings.map((entry) => {
+    if (!entry || typeof entry !== "object") return entry;
+    if ("source" in entry) {
+      return { ...entry, source: maybeParseJsonObjectString(entry.source) };
+    }
+    return entry;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Tool → REST route mapping.
 // ---------------------------------------------------------------------------
 
@@ -588,6 +650,8 @@ async function handleTool(name, args) {
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
+      // MCP framework workaround — see maybeParseJsonObjectString header.
+      payload.default_source = maybeParseJsonObjectString(payload.default_source);
       return await makeRequest(
         "POST",
         `/cpts/${encodeURIComponent(args.slug)}/groupings`,
@@ -617,6 +681,10 @@ async function handleTool(name, args) {
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
+      // MCP framework workaround — see maybeParseJsonObjectString header.
+      if ("default_source" in payload) {
+        payload.default_source = maybeParseJsonObjectString(payload.default_source);
+      }
       return await makeRequest(
         "PUT",
         `/cpts/${encodeURIComponent(args.slug)}/groupings/${encodeURIComponent(args.key)}`,
@@ -642,7 +710,8 @@ async function handleTool(name, args) {
       return await makeRequest(
         "PUT",
         `/posts/${encodeURIComponent(args.id)}/groupings`,
-        { groupings: args.groupings }
+        // Pre-parse any per-entry `source` field that arrived as a JSON string.
+        { groupings: normalizeGroupingsArray(args.groupings) }
       );
 
     case "postruntime_create_post": {
@@ -658,6 +727,10 @@ async function handleTool(name, args) {
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
+      // MCP framework workaround — see normalizeGroupingsArray header.
+      if ("groupings" in payload) {
+        payload.groupings = normalizeGroupingsArray(payload.groupings);
+      }
       return await makeRequest("POST", "/posts", payload);
     }
 
@@ -673,6 +746,10 @@ async function handleTool(name, args) {
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
+      // MCP framework workaround — see normalizeGroupingsArray header.
+      if ("groupings" in payload) {
+        payload.groupings = normalizeGroupingsArray(payload.groupings);
+      }
       return await makeRequest(
         "PUT",
         `/posts/${encodeURIComponent(args.id)}`,

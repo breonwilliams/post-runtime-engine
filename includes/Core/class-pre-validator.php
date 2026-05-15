@@ -45,12 +45,35 @@ class PRE_Validator {
 
 	/**
 	 * Allowed source modes for grouping items.
+	 *
+	 * Modes:
+	 *   - manual: items entered per-post via admin meta box or connector
+	 *   - child_posts: posts whose post_parent equals the current post
+	 *   - taxonomy_match: posts sharing one of the current post's terms
+	 *   - meta_match: posts whose configured post-meta value equals the
+	 *     current post's value for the same meta key (e.g., "more from
+	 *     this agent" when meta_key='_agent_id')
+	 *
+	 * `taxonomy_match` and `meta_match` MUST be expressed as objects
+	 * (string forms are rejected by validate_source_value()) because they
+	 * require a parameter — the taxonomy slug or the meta key.
 	 */
 	const SOURCE_MODES = array(
 		'manual',
 		'child_posts',
 		'taxonomy_match',
+		'meta_match',
 	);
+
+	/**
+	 * Maximum length of a post-meta key referenced by a meta_match source.
+	 *
+	 * WordPress's wp_postmeta.meta_key is varchar(255) but practical keys are
+	 * far shorter. Capping at 64 catches typos and discourages encoding data
+	 * into the key name itself, while still admitting common patterns like
+	 * `_underscored_private_meta_keys_with_descriptive_names`.
+	 */
+	const MAX_META_KEY_LENGTH = 64;
 
 	/**
 	 * Reserved CPT slugs that this plugin must never register over. WordPress
@@ -859,6 +882,15 @@ class PRE_Validator {
 				);
 			}
 
+			// meta_match also cannot be expressed as a bare string — it needs
+			// a meta key. Force the object form.
+			if ( $source === 'meta_match' ) {
+				return new WP_Error(
+					'pre_meta_match_needs_object',
+					__( 'meta_match source must be expressed as an object with a meta_key.', 'post-runtime-engine' )
+				);
+			}
+
 			return true;
 		}
 
@@ -893,6 +925,53 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_invalid_source_exclude_self',
 						__( 'taxonomy_match source exclude_self must be true or false.', 'post-runtime-engine' )
+					);
+				}
+			}
+
+			if ( $source['type'] === 'meta_match' ) {
+				// meta_key required: must be a string, in canonical sanitize_key
+				// form, and within the practical length cap. Strict equality with
+				// sanitize_key() rejects silent transformation (mirrors the
+				// taxonomy slug check and the ReusableElementsService key check).
+				if ( empty( $source['meta_key'] ) || ! is_string( $source['meta_key'] ) ) {
+					return new WP_Error(
+						'pre_invalid_source_meta_key',
+						__( 'meta_match source requires a meta_key (non-empty string).', 'post-runtime-engine' )
+					);
+				}
+
+				$meta_key_raw = $source['meta_key'];
+				// Allow a single leading underscore (the WordPress convention
+				// for "private" meta) but otherwise enforce sanitize_key form.
+				$meta_key_normalized = preg_replace( '/^_+/', '', $meta_key_raw );
+				if ( $meta_key_normalized === '' || sanitize_key( $meta_key_normalized ) !== $meta_key_normalized ) {
+					return new WP_Error(
+						'pre_invalid_source_meta_key',
+						__( 'meta_match meta_key must be a valid post-meta key (lowercase alphanumeric + underscores, optionally prefixed with _).', 'post-runtime-engine' )
+					);
+				}
+
+				if ( strlen( $meta_key_raw ) > self::MAX_META_KEY_LENGTH ) {
+					return new WP_Error(
+						'pre_invalid_source_meta_key_length',
+						/* translators: %d: max allowed meta key length */
+						sprintf( __( 'meta_match meta_key must be %d characters or fewer.', 'post-runtime-engine' ), self::MAX_META_KEY_LENGTH )
+					);
+				}
+
+				if ( isset( $source['limit'] ) && ( ! is_int( $source['limit'] ) || $source['limit'] < 1 || $source['limit'] > self::MAX_ITEMS_PER_GROUPING ) ) {
+					return new WP_Error(
+						'pre_invalid_source_limit',
+						/* translators: %d: max allowed limit */
+						sprintf( __( 'meta_match source limit must be between 1 and %d.', 'post-runtime-engine' ), self::MAX_ITEMS_PER_GROUPING )
+					);
+				}
+
+				if ( isset( $source['exclude_self'] ) && ! is_bool( $source['exclude_self'] ) ) {
+					return new WP_Error(
+						'pre_invalid_source_exclude_self',
+						__( 'meta_match source exclude_self must be true or false.', 'post-runtime-engine' )
 					);
 				}
 			}

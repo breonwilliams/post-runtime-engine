@@ -338,11 +338,36 @@ Grouping shape (matches `PRE_Validator::validate_grouping`):
 }
 ```
 
-Source can be a string (`"manual"` or `"child_posts"`) or an object form for taxonomy matching:
+Source can be a string (`"manual"` or `"child_posts"`) or an object form for the auto-populating modes:
 
 ```json
-"default_source": { "type": "taxonomy_match", "taxonomy": "practice_area" }
+// Match by shared taxonomy term — "related Articles in same topic"
+"default_source": {
+  "type": "taxonomy_match",
+  "taxonomy": "practice_area",
+  "limit": 6,             // optional, defaults to 6, max 100
+  "exclude_self": true    // optional, defaults to true
+}
+
+// Match by shared post-meta value — "more from this agent / employer / business"
+"default_source": {
+  "type": "meta_match",
+  "meta_key": "_agent_id", // required; max 64 chars; may start with _ for private meta
+  "limit": 6,              // optional
+  "exclude_self": true     // optional
+}
 ```
+
+**Choosing between modes** (also surfaced in `preflight.critical_rules.choosing_a_source_mode`):
+
+- `manual` — items curated per post (e.g. a Listing's hand-picked Features)
+- `child_posts` — natural WP hierarchy (a Course post with Lesson child posts)
+- `taxonomy_match` — relationship is "shares a category / tag / term"
+- `meta_match` — relationship is a stored entity ID (the resolver reads the current post's value for the configured `meta_key` and finds other posts in the same CPT with the same value)
+
+`meta_match` short-circuits to an empty array when the current post has no value for the configured `meta_key`, so it is safe to enable on a CPT before every post has the meta populated. It scopes to the parent's post type — cross-CPT matching is out of scope for v1.
+
+**Auto-registration of meta keys (v0.4.0+):** When a grouping is defined with a `meta_match` source, PRE auto-calls `register_post_meta()` on the parent CPT for the configured `meta_key` with `show_in_rest: true` and an `edit_post` auth callback. This makes the meta key writable through the standard WP REST API (`POST /wp/v2/{cpt}/{id}` with `meta: {your_key: value}`) on sites that don't have a field plugin (ACF, MetaBox, Pods) installed. Sites that do use a field plugin can opt out via the `pre_auto_register_meta_match_keys` filter. Underscore-prefixed keys are accepted (the standard WordPress private-meta convention).
 
 `max_items: 0` means no cap. `featured-card` variant requires `max_items: 1` (validator enforces).
 
@@ -367,10 +392,15 @@ Source can be a string (`"manual"` or `"child_posts"`) or an object form for tax
 - `pre_duplicate_grouping_key`
 - `pre_invalid_variant` — not in {compact-grid, card-grid, featured-card, horizontal-row}
 - `pre_invalid_position` — not in {above_main, below_main, sidebar}
-- `pre_invalid_source` — source not manual/child_posts/taxonomy_match
+- `pre_invalid_source` — source not one of {manual, child_posts, taxonomy_match, meta_match}
 - `pre_featured_card_max_items` — featured-card requires max_items: 1
-- `pre_taxonomy_match_needs_object`
+- `pre_taxonomy_match_needs_object` — taxonomy_match given as bare string
 - `pre_invalid_source_taxonomy` — taxonomy doesn't exist or is missing
+- `pre_meta_match_needs_object` — meta_match given as bare string
+- `pre_invalid_source_meta_key` — meta_key missing or fails canonical-form check
+- `pre_invalid_source_meta_key_length` — meta_key longer than 64 characters
+- `pre_invalid_source_limit` — limit out of [1, 100]
+- `pre_invalid_source_exclude_self` — exclude_self not a boolean
 
 #### Get / Update / Delete a grouping
 
@@ -708,10 +738,15 @@ From `PRE_Validator`:
 | `pre_duplicate_grouping_key` | Key already defined for this CPT | Pick a different key |
 | `pre_invalid_variant` | Variant not in {compact-grid, card-grid, featured-card, horizontal-row} | Use `postruntime_list_variants` to verify |
 | `pre_invalid_position` | Position not in {above_main, below_main, sidebar} | Use `postruntime_list_positions` |
-| `pre_invalid_source` | Source not manual/child_posts/taxonomy_match | Pick a valid source |
+| `pre_invalid_source` | Source not in {manual, child_posts, taxonomy_match, meta_match} | Pick a valid source |
 | `pre_featured_card_max_items` | featured-card variant requires max_items: 1 | Set max_items to 1 |
 | `pre_taxonomy_match_needs_object` | taxonomy_match given as bare string | Use object form: `{type, taxonomy}` |
 | `pre_invalid_source_taxonomy` | Referenced taxonomy doesn't exist | Register the taxonomy first |
+| `pre_meta_match_needs_object` | meta_match given as bare string | Use object form: `{type, meta_key}` |
+| `pre_invalid_source_meta_key` | meta_key missing, empty, or fails canonical-form check | Use lowercase alphanumeric + underscores; one leading underscore allowed |
+| `pre_invalid_source_meta_key_length` | meta_key longer than 64 chars | Shorten the key — 64 char cap |
+| `pre_invalid_source_limit` | limit out of [1, 100] | Use an integer between 1 and 100 |
+| `pre_invalid_source_exclude_self` | exclude_self not a boolean | Use true or false |
 | `pre_invalid_item` | Item not an array | Pass an array |
 | `pre_image_icon_conflict` | Both image_id and icon_id set | Pick one |
 | `pre_invalid_image_id` | image_id not positive int | Fix |

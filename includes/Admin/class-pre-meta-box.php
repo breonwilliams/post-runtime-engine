@@ -297,6 +297,9 @@ class PRE_Meta_Box {
 						} elseif ( is_array( $source ) && ( $source['type'] ?? '' ) === 'taxonomy_match' ) {
 							/* translators: %s: taxonomy slug */
 							printf( esc_html__( 'This grouping is auto-populated from posts sharing the "%s" taxonomy. Items will be resolved at render time.', 'post-runtime-engine' ), esc_html( $source['taxonomy'] ?? '?' ) );
+						} elseif ( is_array( $source ) && ( $source['type'] ?? '' ) === 'meta_match' ) {
+							/* translators: %s: post-meta key */
+							printf( esc_html__( 'This grouping is auto-populated from posts whose "%s" post-meta value matches this post. Items will be resolved at render time.', 'post-runtime-engine' ), esc_html( $source['meta_key'] ?? '?' ) );
 						} else {
 							esc_html_e( 'This grouping uses an auto source. Items will be resolved at render time.', 'post-runtime-engine' );
 						}

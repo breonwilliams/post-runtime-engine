@@ -626,11 +626,40 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
  * (3:1 for non-text UI). Without this routing, icons disappear into the
  * background when users pick a brand-friendly low-contrast primary.
  */
+/*
+ * Icon sizing uses a single source-of-truth custom property,
+ * `--pre-icon-size`, so the two icon render paths stay visually
+ * identical:
+ *
+ *   1. Legacy curated icons → <span class="pre-grouping__icon"><svg>…</svg></span>
+ *      The inner <svg> fills the span via .pre-grouping__icon svg
+ *      { width: 100%; height: 100% }. The span itself is
+ *      `--pre-icon-size` square.
+ *
+ *   2. Iconify codes → <iconify-icon class="pre-grouping__icon" …></iconify-icon>
+ *      The web component's shadow-DOM <svg> renders at 1em (the host
+ *      element's font-size), NOT at the host's CSS width/height.
+ *      Without `font-size` set on the host, an iconify-icon styled
+ *      to `width: 2rem; height: 2rem;` STILL paints its inner SVG at
+ *      1em = 16px (default font-size), producing a visibly smaller
+ *      icon than the legacy path. Discovered 2026-05-16 when
+ *      `fluent:chat-20-regular` rendered 16×16 inside a 32×32 wrapper
+ *      in the demo's first card-grid item.
+ *
+ *   Setting `font-size: var(--pre-icon-size)` makes the Iconify SVG
+ *   render at the same size as the wrapper, matching the legacy
+ *   path. Per-variant overrides set `--pre-icon-size` once and
+ *   width/height/font-size all pick it up — no duplicate size
+ *   declarations to drift apart when a new variant is added.
+ */
 .pre-grouping__icon {
+	--pre-icon-size: 1.5rem;
 	display: inline-flex;
 	color: var(--pre-color-icon);
-	width: 1.5rem;
-	height: 1.5rem;
+	width: var(--pre-icon-size);
+	height: var(--pre-icon-size);
+	font-size: var(--pre-icon-size);
+	line-height: 1;
 }
 
 /* Surface-context override: card-grid and featured-card items have their
@@ -724,8 +753,7 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
    supporting text — the previous margin-bottom was double-spacing. */
 
 .pre-grouping--card-grid .pre-grouping__media--icon .pre-grouping__icon {
-	width: 2rem;
-	height: 2rem;
+	--pre-icon-size: 2rem;
 }
 
 .pre-grouping--card-grid .pre-grouping__image {
@@ -809,8 +837,7 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 }
 
 .pre-grouping--featured-card .pre-grouping__media--icon .pre-grouping__icon {
-	width: 2.25rem;
-	height: 2.25rem;
+	--pre-icon-size: 2.25rem;
 }
 
 /* Content wrapper: carries the card padding now that the item itself has
@@ -854,8 +881,7 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 }
 
 .pre-grouping--horizontal-row .pre-grouping__media--icon .pre-grouping__icon {
-	width: 1.125rem;
-	height: 1.125rem;
+	--pre-icon-size: 1.125rem;
 }
 
 /* Horizontal-row is icon-only by design (same rationale as compact-grid
@@ -904,8 +930,7 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 }
 
 .pre-body__sidebar .pre-grouping--card-grid .pre-grouping__media--icon .pre-grouping__icon {
-	width: 1.5rem;
-	height: 1.5rem;
+	--pre-icon-size: 1.5rem;
 }
 
 .pre-body__sidebar .pre-grouping--card-grid .pre-grouping__image {
@@ -939,8 +964,7 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 }
 
 .pre-body__sidebar .pre-grouping--featured-card .pre-grouping__media--icon .pre-grouping__icon {
-	width: 1.75rem;
-	height: 1.75rem;
+	--pre-icon-size: 1.75rem;
 }
 
 .pre-body__sidebar .pre-grouping--featured-card .pre-grouping__content {

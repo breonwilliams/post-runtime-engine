@@ -402,7 +402,7 @@ class PRE_Connector_API {
 			// Authoring rulebook — distilled from past authoring mistakes.
 			// AI agents and human integrators should read these before the
 			// first content-creation call. The connector itself enforces
-			// many of these via validation, but several ('post_content_is_html',
+			// many of these via validation, but several ('post_content_is_gutenberg_blocks',
 			// 'cross_cpt_item_icons', 'postgrid_grid_balance') describe AI-side
 			// patterns that the connector cannot detect at write time.
 			'critical_rules'   => self::get_critical_rules(),
@@ -478,7 +478,7 @@ class PRE_Connector_API {
 	 */
 	private static function get_critical_rules() {
 		return array(
-			'post_content_is_html'         => 'post_content is plain HTML for the WP editor area, with <p> tags for paragraphs. Do NOT wrap content in <![CDATA[...]]> — that XML idiom belongs to SOAP and WordPress importer XML; in JSON-typed connector parameters it is stored verbatim and leaks into the rendered body. The connector strips a leading <![CDATA[ and trailing ]]> from incoming post_content as a defensive net and adds a "post_content_cdata_stripped" warning when it fires — but treat that as a safety net, not a feature.',
+			'post_content_is_gutenberg_blocks' => 'post_content should be sent as Gutenberg block-format markup so the WP editor opens with discrete editable blocks instead of a single Classic / Freeform wrapper. Each block is wrapped in HTML comment delimiters: <!-- wp:heading --><h2 class="wp-block-heading">Title</h2><!-- /wp:heading --> for headings, <!-- wp:paragraph --><p>Body text.</p><!-- /wp:paragraph --> for paragraphs, <!-- wp:list --><ul class="wp-block-list"><li>...</li></ul><!-- /wp:list --> for lists (add {"ordered":true} for ordered lists: <!-- wp:list {"ordered":true} -->), <!-- wp:quote --><blockquote class="wp-block-quote">...</blockquote><!-- /wp:quote --> for quotes, <!-- wp:separator --><hr class="wp-block-separator has-alpha-channel-opacity"/><!-- /wp:separator --> for horizontal rules. Heading levels other than h2 carry a level attribute: <!-- wp:heading {"level":3} --><h3 class="wp-block-heading">…</h3><!-- /wp:heading -->. The connector ships a defense-in-depth converter that wraps raw HTML in block delimiters automatically and emits a "post_content_block_conversion_applied" warning when it fires — treat that as a safety net, not a feature, because the converter has to guess block-level attributes (heading levels, list types) that you control precisely when you send blocks directly. Do NOT wrap content in <![CDATA[...]]> — that XML idiom belongs to SOAP and importer XML; in JSON-typed connector parameters it is stored verbatim and leaks into the rendered body. The connector also strips a leading <![CDATA[ and trailing ]]> as a defensive net and adds a "post_content_cdata_stripped" warning when it fires.',
 			'groupings_creation_pattern'   => 'Two ways to populate groupings on a post: (1) pass `groupings` inline with create_post for atomic creation in a single call; (2) call set_post_groupings after a bare create_post. Both work. set_post_groupings fully replaces all groupings — to update one grouping without touching others, use the read-modify-write pattern (get_post_groupings → modify → set_post_groupings). update_post also accepts a groupings field for atomic edits.',
 			'cross_cpt_item_icons'         => 'When a grouping item links to another CPT via link_post_id, set per-item icon_id explicitly to reflect what the item IS (e.g. icon_id:"user" on a Lead Architect featured-card item that links to an architect post). The renderer\'s default_icon fallback is link-aware: when link_post_id is set, it tries the LINKED post\'s CPT default_icon first, then falls back to the host post\'s default_icon. Setting icon_id explicitly bypasses both fallbacks.',
 			'compact_grid_strips_image'    => 'compact-grid and horizontal-row are icon-only variants by design. Any image_id on an item in these variants is dropped at render time — set icon_id on each item, or rely on the linked-CPT / host-CPT default_icon fallback chain. card-grid and featured-card variants accept either icon_id OR image_id (mutually exclusive; validator rejects both being set on the same item).',
@@ -964,10 +964,15 @@ class PRE_Connector_API {
 		// JSON-typed connector params the wrapper is meaningless and would
 		// be stored verbatim, leaking <![CDATA[ at the top of the rendered
 		// body. We strip it here and surface a warning so authors know.
-		// See critical_rules.post_content_is_html for the rule itself.
+		// Then run the Gutenberg block conversion: if the content is raw
+		// HTML (no `<!-- wp: -->` delimiters), wrap top-level elements in
+		// the appropriate block comments so the editor opens with proper
+		// individual blocks instead of a single Classic/Freeform wrapper.
+		// See critical_rules.post_content_is_gutenberg_blocks for the contract.
 		$content_warnings = array();
 		$raw_content      = isset( $body['post_content'] ) ? (string) $body['post_content'] : '';
 		$cleaned_content  = self::strip_cdata_envelope( $raw_content, $content_warnings );
+		$cleaned_content  = self::ensure_gutenberg_blocks( $cleaned_content, $content_warnings );
 
 		$insert_args = array(
 			'post_type'    => $post_type,
@@ -1065,9 +1070,13 @@ class PRE_Connector_API {
 		}
 
 		if ( array_key_exists( 'post_content', $body ) ) {
-			// Same defense-in-depth as create_post: strip a CDATA wrapper
-			// before storage and surface a warning when it fires.
+			// Same defense-in-depth as create_post: strip a CDATA wrapper,
+			// then convert raw HTML into Gutenberg block format so the
+			// editor opens with discrete blocks instead of a single Classic
+			// / Freeform wrapper. Both helpers emit warnings when they
+			// fire so authors can audit the AI's output shape.
 			$cleaned = self::strip_cdata_envelope( (string) $body['post_content'], $warnings );
+			$cleaned = self::ensure_gutenberg_blocks( $cleaned, $warnings );
 			$update_args['post_content'] = wp_kses_post( $cleaned );
 		}
 
@@ -1268,7 +1277,7 @@ class PRE_Connector_API {
 			// Closer must be at the very end, not somewhere in the middle.
 			if ( $end !== false && $end === strlen( $trimmed ) - 3 ) {
 				$inner       = substr( $trimmed, 9, $end - 9 );
-				$warnings[]  = 'post_content_cdata_stripped: a <![CDATA[...]]> wrapper was removed from post_content. JSON-typed connector params do not need XML CDATA escaping. See critical_rules.post_content_is_html.';
+				$warnings[]  = 'post_content_cdata_stripped: a <![CDATA[...]]> wrapper was removed from post_content. JSON-typed connector params do not need XML CDATA escaping. See critical_rules.post_content_is_gutenberg_blocks.';
 				return $inner;
 			}
 			// Opener present but no clean closer — strip the opener anyway
@@ -1278,6 +1287,235 @@ class PRE_Connector_API {
 			return ltrim( substr( $trimmed, 9 ) );
 		}
 		return $content;
+	}
+
+	/**
+	 * Convert raw HTML post_content into Gutenberg block-format markup when
+	 * the incoming content has no block delimiters. Defense-in-depth pattern
+	 * paired with the critical_rules.post_content_is_gutenberg_blocks rule
+	 * (which asks AI agents to send block format directly).
+	 *
+	 * Without this, raw HTML like `<h2>Title</h2><p>Body</p>` is stored
+	 * verbatim, and the Gutenberg editor treats the whole post as a single
+	 * Classic (Freeform) block — the "Convert to blocks" toolbar appears at
+	 * the top of the editor and the content isn't editable as discrete
+	 * blocks until the user manually clicks that button. With this converter,
+	 * top-level recognized elements are wrapped in the appropriate Gutenberg
+	 * block comment so the editor opens with proper individual blocks from
+	 * the start.
+	 *
+	 * Idempotent: if the content already contains `<!-- wp:` delimiters
+	 * anywhere, we assume it's already in block format and return as-is.
+	 * The caller (AI agent that sends explicit blocks) bypasses the
+	 * conversion entirely and pays no parsing cost.
+	 *
+	 * Conservative scope: only handles top-level elements in the recognized
+	 * set (h1-h6, p, ul, ol, blockquote, pre, hr, figure). Anything else
+	 * (nested divs, custom HTML, scripts) is wrapped in a single
+	 * `core/html` block — matches what Gutenberg's own "Convert to blocks"
+	 * does for unrecognized markup. Inline phrasing inside recognized
+	 * elements (a, em, strong, code, etc.) is preserved verbatim — those
+	 * are rich-text content within the block, not block-level structure.
+	 *
+	 * DOMDocument is used because regex over HTML is famously fragile; it
+	 * handles whitespace, attributes, self-closing tags, and HTML entities
+	 * correctly. LIBXML_HTML_NOIMPLIED + LIBXML_HTML_NODEFDTD prevent
+	 * DOMDocument from wrapping the fragment in `<html><body>` shells
+	 * that would otherwise leak into the serialized output.
+	 *
+	 * @param string $content    Raw post_content from the request body.
+	 * @param array  &$warnings  Warning bucket; appended to when conversion fires.
+	 * @return string Block-format content (or original content if no conversion needed).
+	 */
+	private static function ensure_gutenberg_blocks( $content, array &$warnings ) {
+		// Short-circuit empty content — nothing to convert.
+		if ( ! is_string( $content ) || trim( $content ) === '' ) {
+			return $content;
+		}
+
+		// Short-circuit content already in block format. Detection is
+		// permissive: any `<!-- wp:` anywhere in the content is treated as
+		// "author sent blocks, leave alone." A mixed file with some blocks
+		// and some raw HTML between them is rare in practice, and forcing
+		// the converter to find and re-wrap raw fragments inside a partially-
+		// blockified document would produce far more surprises than it
+		// prevents.
+		if ( strpos( $content, '<!-- wp:' ) !== false ) {
+			return $content;
+		}
+
+		// Parse the HTML fragment. DOMDocument needs a UTF-8 hint via a
+		// meta tag because by default it treats input as ISO-8859-1, which
+		// mangles any non-ASCII characters in the content.
+		$dom = new DOMDocument();
+		$prev = libxml_use_internal_errors( true );
+		// Wrap in a div sentinel so we can iterate top-level children
+		// unambiguously without DOMDocument synthesizing <html>/<body>.
+		$source = '<?xml encoding="UTF-8"><div id="pre-converter-root">' . $content . '</div>';
+		$loaded = $dom->loadHTML( $source, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev );
+
+		if ( ! $loaded ) {
+			// Couldn't parse — return original content rather than risk
+			// corrupting it. The user still gets a Classic block, but no
+			// data loss.
+			$warnings[] = 'post_content_block_conversion_skipped: post_content could not be parsed as HTML; stored as-is.';
+			return $content;
+		}
+
+		$root = $dom->getElementById( 'pre-converter-root' );
+		if ( ! $root || ! $root->hasChildNodes() ) {
+			return $content;
+		}
+
+		$blocks = array();
+		foreach ( iterator_to_array( $root->childNodes ) as $node ) {
+			$block = self::node_to_gutenberg_block( $dom, $node );
+			if ( $block !== '' ) {
+				$blocks[] = $block;
+			}
+		}
+
+		if ( empty( $blocks ) ) {
+			return $content;
+		}
+
+		$warnings[] = 'post_content_block_conversion_applied: post_content was sent as raw HTML and auto-converted to Gutenberg block format. For optimal control over block-level attributes (heading levels, list ordering, alignment), send block-format markup directly. See critical_rules.post_content_is_gutenberg_blocks.';
+		return implode( "\n\n", $blocks );
+	}
+
+	/**
+	 * Wrap a single top-level DOM node in the appropriate Gutenberg block
+	 * comment. Helper for ensure_gutenberg_blocks().
+	 *
+	 * Maps top-level element name → block type:
+	 *   h1-h6 → core/heading (level attribute carried over)
+	 *   p     → core/paragraph
+	 *   ul    → core/list (default unordered)
+	 *   ol    → core/list with ordered:true
+	 *   blockquote → core/quote
+	 *   pre   → core/preformatted
+	 *   hr    → core/separator
+	 *   figure → core/image when it contains an <img>, otherwise core/html
+	 *   anything else → core/html (matches Gutenberg's own fallback for
+	 *     unrecognized top-level markup during "Convert to blocks")
+	 *
+	 * Text nodes between top-level elements (e.g. stray whitespace from
+	 * pretty-printed HTML) are dropped — they would render as bare text
+	 * inside a paragraph anyway and aren't worth a block of their own.
+	 * Non-whitespace text becomes a paragraph block so we don't silently
+	 * drop content.
+	 *
+	 * @param DOMDocument $dom  Parent document (needed for saveHTML on child fragments).
+	 * @param DOMNode     $node Top-level child of the converter root.
+	 * @return string Gutenberg block markup or empty string.
+	 */
+	private static function node_to_gutenberg_block( DOMDocument $dom, DOMNode $node ) {
+		// Text nodes — only emit a paragraph block for non-whitespace text.
+		if ( $node->nodeType === XML_TEXT_NODE ) {
+			$text = trim( $node->nodeValue );
+			if ( $text === '' ) {
+				return '';
+			}
+			return "<!-- wp:paragraph -->\n<p>" . esc_html( $text ) . "</p>\n<!-- /wp:paragraph -->";
+		}
+
+		if ( $node->nodeType !== XML_ELEMENT_NODE ) {
+			return '';
+		}
+
+		$tag        = strtolower( $node->nodeName );
+		$inner_html = self::inner_html( $dom, $node );
+
+		switch ( $tag ) {
+			case 'h1':
+			case 'h2':
+			case 'h3':
+			case 'h4':
+			case 'h5':
+			case 'h6':
+				$level    = (int) substr( $tag, 1 );
+				// h2 is the Gutenberg default, so we omit the level attribute
+				// for h2 to match what the editor itself serializes — keeps
+				// block markup byte-identical between AI-sent and editor-saved
+				// content.
+				$attrs    = ( $level === 2 ) ? '' : ' {"level":' . $level . '}';
+				return "<!-- wp:heading{$attrs} -->\n<{$tag} class=\"wp-block-heading\">{$inner_html}</{$tag}>\n<!-- /wp:heading -->";
+
+			case 'p':
+				// Empty paragraph (e.g. `<p></p>`) is dropped — would render
+				// as visible empty block in the editor for no reason.
+				if ( trim( $inner_html ) === '' ) {
+					return '';
+				}
+				return "<!-- wp:paragraph -->\n<p>{$inner_html}</p>\n<!-- /wp:paragraph -->";
+
+			case 'ul':
+				return "<!-- wp:list -->\n<ul class=\"wp-block-list\">{$inner_html}</ul>\n<!-- /wp:list -->";
+
+			case 'ol':
+				return "<!-- wp:list {\"ordered\":true} -->\n<ol class=\"wp-block-list\">{$inner_html}</ol>\n<!-- /wp:list -->";
+
+			case 'blockquote':
+				return "<!-- wp:quote -->\n<blockquote class=\"wp-block-quote\">{$inner_html}</blockquote>\n<!-- /wp:quote -->";
+
+			case 'pre':
+				return "<!-- wp:preformatted -->\n<pre class=\"wp-block-preformatted\">{$inner_html}</pre>\n<!-- /wp:preformatted -->";
+
+			case 'hr':
+				// Self-closing separator. The has-alpha-channel-opacity class
+				// matches Gutenberg's default for new separator blocks.
+				return "<!-- wp:separator -->\n<hr class=\"wp-block-separator has-alpha-channel-opacity\"/>\n<!-- /wp:separator -->";
+
+			case 'figure':
+				// Figure containing an img is the canonical image-block shape.
+				// Figures with other content (e.g. svg, video) fall through
+				// to core/html — preserves the markup without claiming a
+				// specific block type that wouldn't validate.
+				$img = $node->getElementsByTagName( 'img' )->item( 0 );
+				if ( $img instanceof DOMElement ) {
+					return "<!-- wp:image -->\n<figure class=\"wp-block-image\">" . self::node_outer_html( $dom, $node ) . "</figure>\n<!-- /wp:image -->";
+				}
+				// fallthrough to default
+
+			default:
+				// Unknown / unhandled top-level element → core/html block.
+				// Matches what Gutenberg's "Convert to blocks" does for any
+				// markup it can't map to a typed block. Preserves the
+				// original markup losslessly.
+				return "<!-- wp:html -->\n" . self::node_outer_html( $dom, $node ) . "\n<!-- /wp:html -->";
+		}
+	}
+
+	/**
+	 * Serialize the inner HTML of a DOM element (children only, no wrapper).
+	 *
+	 * Why not just `saveHTML( $node )`: that includes the wrapper tag. We
+	 * want the contents between the wrapper's opening and closing tags so
+	 * we can re-wrap with our own (block-attributed) tag.
+	 *
+	 * @param DOMDocument $dom  Owning document.
+	 * @param DOMNode     $node Parent element whose children to serialize.
+	 * @return string Inner HTML.
+	 */
+	private static function inner_html( DOMDocument $dom, DOMNode $node ) {
+		$out = '';
+		foreach ( $node->childNodes as $child ) {
+			$out .= $dom->saveHTML( $child );
+		}
+		return $out;
+	}
+
+	/**
+	 * Serialize a DOM element and all its descendants (outer HTML).
+	 *
+	 * @param DOMDocument $dom  Owning document.
+	 * @param DOMNode     $node Element to serialize.
+	 * @return string Outer HTML.
+	 */
+	private static function node_outer_html( DOMDocument $dom, DOMNode $node ) {
+		return $dom->saveHTML( $node );
 	}
 
 	/**

@@ -4,6 +4,32 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.3.3] — 2026-05-16
+
+Admin meta-box UX rebuild driven by demo-pressure-test feedback, plus a class of bug fixes spanning the meta box, frontend icon rendering, and connector content storage. Item height in the meta box drops 36% (360px → 229px). Iconify icons render at matching sizes regardless of variant. Connector-driven post_content lands as proper Gutenberg blocks instead of a single Classic-Editor wrapper. Critical demo bug (image upload silently failing on profile cards) fixed.
+
+### Added
+
+- **`<select>` icon picker in the admin meta box.** The 53-button visual quickpick grid is replaced with a compact category-grouped dropdown. The Iconify text input above is unchanged — Claude and power users can still type any of the 200,000+ Iconify codes. Saves ~330px of vertical space per item and removes the visual noise of 53 SVG renders per row.
+- **Per-grouping variant gating in the meta box.** When the effective layout variant (override or default) is icon-only (compact-grid or horizontal-row), the "Add image" button hides per-item and a grouping-level amber notice appears explaining that uploaded images are dropped at render time. The note renders once per grouping, not per item — previously the duplicate amber notes added ~2,580px of repeated text on the demo page with 29 items. Mirrors `PRE_Renderer::render_item`'s variant-aware media resolution so the meta box never silently accepts data the renderer will discard.
+- **`--pre-icon-size` CSS custom property** as the single source of truth for icon dimensions on the frontend. Every per-variant rule sets one value and `width` / `height` / `font-size` all pick it up. Adding a new variant in the future automatically gets correct sizing for both legacy SVG and Iconify-web-component render paths — no opportunity for the sizing bug below to recur.
+- **Server-side HTML→Gutenberg blocks converter in the connector** (`ensure_gutenberg_blocks` in `PRE_Connector_API`). `POST /posts` and `PUT /posts/{id}` now wrap raw HTML in proper `<!-- wp:* -->` block delimiters when the input has no such markers. Handles h1-h6 (with `level` attr for non-h2), p, ul, ol (with `ordered:true` attr), blockquote, pre, hr, and figure-with-img. Unrecognized top-level elements fall through to `core/html` — matches what Gutenberg's own "Convert to blocks" command does. Idempotent: block-format input passes through unchanged with zero parsing cost.
+- **`critical_rules.post_content_is_gutenberg_blocks`** replaces the older `post_content_is_html` rule. The new rule documents the canonical block-format contract with examples for every supported block type and describes the server-side converter as a defense-in-depth safety net (not a feature) — AI agents that send block format directly get faster writes and full control over block attributes.
+
+### Changed
+
+- **Item layout in the admin meta box.** Item height: 360px → 229px (36% smaller). Media column: 220px wide → 160px wide and 96×96 preview → 64×64 preview. Icon helper text: 2 lines → 1 line ("Any [Iconify code] or pick one below"). Grid template column updated to match the new media width so the fields column absorbs the freed horizontal space.
+
+### Fixed
+
+- **Image upload silently failed on profile cards** (card-grid + featured-card variants). Root cause: `setItemImage` in `meta-box.js` referenced an undefined `$iconSelect` variable carried over from a prior version when the icon picker was a single `<select>`. The `ReferenceError` threw *after* `image_id` was stored in the hidden input but *before* the thumbnail preview rendered, so the image persisted on save with zero visual confirmation. `$iconSelect` is now properly scoped via `$item.find('.pre-item__icon-select')` and the function runs to completion — thumbnail renders, "Add image" button label flips to "Replace image".
+- **Iconify icon sizing mismatch on the frontend.** `<iconify-icon>` web components render their inner shadow-DOM SVG at `1em` (the host element's font-size), NOT at the host element's CSS width/height. The previous rule set `width: 2rem; height: 2rem;` on the host but left `font-size` at the default 16px, so an Iconify code like `fluent:chat-20-regular` painted a 16×16 SVG inside a 32×32 wrapper — visibly smaller than the curated SVG icons rendered next to it in the same card-grid. The `--pre-icon-size` variable now drives `font-size` alongside `width`/`height`, so both render paths land at the same size.
+
+### Notes
+
+- No data migration required. Existing CPTs, groupings, and per-post values continue to work unchanged.
+- The smoke test suite (`tests/smoke-phase1.php`) and unit tests (`tests/Unit/`) all pass.
+
 ## [0.3.2] — 2026-05-15
 
 Adds **dual-format icon system** alongside the existing curated 53-icon library. `icon_id` and `default_icon` now accept ANY Iconify code in `collection:name` form (e.g. `mdi:home`, `logos:wordpress`, `material-symbols:business-outline`, `fa6-solid:tooth`) in addition to the legacy curated IDs. ~200,000 additional icons across 100+ Iconify sets, browseable at icon-sets.iconify.design. Restores icon vocabulary parity with Promptless WP for connector-driven page-building workflows.

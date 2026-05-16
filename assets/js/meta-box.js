@@ -4,9 +4,14 @@
  * Responsibilities:
  *   - Add / remove / reorder grouping items
  *   - Open WordPress media library for image selection
- *   - Sync icon preview when the icon text input changes or a quick-pick
- *     button is clicked (live update; both legacy curated IDs and Iconify
- *     codes render through the same preview span)
+ *   - Sync icon preview when the icon text input changes or the curated
+ *     dropdown is changed (live update; both legacy curated IDs and
+ *     Iconify codes render through the same preview span)
+ *   - Toggle icon-only-variant UI state per grouping: when the effective
+ *     variant (override or default) is compact-grid or horizontal-row,
+ *     hide the image upload controls and show an explanatory note. Mirrors
+ *     the renderer's variant-aware media resolution so the meta box never
+ *     accepts data the renderer will silently drop.
  *   - Hide "Add item" when max_items is reached
  *   - Inline post search on the link field (jQuery UI Autocomplete +
  *     /wp/v2/search). Lazy-initialized on first focus per input so we
@@ -69,25 +74,28 @@
 		// Icon text input — live preview while typing. Debounced lightly via
 		// the browser's input event coalescing; no setTimeout needed because
 		// setItemIcon is cheap (DOM swap of a single span / web component).
+		// Sync the curated dropdown when the typed value matches a known
+		// curated ID, otherwise clear the dropdown so it doesn't show a
+		// stale selection.
 		$grouping.on('input change', '.pre-item__icon-input', function () {
 			var $input = $(this);
 			var $item  = $input.closest('.pre-item');
 			var iconId = ($input.val() || '').trim();
 			setItemIcon($item, iconId);
+			syncIconSelectFromInput($item, iconId);
 		});
 
-		// Quick-pick button click — writes the legacy curated ID into the
-		// text input above and updates the preview. Users can still type
-		// any Iconify code manually after picking.
-		$grouping.on('click', '.pre-item__icon-quickpick', function (e) {
-			e.preventDefault();
-			var $btn   = $(this);
-			var $item  = $btn.closest('.pre-item');
-			var iconId = $btn.data('icon-id') || '';
+		// Curated icon dropdown change — writes the chosen ID into the text
+		// input above and updates the preview. Replaces the previous
+		// visual quickpick grid (removed 2026-05-16 — bulky UI, low
+		// information density). Users can still type any Iconify code
+		// manually in the text input.
+		$grouping.on('change', '.pre-item__icon-select', function () {
+			var $select = $(this);
+			var $item   = $select.closest('.pre-item');
+			var iconId  = ($select.val() || '').trim();
 			$item.find('.pre-item__icon-input').val(iconId);
 			setItemIcon($item, iconId);
-			$item.find('.pre-item__icon-quickpick').removeClass('is-selected').attr('aria-pressed', 'false');
-			$btn.addClass('is-selected').attr('aria-pressed', 'true');
 		});
 
 		// Pick image (opens WP media library).
@@ -122,7 +130,16 @@
 			$(this).closest('.pre-item').find('.pre-item__link-post-id').val('');
 		});
 
+		// Variant override changes — re-evaluate icon-only state so the
+		// image upload controls show / hide to match the renderer's
+		// variant-aware media resolution. Triggered by the user picking a
+		// different variant from the dropdown above the items list.
+		$grouping.on('change', 'select[name$="[variant_override]"]', function () {
+			evaluateGroupingVariant($grouping);
+		});
+
 		updateAddButtonVisibility($grouping);
+		evaluateGroupingVariant($grouping);
 	}
 
 	/**
@@ -386,16 +403,25 @@
 	/**
 	 * Apply a chosen attachment to the item: store the ID, update preview,
 	 * clear any selected icon (mutual exclusion).
+	 *
+	 * Bug history: prior version referenced an undefined `$iconSelect`
+	 * variable here (carried over from when the icon picker was a single
+	 * <select>). That ReferenceError threw AFTER the image_id was stored
+	 * in the hidden input but BEFORE the preview thumbnail rendered, so
+	 * the image silently persisted on save with no visual confirmation —
+	 * the bug Breon hit during the 2026-05-16 demo. Now uses the actual
+	 * `.pre-item__icon-select` class selector and runs to completion.
 	 */
 	function setItemImage($item, attachment) {
 		var $imageInput  = $item.find('.pre-item__image-input');
 		var $iconInput   = $item.find('.pre-item__icon-input');
+		var $iconSelect  = $item.find('.pre-item__icon-select');
 		var $preview     = $item.find('.pre-item__preview');
 
 		$imageInput.val(attachment.id);
 		$iconInput.val('');
-		// Clear any active quick-pick highlight when switching to image mode.
-		$item.find('.pre-item__icon-quickpick').removeClass('is-selected').attr('aria-pressed', 'false');
+		// Reset the curated dropdown back to its placeholder option so it
+		// doesn't show a stale "selected" state alongside the new image.
 		$iconSelect.val('');
 
 		var thumbUrl = (attachment.sizes && attachment.sizes.thumbnail && attachment.sizes.thumbnail.url)
@@ -411,9 +437,79 @@
 	function clearItemMedia($item) {
 		$item.find('.pre-item__icon-input').val('');
 		$item.find('.pre-item__image-input').val('0');
-		$item.find('.pre-item__icon-quickpick').removeClass('is-selected').attr('aria-pressed', 'false');
+		$item.find('.pre-item__icon-select').val('');
 		$item.find('.pre-item__preview').html('<span class="pre-item__preview-empty">—</span>').attr('data-icon-id', '');
 		updatePickImageButtonLabel($item);
+	}
+
+	/**
+	 * Sync the curated <select> when the text input value changes. If the
+	 * typed value matches a known curated ID, select that option; otherwise
+	 * clear the dropdown back to the placeholder so it doesn't show a
+	 * misleading "selected" state.
+	 */
+	function syncIconSelectFromInput($item, iconId) {
+		var $select = $item.find('.pre-item__icon-select');
+		if (!$select.length) {
+			return;
+		}
+		// Only set the value if it matches an existing option — otherwise
+		// .val() on a missing option is a no-op in jQuery but the visible
+		// state shows the previous option. Clear explicitly.
+		if (iconId && $select.find('option[value="' + cssEscape(iconId) + '"]').length) {
+			$select.val(iconId);
+		} else {
+			$select.val('');
+		}
+	}
+
+	/**
+	 * Minimal CSS-attribute-value escape — enough for the icon-id shape
+	 * (lowercase letters, digits, hyphens, underscores, and a single colon
+	 * for Iconify codes). Escapes the colon because jQuery's attribute
+	 * selector treats it as a pseudo-class separator.
+	 */
+	function cssEscape(value) {
+		return String(value).replace(/([:.])/g, '\\$1');
+	}
+
+	/**
+	 * Icon-only variants — the renderer drops image_id silently for these.
+	 * Mirrors PRE_Renderer::render_item's `$is_icon_only_variant` check
+	 * (compact-grid, horizontal-row). Keep this list in sync with the PHP
+	 * side, or images uploaded in the meta box will silently vanish at
+	 * render time again.
+	 */
+	var ICON_ONLY_VARIANTS = ['compact-grid', 'horizontal-row'];
+
+	/**
+	 * Compute the effective variant for a grouping (override if set,
+	 * otherwise the default from the grouping definition), then toggle
+	 * the `is-icon-only` class on the grouping wrapper. CSS uses that
+	 * class to hide the image-upload controls and reveal the explanatory
+	 * note, so the meta box state matches the render contract.
+	 */
+	function evaluateGroupingVariant($grouping) {
+		var defaultVariant = ($grouping.data('default-variant') || '').toString();
+		var $overrideSelect = $grouping.find('select[name$="[variant_override]"]').first();
+		var override = ($overrideSelect.val() || '').toString();
+		var effective = override !== '' ? override : defaultVariant;
+		var isIconOnly = ICON_ONLY_VARIANTS.indexOf(effective) !== -1;
+		$grouping.toggleClass('is-icon-only', isIconOnly);
+		// Toggle the grouping-level explanatory note visibility. There is
+		// exactly one note element per grouping (rendered above the items
+		// list in class-pre-meta-box.php — formerly rendered per-item,
+		// which produced 29x duplicate noise on the demo page). `hidden`
+		// is the canonical accessible-hide attribute; CSS in admin.css
+		// has a fallback `display: none[hidden]` rule for older browsers.
+		var $note = $grouping.find('.pre-meta-grouping__icon-only-note').first();
+		if ($note.length) {
+			if (isIconOnly) {
+				$note.removeAttr('hidden');
+			} else {
+				$note.attr('hidden', 'hidden');
+			}
+		}
 	}
 
 	/**

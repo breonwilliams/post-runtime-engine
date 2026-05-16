@@ -180,7 +180,10 @@
 .pre-item {
 	position: relative;
 	display: grid;
-	grid-template-columns: 24px 96px 1fr;
+	/* Grid: drag handle (24px) | media column (160px — matches
+	   .pre-item__media width; was 96px when the visual quickpick grid
+	   needed a wider track) | fields column (fills remaining space). */
+	grid-template-columns: 24px 160px 1fr;
 	gap: 16px;
 	align-items: start;
 	padding: 14px 40px 14px 12px;
@@ -244,19 +247,24 @@
 	font-size: 18px;
 }
 
-/* Media column: preview tile + Iconify text input + curated quick-pick row +
-   image controls stacked. Width widened from 96px → 220px so the quick-pick
-   row has room for ~6 columns of icon thumbs alongside the input. */
+/* Media column: preview tile + Iconify text input + curated dropdown +
+   image controls stacked. Width 160px — narrower than the previous 220px
+   because the visual quickpick grid (which needed ~6 columns of icon
+   thumbs alongside) was replaced by a single-line <select> dropdown on
+   2026-05-16. The narrower column also lets the fields column on the
+   right absorb the freed horizontal space for longer headings / link
+   strings — fixes the visual imbalance noted during the demo pressure
+   test. */
 .pre-item__media {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
-	width: 220px;
+	width: 160px;
 }
 
 .pre-item__preview {
-	width: 96px;
-	height: 96px;
+	width: 64px;
+	height: 64px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -281,8 +289,13 @@
 }
 
 .pre-item__preview svg {
-	width: 36px;
-	height: 36px;
+	width: 28px;
+	height: 28px;
+	display: block;
+}
+
+.pre-item__preview iconify-icon {
+	font-size: 28px;
 	display: block;
 }
 
@@ -346,62 +359,67 @@
 	text-decoration: underline;
 }
 
-/* Quick-pick row — small grid of the 53 curated icons. Clicking a button
-   writes the legacy ID into the input above. Visual: tight 6-column grid
-   that gracefully wraps narrower on smaller screens via auto-fill. */
-.pre-item__icon-quickpicks {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
-	gap: 2px;
-	padding: 4px;
-	background: #f9fafb;
+/* Curated icon dropdown — compact alternative to the previous visual
+   quickpick grid (replaced 2026-05-16). Single-line <select> with
+   <optgroup>'d options for the 53 built-ins, grouped by category. Picking
+   an option writes the curated ID into the .pre-item__icon-input above
+   and updates the preview tile. Users can still type any of the 200K+
+   Iconify codes in the text input — the dropdown covers common cases
+   without consuming vertical space. */
+.pre-item__icon-select {
+	width: 100%;
+	min-height: 26px;
+	font-size: 12px;
+	padding: 2px 6px;
+	background-color: #ffffff;
 	border: 1px solid #e5e7eb;
 	border-radius: 4px;
-	max-height: 132px; /* ~4 rows visible before scroll */
-	overflow-y: auto;
-}
-
-.pre-item__icon-quickpick {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	aspect-ratio: 1;
-	padding: 0;
-	margin: 0;
-	background: #ffffff;
-	border: 1px solid #e5e7eb;
-	border-radius: 3px;
 	color: #4b5563;
-	cursor: pointer;
-	transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+	box-shadow: none;
 }
 
-.pre-item__icon-quickpick svg {
-	width: 16px;
-	height: 16px;
-	display: block;
-}
-
-.pre-item__icon-quickpick:hover,
-.pre-item__icon-quickpick:focus-visible {
-	background: #eef2ff;
+.pre-item__icon-select:focus {
 	border-color: #6366f1;
-	color: #4338ca;
+	box-shadow: 0 0 0 1px #6366f1;
 	outline: none;
 }
 
-.pre-item__icon-quickpick.is-selected {
-	background: #6366f1;
-	border-color: #6366f1;
-	color: #ffffff;
+/* Grouping-level icon-only variant note — shown ONCE per grouping (above
+   the items list) when the effective layout variant (compact-grid or
+   horizontal-row) drops uploaded images at render time. Mirrors
+   PRE_Renderer::render_item's variant-aware media resolution so the meta
+   box never silently accepts data the renderer will discard. Toggled by
+   meta-box.js evaluateGroupingVariant() based on the .is-icon-only class
+   on the grouping wrapper. Previously this was rendered per-item; the
+   per-item version produced ~2,580px of duplicated text on a 29-item
+   demo page for no extra information (the variant is a grouping-level
+   property, not a per-item one). `hidden` attribute is the canonical
+   accessible-hide; the display:none[hidden] rule below is a defensive
+   fallback for older browsers that don't respect [hidden] consistently. */
+.pre-meta-grouping__icon-only-note {
+	margin: 8px 0 12px;
+	padding: 8px 12px;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #92400e;
+	background: #fef3c7;
+	border-left: 3px solid #f59e0b;
+	border-radius: 0 4px 4px 0;
 }
 
-.pre-item__icon-quickpick.is-selected:hover,
-.pre-item__icon-quickpick.is-selected:focus-visible {
-	background: #4f46e5;
-	border-color: #4f46e5;
-	color: #ffffff;
+.pre-meta-grouping__icon-only-note[hidden] {
+	display: none;
+}
+
+/* When a grouping resolves to an icon-only variant (compact-grid or
+   horizontal-row), hide the Add/Replace image button per-item so users
+   can't upload an image that the renderer will drop. The Clear button
+   stays accessible so users can still clear any pre-existing image that
+   was uploaded when the variant was image-capable. The curated icon
+   dropdown and text input stay fully visible — that's the whole point
+   of icon-only variants. */
+.pre-meta-grouping.is-icon-only .pre-pick-image {
+	display: none;
 }
 
 .pre-item__media-buttons {

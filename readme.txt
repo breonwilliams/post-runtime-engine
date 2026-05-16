@@ -4,7 +4,7 @@ Tags: custom post types, cpt, page builder, post template, structured content
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 0.3.2
+Stable tag: 0.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -50,6 +50,16 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 
 == Changelog ==
 
+= 0.3.3 =
+* New: Admin meta-box icon picker rebuilt as a compact `<select>` dropdown grouped by icon category — replaces the 53-button visual quickpick grid that was burning ~330px of vertical space per item. The Iconify text input above the dropdown is unchanged, so any of the 200,000+ Iconify codes can still be typed directly when the curated 53 don't have what you need.
+* New: Per-grouping variant gating in the meta box. When a grouping's effective layout variant is icon-only (compact-grid or horizontal-row), the "Add image" button hides per-item and an amber notice appears at the top of the grouping explaining that uploaded images are dropped at render time. Mirrors PRE_Renderer's variant-aware media resolution so the meta box never silently accepts data the renderer will discard.
+* New: `--pre-icon-size` CSS custom property drives icon dimensions on the frontend. Every per-variant override sets one value and width / height / font-size all pick it up, keeping legacy SVG icons and Iconify web components rendered at matching sizes. Adding a new variant in the future automatically gets correct sizing for both render paths.
+* New: Server-side HTML→Gutenberg blocks converter in the connector. `POST /posts` and `PUT /posts/{id}` now auto-wrap raw HTML in proper Gutenberg block delimiters when the input has no `<!-- wp: -->` markers. Idempotent — block-format input passes through unchanged with zero parsing cost. Handles h1-h6 (with level attr for non-h2), p, ul / ol (with ordered:true attr), blockquote, pre, hr, and figure-with-img; unrecognized top-level elements fall through to core/html, matching what Gutenberg's "Convert to blocks" does.
+* New: `critical_rules.post_content_is_gutenberg_blocks` replaces `post_content_is_html` in the connector preflight, documenting the canonical block-format contract with examples for every supported block type. The server converter is described as a defense-in-depth safety net, not a feature — AI agents that send block format directly get faster writes and full control over block attributes (heading levels, list types).
+* Improved: Item layout in the admin meta box. Item height shrunk 360px → 229px (36% smaller), media column width reduced 220px → 160px (frees horizontal space for the fields column), preview tile 96×96 → 64×64, icon helper text compressed to a single line.
+* Fixed: Image upload silently failed on profile cards (card-grid + featured-card variants). Root cause: `setItemImage` referenced an undefined `$iconSelect` variable carried over from when the icon picker was a single `<select>` element. The `ReferenceError` threw after image_id was stored in the hidden input but before the thumbnail preview rendered, so the image was persisted on save with no visual confirmation. `$iconSelect` is now properly scoped from `$item.find('.pre-item__icon-select')` and the function runs to completion.
+* Fixed: Iconify icon sizing mismatch on the frontend. `<iconify-icon>` web components were rendering their inner shadow-DOM SVG at 1em (16px default font-size) instead of matching the element's CSS width/height, so an Iconify code like `fluent:chat-20-regular` painted at 16×16 inside a 32×32 wrapper — visibly smaller than the curated SVG icons next to it. The single-source-of-truth `--pre-icon-size` variable now drives font-size alongside width/height, so both render paths land at the same size for every variant.
+
 = 0.3.2 =
 * New: Dual-format icon system. `icon_id` and `default_icon` now accept BOTH the existing curated 53-icon library AND any Iconify code in `collection:name` form (e.g. `mdi:home`, `logos:wordpress`, `material-symbols:business-outline`, `fa6-solid:tooth`). Curated IDs render as inline SVG (zero network), Iconify codes render via the `<iconify-icon>` web component. ~200,000 additional icons across 100+ Iconify sets, browseable at icon-sets.iconify.design. Restores icon vocabulary parity with Promptless WP for connector-driven page-building workflows.
 * New: Admin meta-box icon control rewritten as a monospace text input + a 28-px-thumb quick-pick row of the curated 53. Type any Iconify code; the preview updates live. Click a quick-pick to insert a curated ID. Single picker covers both formats.
@@ -72,6 +82,9 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.3.3 =
+Admin meta-box UX rebuild and a class of bug fixes around icons and content authoring. Icon picker is now a compact dropdown grouped by category (the bulky 53-button visual grid is gone) — the Iconify text input above it still accepts any of the 200,000+ Iconify codes. Per-grouping variant gating hides the "Add image" button on icon-only layouts (compact-grid, horizontal-row) so uploaded images never silently disappear at render. Frontend Iconify icons now render at the same size as curated SVG icons across every variant (the underlying bug: web-component icons size by font-size, not CSS width/height — fixed with a `--pre-icon-size` source-of-truth variable). Connector now auto-converts raw HTML in post_content to proper Gutenberg block format, so AI-generated pages open with discrete editable blocks instead of a single Classic-Editor wrapper. Critical demo bug fixed: image upload silently failed on profile cards due to a stale `$iconSelect` ReferenceError. Recommended for all users.
 
 = 0.3.2 =
 Icon system is now dual-format: existing curated IDs keep working alongside any Iconify code (200,000+ icons). Admin meta-box dropdown becomes a text input + quick-pick row. No data migration; existing post meta renders unchanged. Restores icon vocabulary parity with Promptless WP for connector workflows. Recommended for all users.

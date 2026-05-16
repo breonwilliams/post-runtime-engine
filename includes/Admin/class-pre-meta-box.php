@@ -244,8 +244,16 @@ class PRE_Meta_Box {
 			admin_url( 'admin.php' )
 		);
 
+		// Default variant from the grouping definition; passed to the JS layer
+		// so it can determine the *effective* variant (override or default)
+		// and toggle the icon-only-variant UI state without a roundtrip.
+		// Mirrors the same fallback chain the renderer uses (PRE_Renderer
+		// lines 295, 637), so the meta box state and the rendered output
+		// agree on what variant is in effect.
+		$default_variant = isset( $def['default_variant'] ) ? (string) $def['default_variant'] : 'compact-grid';
+
 		?>
-		<div class="pre-meta-grouping" data-grouping-key="<?php echo esc_attr( $key ); ?>" data-max-items="<?php echo esc_attr( (string) $max_items ); ?>">
+		<div class="pre-meta-grouping" data-grouping-key="<?php echo esc_attr( $key ); ?>" data-max-items="<?php echo esc_attr( (string) $max_items ); ?>" data-default-variant="<?php echo esc_attr( $default_variant ); ?>">
 			<header class="pre-meta-grouping__header">
 				<h3>
 					<?php echo esc_html( $def['label'] ?? $key ); ?>
@@ -291,6 +299,23 @@ class PRE_Meta_Box {
 			<?php if ( $is_manual ) : ?>
 				<div class="pre-meta-items">
 					<h4><?php esc_html_e( 'Items', 'post-runtime-engine' ); ?></h4>
+
+					<?php
+					// Grouping-level icon-only note. Shown ONCE per grouping when
+					// the effective variant (override or default) is one that
+					// drops uploaded images at render time (compact-grid or
+					// horizontal-row — PRE_Renderer::render_item line 637-645).
+					// Toggled by meta-box.js evaluateGroupingVariant() via the
+					// .is-icon-only class on the grouping wrapper. Previously
+					// this was rendered per-item, which produced 29x duplicate
+					// noise on the demo page (~2,580px of repeated text) for
+					// no extra information — variant is a grouping-level
+					// decision, the message belongs at grouping scope.
+					?>
+					<p class="pre-meta-grouping__icon-only-note" hidden>
+						<?php esc_html_e( 'This layout uses icons only — uploaded images are not displayed. Change the Variant above to "Card grid" or "Featured card" to use images.', 'post-runtime-engine' ); ?>
+					</p>
+
 					<ol class="pre-items-list" data-grouping-key="<?php echo esc_attr( $key ); ?>">
 						<?php foreach ( $items as $i => $item ) : ?>
 							<?php $this->render_item_row( $key, $i, $item ); ?>
@@ -413,7 +438,7 @@ class PRE_Meta_Box {
 						printf(
 							/* translators: %s: Iconify icon-sets URL */
 							wp_kses(
-								__( 'Any <a href="%s" target="_blank" rel="noopener">Iconify code</a> (200,000+ icons) or a curated quick-pick below.', 'post-runtime-engine' ),
+								__( 'Any <a href="%s" target="_blank" rel="noopener">Iconify code</a> or pick one below.', 'post-runtime-engine' ),
 								array(
 									'a' => array(
 										'href'   => array(),
@@ -427,32 +452,32 @@ class PRE_Meta_Box {
 						?>
 					</p>
 
-					<div class="pre-item__icon-quickpicks" role="group" aria-label="<?php esc_attr_e( 'Common icons quick-pick', 'post-runtime-engine' ); ?>">
-						<?php
-						// Curated quick-pick row — small visual grid of the 53
-						// built-ins. Clicking a button writes the LEGACY ID into
-						// the text input above (legacy IDs continue to ship
-						// inline SVG; no network request for the curated set).
-						// JS keeps the input + preview in sync; users can still
-						// type any Iconify code manually.
-						foreach ( PRE_Icon_Library::get_all() as $icon_key => $icon ) :
-							$is_selected = ( $icon_id === $icon_key );
-							$button_class = 'pre-item__icon-quickpick' . ( $is_selected ? ' is-selected' : '' );
-							?>
-							<button
-								type="button"
-								class="<?php echo esc_attr( $button_class ); ?>"
-								data-icon-id="<?php echo esc_attr( $icon_key ); ?>"
-								title="<?php echo esc_attr( $icon['label'] ); ?>"
-								aria-label="<?php echo esc_attr( $icon['label'] ); ?>"
-								aria-pressed="<?php echo $is_selected ? 'true' : 'false'; ?>">
-								<?php
-								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-								echo PRE_Icon_Library::render( $icon_key );
-								?>
-							</button>
+					<?php
+					// Curated icon dropdown — compact alternative to the previous
+					// visual quickpick grid (replaced 2026-05-16). Same 53
+					// built-ins, grouped under <optgroup> by category so they
+					// stay scannable. Selecting an option mirrors the value
+					// into the text input above and updates the preview tile.
+					// The JS handler is shared with the manual-type path so the
+					// preview stays in sync regardless of how the value arrived.
+					// Curated IDs render inline SVG (no network); Iconify codes
+					// typed manually render via <iconify-icon> web component.
+					$grouped_icons = PRE_Icon_Library::get_grouped_by_category();
+					?>
+					<select
+						class="pre-item__icon-select"
+						aria-label="<?php esc_attr_e( 'Pick a common icon', 'post-runtime-engine' ); ?>">
+						<option value=""><?php esc_html_e( '— Pick a common icon —', 'post-runtime-engine' ); ?></option>
+						<?php foreach ( $grouped_icons as $category => $icons_in_category ) : ?>
+							<optgroup label="<?php echo esc_attr( $category ); ?>">
+								<?php foreach ( $icons_in_category as $icon_key => $icon ) : ?>
+									<option value="<?php echo esc_attr( $icon_key ); ?>" <?php selected( $icon_id, $icon_key ); ?>>
+										<?php echo esc_html( $icon['label'] ); ?>
+									</option>
+								<?php endforeach; ?>
+							</optgroup>
 						<?php endforeach; ?>
-					</div>
+					</select>
 
 					<div class="pre-item__media-buttons">
 						<button type="button" class="button-link pre-pick-image">

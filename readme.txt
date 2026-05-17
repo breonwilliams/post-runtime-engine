@@ -4,7 +4,7 @@ Tags: custom post types, cpt, page builder, post template, structured content
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 0.3.3
+Stable tag: 0.3.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,9 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.3.4 =
+Connector admin page UI cleanup. Status card now shows connection state at a glance with the kill-switch toggle inline. Setup steps are cleaner. App password check works correctly on local dev environments. No data changes.
 
 = 0.3.3 =
 Admin meta-box UX rebuild and a class of bug fixes around icons and content authoring. Icon picker is now a compact dropdown grouped by category (the bulky 53-button visual grid is gone) — the Iconify text input above it still accepts any of the 200,000+ Iconify codes. Per-grouping variant gating hides the "Add image" button on icon-only layouts (compact-grid, horizontal-row) so uploaded images never silently disappear at render. Frontend Iconify icons now render at the same size as curated SVG icons across every variant (the underlying bug: web-component icons size by font-size, not CSS width/height — fixed with a `--pre-icon-size` source-of-truth variable). Connector now auto-converts raw HTML in post_content to proper Gutenberg block format, so AI-generated pages open with discrete editable blocks instead of a single Classic-Editor wrapper. Critical demo bug fixed: image upload silently failed on profile cards due to a stale `$iconSelect` ReferenceError. Recommended for all users.

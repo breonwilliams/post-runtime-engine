@@ -4,6 +4,12 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.3.4] — 2026-05-17
+
+### Changed
+
+- **Connector admin page UI refactored.** The setup page now opens with a "Connection Status" card showing the current state (Configured / Not Connected) and the kill-switch toggle inline. The three setup steps below are cleaner and more focused. App password availability check uses WordPress's canonical `wp_is_application_passwords_available()` which correctly allows local dev environments (Local by Flywheel, wp-env) even without HTTPS.
+
 ## [0.3.3] — 2026-05-16
 
 Admin meta-box UX rebuild driven by demo-pressure-test feedback, plus a class of bug fixes spanning the meta box, frontend icon rendering, and connector content storage. Item height in the meta box drops 36% (360px → 229px). Iconify icons render at matching sizes regardless of variant. Connector-driven post_content lands as proper Gutenberg blocks instead of a single Classic-Editor wrapper. Critical demo bug (image upload silently failing on profile cards) fixed.

@@ -453,6 +453,13 @@ class PRE_Renderer {
 			$hero_classes[] = 'pre-hero--has-image';
 		}
 
+		// v1.1: render post fields if the CPT has any registered. The
+		// PRE_Card_Renderer emits a wrapper containing only the position
+		// buckets that have visible fields with values — empty string if
+		// none, so existing v0.3.x CPTs behave identically.
+		$card_renderer = new PRE_Card_Renderer();
+		$fields_html   = $card_renderer->render( $post->ID, 'single_hero' );
+
 		?>
 		<header class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>">
 			<div class="pre-hero__inner">
@@ -476,20 +483,87 @@ class PRE_Renderer {
 						// hero image.
 						$image_size = $layout === 'stacked' ? 'full' : 'large';
 						echo get_the_post_thumbnail( $post->ID, $image_size, $args );
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+						echo $this->extract_overlay_field_html( $fields_html );
 						?>
 					</div>
 				<?php endif; ?>
 
 				<div class="pre-hero__text">
+					<?php
+					// Headline-position fields render above the title (the
+					// "price above the address" pattern).
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo $this->extract_position_field_html( $fields_html, 'headline' );
+					?>
+
 					<h1 class="pre-hero__title"><?php echo esc_html( $title ); ?></h1>
+
+					<?php
+					// Subtitle-position fields render directly under the title.
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo $this->extract_position_field_html( $fields_html, 'subtitle' );
+					?>
 
 					<?php if ( $excerpt !== '' ) : ?>
 						<p class="pre-hero__excerpt"><?php echo esc_html( $excerpt ); ?></p>
 					<?php endif; ?>
+
+					<?php
+					// meta_strip and footer_meta land below the excerpt
+					// but inside the text column.
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo $this->extract_position_field_html( $fields_html, 'meta_strip' );
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo $this->extract_position_field_html( $fields_html, 'footer_meta' );
+					?>
 				</div>
 			</div>
 		</header>
 		<?php
+	}
+
+	/**
+	 * Extract the markup for a single position container out of a
+	 * PRE_Card_Renderer-produced fields wrapper, so the single-post hero
+	 * can interleave field positions with the post title, featured image,
+	 * and excerpt.
+	 *
+	 * The card renderer produces one wrapper containing all positions in
+	 * fixed order. For the single-post hero we want positions to FLANK
+	 * the title and image, not all stack in one block. This helper does
+	 * a simple regex extraction (the wrapper structure is deterministic,
+	 * produced entirely by PRE_Card_Renderer with no user input on the
+	 * structure itself).
+	 *
+	 * Returns empty string when the requested position has no fields.
+	 *
+	 * @param string $fields_html The full output of PRE_Card_Renderer::render.
+	 * @param string $position    Position key (e.g. 'headline').
+	 * @return string Position's container HTML or empty string.
+	 */
+	private function extract_position_field_html( $fields_html, $position ) {
+		if ( $fields_html === '' ) {
+			return '';
+		}
+		$modifier = str_replace( '_', '-', $position );
+		$pattern  = '#<div class="pre-card-fields__position pre-card-fields__position--' . preg_quote( $modifier, '#' ) . '">.*?</div>#s';
+		if ( preg_match( $pattern, $fields_html, $matches ) ) {
+			return $matches[0];
+		}
+		return '';
+	}
+
+	/**
+	 * Extract the image_overlay position markup specifically (mirrors
+	 * extract_position_field_html for the one position rendered inside
+	 * the media wrapper rather than the text column).
+	 *
+	 * @param string $fields_html Full card-renderer output.
+	 * @return string image_overlay HTML or empty string.
+	 */
+	private function extract_overlay_field_html( $fields_html ) {
+		return $this->extract_position_field_html( $fields_html, 'image_overlay' );
 	}
 
 	/**

@@ -114,6 +114,162 @@ class PRE_Validator {
 	const MAX_GROUPINGS_PER_POST  = 24;
 
 	// ---------------------------------------------------------------------
+	// v1.1 post field constants
+	//
+	// Post fields are the second field type — scalar (non-repeatable) with
+	// a closed enum of display types and positions. Full design contract:
+	// docs/POST_FIELDS_V1_1_DESIGN.md.
+	//
+	// All enums below are CLOSED. Extension via filter is deliberately not
+	// supported in v1.1; adding a new value to any of these enums requires
+	// updating the design contract first.
+	// ---------------------------------------------------------------------
+
+	/**
+	 * Allowed display types for post fields. 9 types covering the full
+	 * card / hero metadata surface across ~15 verticals. See design
+	 * contract § 5.3 for the visual mapping of each type.
+	 */
+	const DISPLAY_TYPES = array(
+		'currency',
+		'number_with_label',
+		'badge',
+		'meta_pair',
+		'date',
+		'text',
+		'rating',
+		'progress',
+		'multi_badge',
+	);
+
+	/**
+	 * Allowed positions for post fields. Symmetric across single-post hero
+	 * and card contexts — same enum drives both. CSS handles the per-
+	 * context visual treatment.
+	 *
+	 * `hidden` is a valid choice meaning "field is defined but not
+	 * rendered in this context." Used when a field should appear in the
+	 * hero but not on cards (or vice versa).
+	 */
+	const FIELD_POSITIONS = array(
+		'image_overlay',
+		'headline',
+		'subtitle',
+		'meta_strip',
+		'footer_meta',
+		'hidden',
+	);
+
+	/**
+	 * Allowed color intents for badge display types.
+	 *
+	 * Reduced from a 7-value semantic-plus-brand set down to 3 in 2026-05-21
+	 * after the Zillow pressure test surfaced that semantic colors (green
+	 * success / red danger / etc.) don't align with the site's design system
+	 * and add complexity for both AI agents and human authors. The brand
+	 * palette is the single source of badge color; SmartColorManager handles
+	 * WCAG contrast computation automatically via the --aisb-button-*-text
+	 * tokens.
+	 *
+	 *   primary — site's brand primary color. Uses --aisb-color-primary as
+	 *             background and --aisb-button-primary-text (SmartColor-
+	 *             computed contrast color) as text. Visual alignment with
+	 *             AISB's WooCommerce SALE badge is automatic — both use the
+	 *             same token pair. Best for promotional and high-emphasis
+	 *             badges (SALE, FEATURED, $1,000 OFF, FOR SALE).
+	 *
+	 *   secondary — site's brand secondary color. Uses --aisb-color-secondary
+	 *               + smart-computed text. Best for paired badges that need
+	 *               to contrast against primary while still feeling branded.
+	 *
+	 *   neutral — semi-transparent dark overlay (rgba 0.85) with white text.
+	 *             Independent of brand color. Best for state badges that
+	 *             should read clearly regardless of brand choice and on any
+	 *             image content underneath (the Zillow "Designer finishes"
+	 *             pattern). Also the safe default.
+	 *
+	 * Old semantic intents (success / warning / danger / info) are removed
+	 * from the admin enum and preflight disclosure but their CSS rules
+	 * remain in cards.css for backward compatibility. Existing fields
+	 * configured with those values keep rendering correctly until migrated.
+	 *
+	 * Enum is CLOSED. Adding a new intent requires updating cards.css with
+	 * matching color rules AND the SmartColor token plumbing.
+	 */
+	const COLOR_INTENTS = array(
+		'primary',
+		'secondary',
+		'neutral',
+	);
+
+	/**
+	 * Legacy semantic intents — accepted for backward compatibility with
+	 * pre-2026-05-21 field configurations but no longer exposed in the
+	 * admin dropdown or preflight enum. New fields should use the closed
+	 * COLOR_INTENTS list above.
+	 *
+	 * @var string[]
+	 */
+	const COLOR_INTENTS_LEGACY = array(
+		'success',
+		'warning',
+		'danger',
+		'info',
+	);
+
+	/**
+	 * Allowed date format modes for the `date` display type.
+	 *
+	 * `absolute` — WP's date_i18n() with the field-defined or sitewide format
+	 * `relative` — human_time_diff() output ("2 days ago")
+	 * `custom` — caller-supplied strftime-style string in date_format_string
+	 */
+	const DATE_FORMATS = array(
+		'absolute',
+		'relative',
+		'custom',
+	);
+
+	/**
+	 * Soft warning threshold for post fields per CPT. Cards display best
+	 * with 8 or fewer; beyond this the admin UI surfaces a warning banner.
+	 */
+	const SOFT_FIELD_COUNT_WARNING = 8;
+
+	/**
+	 * Hard cap on post fields per CPT. Filterable via
+	 * `pre_max_post_fields_per_cpt`. Beyond 12 the card layout breaks down
+	 * regardless of viewport.
+	 */
+	const HARD_FIELD_COUNT_LIMIT = 12;
+
+	/**
+	 * Maximum length for various post-field text inputs.
+	 */
+	const MAX_FIELD_KEY_LEN         = 64;
+	const MAX_FIELD_LABEL_LEN       = 100;
+	const MAX_FIELD_DESCRIPTION_LEN = 500;
+	const MAX_FIELD_OPTIONS         = 24;
+	const MAX_TEXT_VALUE_LEN        = 500;
+	const MAX_MULTI_BADGE_VALUES    = 8;
+	const MAX_VALUE_SUFFIX_LEN      = 16;
+
+	/**
+	 * Closed enum of supported ISO 4217 currency codes. Closed by design —
+	 * a typo in a currency code shouldn't silently produce broken pricing
+	 * displays. Filter `pre_supported_currencies` accepts site-specific
+	 * additions when needed (e.g., crypto, regional codes).
+	 *
+	 * Includes the ~30 most commonly-used currencies across the FlowMint
+	 * stack's expected client base. Add via filter for niche needs.
+	 */
+	const SUPPORTED_CURRENCIES = array(
+		'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY', 'CHF', 'SEK', 'NOK',
+		'DKK', 'NZD', 'SGD', 'HKD', 'KRW', 'INR', 'BRL', 'MXN', 'ZAR', 'AED',
+		'SAR', 'TRY', 'PLN', 'CZK', 'HUF', 'RUB', 'ILS', 'THB', 'PHP', 'IDR',
+	);
+
+	// ---------------------------------------------------------------------
 	// CPT definitions
 	// ---------------------------------------------------------------------
 
@@ -1035,5 +1191,651 @@ class PRE_Validator {
 		}
 
 		return true;
+	}
+
+	// ---------------------------------------------------------------------
+	// v1.1 post field validation
+	//
+	// Three entry points:
+	//   validate_post_field_definition()  — shape of the registered field
+	//   validate_post_field_value()       — value being stored for a post
+	//   validate_post_field_visibility()  — per-post visibility overrides
+	//
+	// All three are strict by design. Malformed input is rejected at save
+	// time rather than glossed over at render time. Same discipline as
+	// the existing v1.0 validation surface.
+	// ---------------------------------------------------------------------
+
+	/**
+	 * Validate a post field definition (the shape stored in
+	 * `pre_post_fields_{cpt_slug}`).
+	 *
+	 * Required: key, label, display_type, card_position, single_position.
+	 * Optional: description, icon, color_intent, options, required,
+	 *           date_format, date_format_string, currency_code, max.
+	 *
+	 * @param mixed  $definition The definition to validate.
+	 * @param string $cpt_slug   CPT slug the field belongs to. Used for
+	 *                            context-aware error messages; not a
+	 *                            registration check (the registry does that).
+	 * @return true|WP_Error
+	 */
+	public function validate_post_field_definition( $definition, $cpt_slug = '' ) {
+		if ( ! is_array( $definition ) ) {
+			return new WP_Error(
+				'pre_invalid_post_field',
+				__( 'Post field definition must be an array.', 'post-runtime-engine' )
+			);
+		}
+
+		// key — required, sanitize_key match, length cap.
+		if ( empty( $definition['key'] ) || ! is_string( $definition['key'] ) ) {
+			return new WP_Error(
+				'pre_missing_field_key',
+				__( 'Post field definition must include a non-empty key string.', 'post-runtime-engine' )
+			);
+		}
+
+		if ( sanitize_key( $definition['key'] ) !== $definition['key'] ) {
+			return new WP_Error(
+				'pre_invalid_field_key',
+				sprintf(
+					/* translators: %s: the rejected key */
+					__( 'Post field key %s contains invalid characters. Use lowercase letters, numbers, and underscores only.', 'post-runtime-engine' ),
+					$definition['key']
+				)
+			);
+		}
+
+		if ( strlen( $definition['key'] ) > self::MAX_FIELD_KEY_LEN ) {
+			return new WP_Error(
+				'pre_field_key_too_long',
+				sprintf(
+					/* translators: %d: max length */
+					__( 'Post field key must be %d characters or fewer.', 'post-runtime-engine' ),
+					self::MAX_FIELD_KEY_LEN
+				)
+			);
+		}
+
+		// label — required, non-empty string, length cap.
+		if ( empty( $definition['label'] ) || ! is_string( $definition['label'] ) ) {
+			return new WP_Error(
+				'pre_missing_field_label',
+				__( 'Post field definition must include a non-empty label string.', 'post-runtime-engine' )
+			);
+		}
+
+		if ( strlen( $definition['label'] ) > self::MAX_FIELD_LABEL_LEN ) {
+			return new WP_Error(
+				'pre_field_label_too_long',
+				sprintf(
+					/* translators: %d: max length */
+					__( 'Post field label must be %d characters or fewer.', 'post-runtime-engine' ),
+					self::MAX_FIELD_LABEL_LEN
+				)
+			);
+		}
+
+		// display_type — required, must be in DISPLAY_TYPES.
+		if ( empty( $definition['display_type'] ) || ! in_array( $definition['display_type'], self::DISPLAY_TYPES, true ) ) {
+			return new WP_Error(
+				'pre_invalid_display_type',
+				sprintf(
+					/* translators: %1$s: invalid display type, %2$s: list of allowed types */
+					__( 'Post field display_type %1$s is not one of: %2$s', 'post-runtime-engine' ),
+					is_string( $definition['display_type'] ?? null ) ? $definition['display_type'] : 'missing-or-non-string',
+					implode( ', ', self::DISPLAY_TYPES )
+				)
+			);
+		}
+
+		// card_position — required, must be in FIELD_POSITIONS.
+		if ( empty( $definition['card_position'] ) || ! in_array( $definition['card_position'], self::FIELD_POSITIONS, true ) ) {
+			return new WP_Error(
+				'pre_invalid_card_position',
+				sprintf(
+					/* translators: %1$s: invalid position, %2$s: list of allowed positions */
+					__( 'Post field card_position %1$s is not one of: %2$s', 'post-runtime-engine' ),
+					is_string( $definition['card_position'] ?? null ) ? $definition['card_position'] : 'missing-or-non-string',
+					implode( ', ', self::FIELD_POSITIONS )
+				)
+			);
+		}
+
+		// single_position — required, must be in FIELD_POSITIONS.
+		if ( empty( $definition['single_position'] ) || ! in_array( $definition['single_position'], self::FIELD_POSITIONS, true ) ) {
+			return new WP_Error(
+				'pre_invalid_single_position',
+				sprintf(
+					/* translators: %1$s: invalid position, %2$s: list of allowed positions */
+					__( 'Post field single_position %1$s is not one of: %2$s', 'post-runtime-engine' ),
+					is_string( $definition['single_position'] ?? null ) ? $definition['single_position'] : 'missing-or-non-string',
+					implode( ', ', self::FIELD_POSITIONS )
+				)
+			);
+		}
+
+		// Both positions hidden = field never renders. Allowed (drafting
+		// a field before deciding where to show it), but the renderer
+		// will skip it; surface a hint in the action context rather than
+		// here.
+
+		// description — optional string with a length cap.
+		if ( isset( $definition['description'] ) ) {
+			if ( ! is_string( $definition['description'] ) ) {
+				return new WP_Error(
+					'pre_invalid_field_description',
+					__( 'Post field description must be a string.', 'post-runtime-engine' )
+				);
+			}
+			if ( strlen( $definition['description'] ) > self::MAX_FIELD_DESCRIPTION_LEN ) {
+				return new WP_Error(
+					'pre_field_description_too_long',
+					sprintf(
+						/* translators: %d: max length */
+						__( 'Post field description must be %d characters or fewer.', 'post-runtime-engine' ),
+						self::MAX_FIELD_DESCRIPTION_LEN
+					)
+				);
+			}
+		}
+
+		// icon — optional string (validated by PRE_Icon_Library at render
+		// time). Here we only check the type to catch obvious typos.
+		if ( isset( $definition['icon'] ) && ! is_string( $definition['icon'] ) ) {
+			return new WP_Error(
+				'pre_invalid_field_icon',
+				__( 'Post field icon must be a string (icon slug from PRE_Icon_Library) or empty.', 'post-runtime-engine' )
+			);
+		}
+
+		// color_intent — optional, must be in COLOR_INTENTS or the legacy
+		// set (accepted for backward compatibility with pre-2026-05-21
+		// fields). Legacy intents render via cards.css fallback rules but
+		// new fields should use the simplified set.
+		if ( isset( $definition['color_intent'] ) ) {
+			$valid_intents = array_merge( self::COLOR_INTENTS, self::COLOR_INTENTS_LEGACY );
+			if ( ! in_array( $definition['color_intent'], $valid_intents, true ) ) {
+				return new WP_Error(
+					'pre_invalid_color_intent',
+					sprintf(
+						/* translators: %1$s: invalid intent, %2$s: list of allowed intents */
+						__( 'Post field color_intent %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						is_string( $definition['color_intent'] ) ? $definition['color_intent'] : 'non-string',
+						implode( ', ', self::COLOR_INTENTS )
+					)
+				);
+			}
+		}
+
+		// options — optional array of { key: { label, color_intent? } }.
+		// Only meaningful for badge display type but legal on any type
+		// (silently ignored by the renderer for non-badge types).
+		if ( isset( $definition['options'] ) ) {
+			$options_check = $this->validate_post_field_options( $definition['options'] );
+			if ( is_wp_error( $options_check ) ) {
+				return $options_check;
+			}
+		}
+
+		// required — optional boolean (affects admin UI only, not validation).
+		if ( isset( $definition['required'] ) && ! is_bool( $definition['required'] ) ) {
+			return new WP_Error(
+				'pre_invalid_field_required',
+				__( 'Post field required attribute must be true or false.', 'post-runtime-engine' )
+			);
+		}
+
+		// date_format — optional, must be in DATE_FORMATS. Only meaningful
+		// for date display type but validated regardless to surface typos.
+		if ( isset( $definition['date_format'] ) ) {
+			if ( ! in_array( $definition['date_format'], self::DATE_FORMATS, true ) ) {
+				return new WP_Error(
+					'pre_invalid_date_format',
+					sprintf(
+						/* translators: %1$s: invalid format, %2$s: list of allowed formats */
+						__( 'Post field date_format %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						is_string( $definition['date_format'] ) ? $definition['date_format'] : 'non-string',
+						implode( ', ', self::DATE_FORMATS )
+					)
+				);
+			}
+		}
+
+		// date_format_string — optional string. Required only when
+		// date_format is 'custom'.
+		if ( isset( $definition['date_format_string'] ) && ! is_string( $definition['date_format_string'] ) ) {
+			return new WP_Error(
+				'pre_invalid_date_format_string',
+				__( 'Post field date_format_string must be a string.', 'post-runtime-engine' )
+			);
+		}
+
+		if ( ( $definition['date_format'] ?? '' ) === 'custom' && empty( $definition['date_format_string'] ) ) {
+			return new WP_Error(
+				'pre_missing_date_format_string',
+				__( 'Post field date_format is "custom" but date_format_string is empty.', 'post-runtime-engine' )
+			);
+		}
+
+		// currency_code — optional, must be in SUPPORTED_CURRENCIES (or
+		// extension via the pre_supported_currencies filter).
+		if ( ! empty( $definition['currency_code'] ) ) {
+			$supported = $this->get_supported_currencies();
+			$code      = strtoupper( $definition['currency_code'] );
+			if ( ! in_array( $code, $supported, true ) ) {
+				return new WP_Error(
+					'pre_invalid_currency_code',
+					sprintf(
+						/* translators: %s: the unsupported code */
+						__( 'Currency code %s is not in the supported set. Use a standard ISO 4217 code or extend the list via the pre_supported_currencies filter.', 'post-runtime-engine' ),
+						$definition['currency_code']
+					)
+				);
+			}
+		}
+
+		// max — optional integer (used by rating type, default 5; and
+		// progress type, default 100).
+		if ( isset( $definition['max'] ) && ! is_int( $definition['max'] ) && ! is_numeric( $definition['max'] ) ) {
+			return new WP_Error(
+				'pre_invalid_field_max',
+				__( 'Post field max must be a number.', 'post-runtime-engine' )
+			);
+		}
+
+		// value_suffix — optional string appended after the formatted value.
+		// Only meaningful for currency type (currently); validated regardless
+		// of display_type so the data shape is consistent. Common values:
+		// "+" (starting-at), "/mo" (monthly), "/night" (per night),
+		// "+ tax" (taxes excluded). Length-capped to keep card layouts sane.
+		if ( isset( $definition['value_suffix'] ) ) {
+			if ( ! is_string( $definition['value_suffix'] ) ) {
+				return new WP_Error(
+					'pre_invalid_value_suffix',
+					__( 'Post field value_suffix must be a string.', 'post-runtime-engine' )
+				);
+			}
+			if ( strlen( $definition['value_suffix'] ) > self::MAX_VALUE_SUFFIX_LEN ) {
+				return new WP_Error(
+					'pre_value_suffix_too_long',
+					sprintf(
+						/* translators: %d: max length */
+						__( 'Post field value_suffix must be %d characters or fewer.', 'post-runtime-engine' ),
+						self::MAX_VALUE_SUFFIX_LEN
+					)
+				);
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Validate the `options` array on a post field definition.
+	 *
+	 * Shape: { option_value: { label: string, color_intent?: string } }
+	 *
+	 * @param mixed $options The options structure.
+	 * @return true|WP_Error
+	 */
+	private function validate_post_field_options( $options ) {
+		if ( ! is_array( $options ) ) {
+			return new WP_Error(
+				'pre_invalid_field_options',
+				__( 'Post field options must be an array.', 'post-runtime-engine' )
+			);
+		}
+
+		if ( count( $options ) > self::MAX_FIELD_OPTIONS ) {
+			return new WP_Error(
+				'pre_too_many_field_options',
+				sprintf(
+					/* translators: %d: max options count */
+					__( 'Post field options must contain %d or fewer entries.', 'post-runtime-engine' ),
+					self::MAX_FIELD_OPTIONS
+				)
+			);
+		}
+
+		foreach ( $options as $value => $opt ) {
+			if ( ! is_string( $value ) || sanitize_key( $value ) !== $value ) {
+				return new WP_Error(
+					'pre_invalid_option_key',
+					sprintf(
+						/* translators: %s: the invalid option key */
+						__( 'Post field option key %s must be a sanitize_key-safe string.', 'post-runtime-engine' ),
+						is_string( $value ) ? $value : 'non-string'
+					)
+				);
+			}
+
+			if ( ! is_array( $opt ) ) {
+				return new WP_Error(
+					'pre_invalid_option_shape',
+					sprintf(
+						/* translators: %s: the option key */
+						__( 'Post field option %s must be an object with at least a label.', 'post-runtime-engine' ),
+						$value
+					)
+				);
+			}
+
+			if ( empty( $opt['label'] ) || ! is_string( $opt['label'] ) ) {
+				return new WP_Error(
+					'pre_missing_option_label',
+					sprintf(
+						/* translators: %s: the option key */
+						__( 'Post field option %s is missing a label.', 'post-runtime-engine' ),
+						$value
+					)
+				);
+			}
+
+			if ( isset( $opt['color_intent'] ) ) {
+				$valid_intents = array_merge( self::COLOR_INTENTS, self::COLOR_INTENTS_LEGACY );
+				if ( ! in_array( $opt['color_intent'], $valid_intents, true ) ) {
+					return new WP_Error(
+						'pre_invalid_option_color_intent',
+						sprintf(
+							/* translators: %s: the option key */
+							__( 'Post field option %s has an invalid color_intent.', 'post-runtime-engine' ),
+							$value
+						)
+					);
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Validate a single field value being stored for a post.
+	 *
+	 * Per-display-type checks — currency must be numeric, date must be
+	 * YYYY-MM-DD, rating must be between 0 and max, progress between 0
+	 * and max, badge value must match one of the defined options (when
+	 * options are defined), etc.
+	 *
+	 * @param array $field_def The field definition.
+	 * @param mixed $value     The value being stored.
+	 * @return true|WP_Error
+	 */
+	public function validate_post_field_value( array $field_def, $value ) {
+		if ( empty( $field_def['display_type'] ) ) {
+			return new WP_Error(
+				'pre_invalid_field_def',
+				__( 'Field definition is missing a display_type.', 'post-runtime-engine' )
+			);
+		}
+
+		// Null / empty values are always allowed — represent "not set" and
+		// the renderer skips them. Validation only applies when a value is
+		// actually being stored.
+		if ( $value === null || $value === '' ) {
+			return true;
+		}
+
+		switch ( $field_def['display_type'] ) {
+			case 'currency':
+				if ( ! is_numeric( $value ) ) {
+					return new WP_Error(
+						'pre_invalid_currency_value',
+						__( 'Currency value must be numeric.', 'post-runtime-engine' )
+					);
+				}
+				return true;
+
+			case 'number_with_label':
+				if ( ! is_numeric( $value ) ) {
+					return new WP_Error(
+						'pre_invalid_number_value',
+						__( 'number_with_label value must be numeric.', 'post-runtime-engine' )
+					);
+				}
+				return true;
+
+			case 'date':
+				// Accept YYYY-MM-DD (most common) or any strtotime-parseable
+				// string. Storage normalization happens in PRE_Post_Data;
+				// here we just confirm parseability.
+				if ( ! is_string( $value ) ) {
+					return new WP_Error(
+						'pre_invalid_date_value',
+						__( 'Date value must be a string.', 'post-runtime-engine' )
+					);
+				}
+				if ( strtotime( $value ) === false ) {
+					return new WP_Error(
+						'pre_unparseable_date',
+						sprintf(
+							/* translators: %s: the invalid date string */
+							__( 'Date value %s could not be parsed. Use YYYY-MM-DD or a date format strtotime() understands.', 'post-runtime-engine' ),
+							$value
+						)
+					);
+				}
+				return true;
+
+			case 'text':
+				if ( ! is_string( $value ) ) {
+					return new WP_Error(
+						'pre_invalid_text_value',
+						__( 'Text value must be a string.', 'post-runtime-engine' )
+					);
+				}
+				if ( strlen( $value ) > self::MAX_TEXT_VALUE_LEN ) {
+					return new WP_Error(
+						'pre_text_value_too_long',
+						sprintf(
+							/* translators: %d: max length */
+							__( 'Text value must be %d characters or fewer.', 'post-runtime-engine' ),
+							self::MAX_TEXT_VALUE_LEN
+						)
+					);
+				}
+				return true;
+
+			case 'badge':
+				// If options are defined, value must be one of them.
+				// Otherwise any sanitize-keyable string is accepted.
+				if ( ! is_string( $value ) ) {
+					return new WP_Error(
+						'pre_invalid_badge_value',
+						__( 'Badge value must be a string.', 'post-runtime-engine' )
+					);
+				}
+				if ( ! empty( $field_def['options'] ) && is_array( $field_def['options'] ) ) {
+					if ( ! isset( $field_def['options'][ $value ] ) ) {
+						return new WP_Error(
+							'pre_badge_value_not_in_options',
+							sprintf(
+								/* translators: %1$s: value, %2$s: comma-separated valid options */
+								__( 'Badge value %1$s is not one of the defined options: %2$s', 'post-runtime-engine' ),
+								$value,
+								implode( ', ', array_keys( $field_def['options'] ) )
+							)
+						);
+					}
+				}
+				return true;
+
+			case 'meta_pair':
+				// Value is the right-hand side of the icon+value pair.
+				// Accepts any non-empty string or number.
+				if ( ! is_string( $value ) && ! is_numeric( $value ) ) {
+					return new WP_Error(
+						'pre_invalid_meta_pair_value',
+						__( 'meta_pair value must be a string or number.', 'post-runtime-engine' )
+					);
+				}
+				return true;
+
+			case 'rating':
+				// 0 to max (default 5). Decimal values allowed (4.7 stars).
+				if ( ! is_numeric( $value ) ) {
+					return new WP_Error(
+						'pre_invalid_rating_value',
+						__( 'Rating value must be numeric.', 'post-runtime-engine' )
+					);
+				}
+				$max = isset( $field_def['max'] ) && (int) $field_def['max'] > 0 ? (float) $field_def['max'] : 5.0;
+				$num = (float) $value;
+				if ( $num < 0 || $num > $max ) {
+					return new WP_Error(
+						'pre_rating_out_of_range',
+						sprintf(
+							/* translators: %1$f: rating value, %2$f: max */
+							__( 'Rating value %1$s is out of range. Must be between 0 and %2$s.', 'post-runtime-engine' ),
+							(string) $num,
+							(string) $max
+						)
+					);
+				}
+				return true;
+
+			case 'progress':
+				// Current value; the goal is stored in `_pre_field_{key}_goal`.
+				// Here we only validate the current value is numeric and
+				// non-negative; the renderer clamps to [0, goal].
+				if ( ! is_numeric( $value ) ) {
+					return new WP_Error(
+						'pre_invalid_progress_value',
+						__( 'Progress value must be numeric.', 'post-runtime-engine' )
+					);
+				}
+				if ( (float) $value < 0 ) {
+					return new WP_Error(
+						'pre_progress_negative',
+						__( 'Progress value cannot be negative.', 'post-runtime-engine' )
+					);
+				}
+				return true;
+
+			case 'multi_badge':
+				// Value is a comma-separated string OR an array. Both accepted;
+				// renderer normalizes. Validate count cap and per-segment shape.
+				if ( is_string( $value ) ) {
+					$segments = array_map( 'trim', explode( ',', $value ) );
+				} elseif ( is_array( $value ) ) {
+					$segments = array_map( 'strval', $value );
+				} else {
+					return new WP_Error(
+						'pre_invalid_multi_badge_value',
+						__( 'multi_badge value must be a comma-separated string or array.', 'post-runtime-engine' )
+					);
+				}
+
+				$segments = array_filter( $segments, 'strlen' );
+				if ( count( $segments ) > self::MAX_MULTI_BADGE_VALUES ) {
+					return new WP_Error(
+						'pre_too_many_multi_badge_values',
+						sprintf(
+							/* translators: %d: max count */
+							__( 'multi_badge value contains too many segments. Maximum is %d.', 'post-runtime-engine' ),
+							self::MAX_MULTI_BADGE_VALUES
+						)
+					);
+				}
+				return true;
+		}
+
+		// Unknown display type — should be caught at definition validation
+		// time; this is belt-and-suspenders.
+		return new WP_Error(
+			'pre_unknown_display_type',
+			sprintf(
+				/* translators: %s: the display type */
+				__( 'Unknown display type %s on field definition.', 'post-runtime-engine' ),
+				is_string( $field_def['display_type'] ) ? $field_def['display_type'] : 'non-string'
+			)
+		);
+	}
+
+	/**
+	 * Validate the per-post field visibility overrides structure.
+	 *
+	 * Expected shape:
+	 *   {
+	 *     "field_key_1": { "card_hidden": bool, "single_hidden": bool },
+	 *     "field_key_2": { "card_hidden": bool, "single_hidden": bool },
+	 *   }
+	 *
+	 * Either key in each entry is optional (defaults to false). The whole
+	 * entry may be absent for a field, meaning "use default visibility."
+	 *
+	 * @param mixed $visibility The visibility array (already decoded if JSON).
+	 * @return true|WP_Error
+	 */
+	public function validate_post_field_visibility( $visibility ) {
+		if ( ! is_array( $visibility ) ) {
+			return new WP_Error(
+				'pre_invalid_visibility_shape',
+				__( 'Field visibility must be an array (or JSON object).', 'post-runtime-engine' )
+			);
+		}
+
+		foreach ( $visibility as $field_key => $flags ) {
+			if ( ! is_string( $field_key ) || sanitize_key( $field_key ) !== $field_key ) {
+				return new WP_Error(
+					'pre_invalid_visibility_key',
+					sprintf(
+						/* translators: %s: the invalid key */
+						__( 'Visibility key %s must be a sanitize_key-safe field key.', 'post-runtime-engine' ),
+						is_string( $field_key ) ? $field_key : 'non-string'
+					)
+				);
+			}
+
+			if ( ! is_array( $flags ) ) {
+				return new WP_Error(
+					'pre_invalid_visibility_entry',
+					sprintf(
+						/* translators: %s: the field key */
+						__( 'Visibility entry for %s must be an object with card_hidden and/or single_hidden booleans.', 'post-runtime-engine' ),
+						$field_key
+					)
+				);
+			}
+
+			foreach ( array( 'card_hidden', 'single_hidden' ) as $flag_key ) {
+				if ( isset( $flags[ $flag_key ] ) && ! is_bool( $flags[ $flag_key ] ) ) {
+					return new WP_Error(
+						'pre_invalid_visibility_flag',
+						sprintf(
+							/* translators: %1$s: field key, %2$s: flag name */
+							__( 'Visibility flag %2$s for field %1$s must be true or false.', 'post-runtime-engine' ),
+							$field_key,
+							$flag_key
+						)
+					);
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Get the effective supported-currencies list, honoring the
+	 * `pre_supported_currencies` filter.
+	 *
+	 * @return string[]
+	 */
+	private function get_supported_currencies() {
+		/**
+		 * Filter the closed list of ISO 4217 currency codes accepted by
+		 * the validator.
+		 *
+		 * Default includes the ~30 most commonly-used currencies. Sites
+		 * with niche needs (crypto, regional codes) extend via this
+		 * filter. Always return an array of uppercase 3-letter strings.
+		 *
+		 * @param string[] $codes Supported currency codes.
+		 */
+		$codes = apply_filters( 'pre_supported_currencies', self::SUPPORTED_CURRENCIES );
+		return is_array( $codes ) ? array_map( 'strtoupper', $codes ) : self::SUPPORTED_CURRENCIES;
 	}
 }

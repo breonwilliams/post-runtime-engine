@@ -59,6 +59,19 @@ class PRE_Frontend_Assets {
 			PRE_VERSION
 		);
 
+		// v1.1: post-field rendering styles. Loaded on every registered
+		// CPT single (parallel to frontend.css) — the card renderer emits
+		// no output when the CPT has no post fields registered, so loading
+		// the CSS unconditionally on these pages is harmless. PostGrid +
+		// archive integrations in Phase 12 will enqueue this same
+		// stylesheet from their own enqueue paths.
+		wp_enqueue_style(
+			'pre-cards',
+			PRE_PLUGIN_URL . 'assets/css/cards.css',
+			array( 'pre-frontend' ),
+			PRE_VERSION
+		);
+
 		// Iconify web-component bundle. Loaded on every registered CPT single
 		// so any grouping item carrying an Iconify icon code (e.g. `mdi:home`,
 		// `logos:wordpress`) renders the right SVG. The component fetches

@@ -175,6 +175,10 @@ class PRE_Admin_CPTs {
 									<?php esc_html_e( 'Groupings', 'post-runtime-engine' ); ?>
 								</a>
 								&nbsp;|&nbsp;
+								<a href="<?php echo esc_url( admin_url( 'admin.php?page=pre-post-fields&cpt=' . $slug ) ); ?>">
+									<?php esc_html_e( 'Post Fields', 'post-runtime-engine' ); ?>
+								</a>
+								&nbsp;|&nbsp;
 								<a href="<?php echo esc_url( $this->delete_url( $slug ) ); ?>"
 									class="pre-delete-link"
 									onclick="return confirm('<?php echo esc_js( __( 'Remove this post type registration? Existing posts of this type will remain in the database, but the type will no longer be queryable.', 'post-runtime-engine' ) ); ?>');">

@@ -338,6 +338,87 @@ class PRE_Connector_API {
 			),
 		) );
 
+		// ----- Post fields (v1.1) — 6 routes for definitions + 4 for values/visibility -----
+
+		// Collection: list / create field definitions for a CPT.
+		register_rest_route( $ns, "/{$base}/cpts/(?P<slug>[a-z0-9_]+)/post-fields", array(
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'handle_list_post_fields' ),
+				'permission_callback' => PRE_Connector_Auth::build_callback( 'list_post_fields' ),
+				'args'                => $this->cpt_slug_arg(),
+			),
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'handle_define_post_field' ),
+				'permission_callback' => PRE_Connector_Auth::build_callback( 'define_post_field' ),
+				'args'                => $this->cpt_slug_arg(),
+			),
+		) );
+
+		// Bulk reorder. Registered BEFORE the {key} route so the literal
+		// "reorder" path segment doesn't get captured as a field key.
+		register_rest_route( $ns, "/{$base}/cpts/(?P<slug>[a-z0-9_]+)/post-fields/reorder", array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => array( $this, 'handle_reorder_post_fields' ),
+			'permission_callback' => PRE_Connector_Auth::build_callback( 'reorder_post_fields' ),
+			'args'                => $this->cpt_slug_arg(),
+		) );
+
+		// Single field definition: read / update / delete.
+		register_rest_route( $ns, "/{$base}/cpts/(?P<slug>[a-z0-9_]+)/post-fields/(?P<key>[a-z0-9_]+)", array(
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'handle_get_post_field' ),
+				'permission_callback' => PRE_Connector_Auth::build_callback( 'get_post_field' ),
+				'args'                => $this->cpt_slug_and_key_args(),
+			),
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( $this, 'handle_update_post_field' ),
+				'permission_callback' => PRE_Connector_Auth::build_callback( 'update_post_field' ),
+				'args'                => $this->cpt_slug_and_key_args(),
+			),
+			array(
+				'methods'             => WP_REST_Server::DELETABLE,
+				'callback'            => array( $this, 'handle_delete_post_field' ),
+				'permission_callback' => PRE_Connector_Auth::build_callback( 'delete_post_field' ),
+				'args'                => $this->cpt_slug_and_key_args(),
+			),
+		) );
+
+		// Per-post field values: read all, bulk write.
+		register_rest_route( $ns, "/{$base}/posts/(?P<id>\d+)/field-values", array(
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'handle_get_post_field_values' ),
+				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'get_post_field_values' ),
+				'args'                => $this->post_id_arg(),
+			),
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( $this, 'handle_set_post_field_values' ),
+				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'set_post_field_values' ),
+				'args'                => $this->post_id_arg(),
+			),
+		) );
+
+		// Per-post visibility overrides: read + write.
+		register_rest_route( $ns, "/{$base}/posts/(?P<id>\d+)/field-visibility", array(
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'handle_get_post_field_visibility' ),
+				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'get_post_field_visibility' ),
+				'args'                => $this->post_id_arg(),
+			),
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( $this, 'handle_set_post_field_visibility' ),
+				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'set_post_field_visibility' ),
+				'args'                => $this->post_id_arg(),
+			),
+		) );
+
 		// ----- Post create + preview -----
 
 		register_rest_route( $ns, "/{$base}/posts", array(
@@ -387,10 +468,11 @@ class PRE_Connector_API {
 			'rest_namespace'   => PRE_REST_NAMESPACE,
 			'rest_base'        => '/wp-json/' . PRE_REST_NAMESPACE . '/' . PRE_REST_BASE,
 			'user'             => array(
-				'id'                   => (int) $user->ID,
-				'login'                => $user->user_login,
-				'can_manage_cpts'      => current_user_can( PRE_Capabilities::MANAGE_CAP ),
-				'can_manage_groupings' => current_user_can( PRE_Capabilities::MANAGE_CAP ),
+				'id'                     => (int) $user->ID,
+				'login'                  => $user->user_login,
+				'can_manage_cpts'        => current_user_can( PRE_Capabilities::MANAGE_CAP ),
+				'can_manage_groupings'   => current_user_can( PRE_Capabilities::MANAGE_CAP ),
+				'can_manage_post_fields' => current_user_can( PRE_Capabilities::MANAGE_CAP ),
 			),
 			'registered_cpts'  => $registered_cpts,
 			// Promptless WP defines AISB_MODERN_VERSION; this flag tells the
@@ -414,6 +496,10 @@ class PRE_Connector_API {
 			// here so AI consumers can discover the meta_match mode added in
 			// data-version 0.3.0 without having to read the validator source.
 			'source_modes'     => self::get_source_modes_descriptor(),
+			// v1.1: closed enums for the second field type (post fields).
+			// Each enum is documented with human labels so AI agents can
+			// pick values without trial-and-error against the validator.
+			'post_field_enums' => self::get_post_field_enums(),
 		) );
 	}
 
@@ -487,6 +573,13 @@ class PRE_Connector_API {
 			'featured_card_max_one'        => 'featured-card variant has max_items=1 enforced by the validator. featured-card is for ONE prominent item per grouping (a Lead Architect, a Schedule a Tour CTA, a Currently Featured project). For multi-item collections of cards-with-images use card-grid.',
 			'icon_ids_must_be_registered'  => 'CPT default_icon and grouping item icon_id accept TWO formats, both verified by PRE_Icon_Library::is_valid_id(): (1) A legacy curated ID from the built-in 53-icon library — e.g. `home`, `shield`, `briefcase` — renders as an inline SVG (zero network requests, fastest paint). Call GET /icons (or postruntime_list_icons via MCP) to discover them. (2) Any Iconify code in `collection:name` form — e.g. `mdi:home`, `logos:wordpress`, `material-symbols:business-outline`, `heroicons:user-circle`, `fa6-solid:tooth` — renders as an `<iconify-icon>` web component, fetching SVG from api.iconify.design at paint time. 200,000+ icons across 100+ sets; browse at https://icon-sets.iconify.design/. Prefer Iconify codes for parity with Promptless WP (which already uses Iconify everywhere) and for industry-specific glyphs the curated 53 do not cover. Both formats pass through the same validator and renderer; an invalid format (anything that does not match either) returns 422 pre_invalid_default_icon or pre_unknown_icon at write time. The /icons response includes an `iconify` block with the format pattern + a legacy → Iconify map for cross-format awareness.',
 			'choosing_a_source_mode'       => 'Four source modes are available — see source_modes in this preflight for the full descriptor. Quick chooser: (1) Use manual when each post curates its own items (e.g. a Listing\'s Features grouping where the agent picks specific selling points). (2) Use child_posts when the relationship is hierarchical and natural in WordPress (a Course post with Lesson child posts). (3) Use taxonomy_match when the relationship is "shares a category / tag / region" (related Articles in same topic). (4) Use meta_match when the relationship is a stored entity ID — "more from this agent" with meta_key=_agent_id, "other openings from this employer" with _employer_id, "other locations of this business" with _business_id. meta_match short-circuits to empty when the current post has no value for the configured meta_key, so it is safe to enable on a CPT before every post has the meta populated.',
+			// v1.1 — post field authoring rules.
+			'post_fields_vs_groupings'     => 'Two field types coexist on every CPT: groupings (v1.0, repeatable {icon, heading, text, link} items) and post fields (v1.1, scalar values with typed display). Use groupings for collections that need their own items per post — features lists, FAQ items, course modules. Use post fields for single per-post values that decorate the hero and cards — price, status, location, beds/baths, rating, posted date. Two extreme tells: if every post has a different LIST of things, it is a grouping; if every post has the SAME named values (each one filled differently), they are post fields.',
+			'post_field_positions'         => 'Post fields render in a closed set of 5 positions per context (card AND single-post hero, symmetric): image_overlay (badge on featured image, top-left), headline (large prominent value above the title — price, salary, event date), subtitle (small line under the title — location, company, cuisine), meta_strip (inline horizontal list of small items — beds/baths/sqft, prep/cook/rating, posted/duration/level), footer_meta (smallest line at the bottom — listed-date, attendees). A field can use ANY of the 5 positions in EITHER context, plus a sixth `hidden` value to register a field that should not render in that context. Multiple fields can occupy the same position — they render in field-definition order (controlled by /post-fields/reorder).',
+			'post_field_display_types'     => 'Closed enum of 9 display types — see post_field_enums.display_types in this preflight for the full list with examples. Quick chooser: currency for monetary values (locale-formatted), number_with_label for "N <unit>" pairs (1,800 sqft, 3 BR), badge for single pills with color intent (For sale, Featured), meta_pair for icon+value cells in meta_strip (🛏 3), date for dates (absolute or relative), text for plain string display, rating for "★★★★☆ 4.8 (1,243)" composites, progress for funding-style "$320K of $500K" bars, multi_badge for comma-separated pill lists (Vegan, GF, Quick). Each display type has its own per-value validation in the validator — see post_field_value_shape below.',
+			'post_field_value_shape'       => 'Per-display-type value rules: (currency, number_with_label, rating-value, progress-value) numeric; (date) YYYY-MM-DD or any strtotime-parseable string; (text, meta_pair) string up to 500 chars; (badge) string or one of the predefined options[].key when defined; (multi_badge) comma-separated string OR array of segments; (rating) array { value: 0-max, count: int|null }; (progress) array { value: 0+, goal: number|null }. Empty / null clears the field on set_post_field_values. Composite types (rating, progress) accept either the array shape OR a bare scalar for the primary value (secondary defaults to null).',
+			'post_field_count_cap'         => 'Each CPT supports up to 12 post fields (HARD_FIELD_COUNT_LIMIT, filterable via pre_max_post_fields_per_cpt). Cards display best with 8 or fewer; beyond that meta_strip starts wrapping on mobile. The connector rejects field #13 with pre_max_field_count_exceeded (HTTP 422). Plan field allocation up front: 1-2 for headline (price/date), 1 for image_overlay (status), 0-1 for subtitle (location), 2-4 for meta_strip, 0-2 for footer_meta.',
+			'post_field_visibility_model'  => 'Two layers of visibility control: (1) CPT-level position attribute (card_position, single_position) — set to `hidden` to drop the field from one context entirely; (2) per-post overrides via PUT /posts/{id}/field-visibility — hide a specific field on a specific post in a specific context while leaving the CPT-level config intact. The intent is "homeowner doesn\'t want their price shown on the card listing" without redefining the entire field. Positions cannot be overridden per post; only visibility.',
 		);
 	}
 
@@ -509,7 +602,66 @@ class PRE_Connector_API {
 			),
 			'cpt_definition'       => array( 'slug', 'label_singular', 'label_plural', 'supports', 'public', 'has_archive', 'show_in_rest', 'show_in_menu', 'menu_position', 'menu_icon', 'taxonomies', 'capability_type', 'description', 'rewrite', 'hero_layout', 'hero_image_position', 'hero_image_aspect', 'default_icon' ),
 			'grouping_definition'  => array( 'key', 'label', 'description', 'default_variant', 'default_position', 'default_source', 'max_items', 'heading_required', 'supporting_text_required', 'link_required', 'icon_or_image_required' ),
-			'notes'                => 'icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails).',
+			'post_field_definition' => array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'options', 'required', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'max', 'unit_label' ),
+			'notes'                => 'icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails). Post field definition fields not in post_field_definition above are silently dropped on write by PRE_Validator; conditional fields (color_intent, options for badge; icon for meta_pair; date_format / date_format_string for date; currency_code for currency; max + unit_label for rating / progress / number_with_label) are only meaningful when paired with the right display_type.',
+		);
+	}
+
+	/**
+	 * v1.1 — closed enums for post field definitions, surfaced in preflight
+	 * so connector clients can discover valid values without trial-and-error
+	 * against the validator. All enums are CLOSED in v1.1; no filter-based
+	 * extension is supported (see docs/POST_FIELDS_V1_1_DESIGN.md § 4).
+	 *
+	 * @return array
+	 */
+	private static function get_post_field_enums() {
+		return array(
+			// 9 display types with example renderings — the labels mirror
+			// the admin-UI dropdown so AI agents and humans see the same hints.
+			'display_types' => array(
+				array( 'value' => 'currency',          'label' => 'Currency ($1,250,000)',           'description' => 'Locale-formatted currency value. Currency code resolves via field currency_code → AISB Business Identity → pre_currency option → USD. Optional value_suffix is appended after the formatted amount: "+" for starting-at pricing ($2,328+), "/mo" for subscriptions ($45/mo), "/night" for hotels.' ),
+				array( 'value' => 'number_with_label', 'label' => 'Number with unit (1,800 sqft)',   'description' => 'Numeric value with a unit suffix from unit_label. Designed for meta_strip cells.' ),
+				array( 'value' => 'badge',             'label' => 'Badge (For sale)',                'description' => 'Single pill with color intent. Define options to constrain the value to a curated list with per-value intent overrides.' ),
+				array( 'value' => 'meta_pair',         'label' => 'Icon + value (🛏 3)',             'description' => 'Designed for meta_strip. Pulls icon from PRE_Icon_Library via the icon attribute. Pairs an icon glyph with a short numeric or string value.' ),
+				array( 'value' => 'date',              'label' => 'Date (May 20, 2026)',             'description' => 'Date display. date_format picks one of: absolute (May 20, 2026), relative (2 days ago), custom (uses date_format_string).' ),
+				array( 'value' => 'text',              'label' => 'Plain text',                       'description' => 'Catch-all string display. Use for category names, location strings, anything that doesn\'t fit a more specific type.' ),
+				array( 'value' => 'rating',            'label' => 'Star rating (★★★★☆ 4.8 (1,243))', 'description' => 'Composite: stars + numeric value + optional review count. Value stored at _pre_field_{key}; count at _pre_field_{key}_count. max defaults to 5.' ),
+				array( 'value' => 'progress',          'label' => 'Progress bar (65% funded)',       'description' => 'Bar + label. Value stored at _pre_field_{key} (current); goal at _pre_field_{key}_goal (target). When currency_code is set, label reads "$320,000 of $500,000".' ),
+				array( 'value' => 'multi_badge',       'label' => 'Multi-badge (Vegan, GF, Quick)',  'description' => 'Comma-separated string OR array. Each segment renders as its own pill in the same row. options can map per-segment to a label + color_intent.' ),
+			),
+			// 5 positions + hidden, symmetric across card and single-hero contexts.
+			'field_positions' => array(
+				array( 'value' => 'image_overlay', 'label' => 'Image overlay (top-left badge)',     'description' => 'Pill / chip overlaid on the featured image. Best for status badges (For sale, Featured, Almost full).' ),
+				array( 'value' => 'headline',      'label' => 'Headline (prominent, above title)',  'description' => 'Large prominent value above the title. For one star value per card: price, salary, event date, course price.' ),
+				array( 'value' => 'subtitle',      'label' => 'Subtitle (under title)',             'description' => 'Small line directly under the title. For location, company name, restaurant cuisine, course instructor.' ),
+				array( 'value' => 'meta_strip',    'label' => 'Meta strip (inline list)',           'description' => 'Inline horizontal strip of small items. For up to 3-4 meta_pair / number_with_label / rating items. Wraps on mobile.' ),
+				array( 'value' => 'footer_meta',   'label' => 'Footer meta (bottom row)',           'description' => 'Smallest muted line at the bottom of the card / hero. For listed-date, attendees-count, MLS#, posted-by author.' ),
+				array( 'value' => 'hidden',        'label' => 'Hidden in this context',             'description' => 'Field is registered but does not render in this context. Use when a field belongs in only ONE of card or single-hero (e.g. MLS# in footer_meta of single hero but hidden on the card).' ),
+			),
+			// 3 color intents — simplified to brand + neutral after the 2026-05-21
+			// pressure test surfaced that semantic colors (success/warning/etc.)
+			// didn't align with the site design system. SmartColorManager handles
+			// WCAG contrast computation automatically via the --aisb-button-*-text
+			// tokens, so primary/secondary intents stay accessible regardless of
+			// what color the user picks for the brand palette.
+			'color_intents' => array(
+				array( 'value' => 'primary',   'label' => 'Primary (brand)',   'description' => 'Site\'s brand primary color. Background uses --aisb-color-primary; text uses --aisb-button-primary-text (SmartColorManager-computed contrast color, always WCAG-AA compliant against the chosen primary). Visually identical to AISB\'s WooCommerce SALE badge — same token pair. Best for promotional / high-emphasis badges (FOR SALE, SALE, FEATURED, $1,000 OFF, NEW LISTING).' ),
+				array( 'value' => 'secondary', 'label' => 'Secondary (brand)', 'description' => 'Site\'s brand secondary color. Background --aisb-color-secondary; text --aisb-button-secondary-text. Best for paired badges that need to contrast against primary while still feeling brand-aligned. E.g., status badge in primary + deal badge in secondary side-by-side.' ),
+				array( 'value' => 'neutral',   'label' => 'Neutral (dark overlay)', 'description' => 'Semi-transparent dark (rgba 15,23,42 at 0.85 opacity) with white text and backdrop blur. Independent of brand color. Works on any image. The Zillow "Designer finishes" pattern. Safe default; use when the badge content is informational (NEW, COMING SOON, FAST) rather than promotional, or when you want the badge to recede visually so the brand colors stand out.' ),
+			),
+			// Date format modes for the date display type.
+			'date_formats' => array(
+				array( 'value' => 'absolute', 'label' => 'Absolute (May 20, 2026)',   'description' => 'WP date_i18n with the format from get_option(date_format).' ),
+				array( 'value' => 'relative', 'label' => 'Relative (2 days ago)',     'description' => 'human_time_diff output. Best for posted-date / updated-at fields where the value is recent.' ),
+				array( 'value' => 'custom',   'label' => 'Custom format string',      'description' => 'Uses the value of date_format_string with date_i18n. Example: "F j" for "May 20".' ),
+			),
+			// Closed set of ISO 4217 currency codes the validator accepts on
+			// currency_code. Extend via the pre_supported_currencies filter.
+			'supported_currencies' => PRE_Validator::SUPPORTED_CURRENCIES,
+			// Field-count thresholds. Soft is a UI warning; hard is enforced.
+			'soft_field_count_warning' => PRE_Validator::SOFT_FIELD_COUNT_WARNING,
+			'hard_field_count_limit'   => (int) apply_filters( 'pre_max_post_fields_per_cpt', PRE_Validator::HARD_FIELD_COUNT_LIMIT ),
 		);
 	}
 
@@ -1647,6 +1799,349 @@ class PRE_Connector_API {
 	 * Shape a grouping definition. Adds `key` to the response.
 	 */
 	private function shape_grouping( $key, array $def ) {
+		return array_merge(
+			array( 'key' => $key ),
+			$def
+		);
+	}
+
+	// ========================================================================
+	// Handlers — post fields (v1.1)
+	// ========================================================================
+
+	/**
+	 * GET /cpts/{slug}/post-fields — list all field definitions for a CPT.
+	 */
+	public function handle_list_post_fields( WP_REST_Request $request ) {
+		$plugin = pre();
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+
+		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+		}
+		if ( ! $plugin->post_fields ) {
+			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'post-runtime-engine' ), 500 );
+		}
+
+		$out = array();
+		foreach ( $plugin->post_fields->get_all( $slug ) as $key => $def ) {
+			$out[] = $this->shape_post_field( $key, $def );
+		}
+
+		return rest_ensure_response( array( 'post_fields' => $out ) );
+	}
+
+	/**
+	 * POST /cpts/{slug}/post-fields — define a new post field.
+	 */
+	public function handle_define_post_field( WP_REST_Request $request ) {
+		$plugin = pre();
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+
+		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+		}
+		if ( ! $plugin->post_fields ) {
+			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'post-runtime-engine' ), 500 );
+		}
+
+		$body = $this->parse_json_body( $request );
+		if ( is_wp_error( $body ) ) {
+			return $body;
+		}
+
+		// Strip any caller-supplied connector_version on create — the
+		// registry assigns it. Update calls use a check_connector_version
+		// preflight against the stored value (see handle_update_post_field).
+		unset( $body['connector_version'] );
+
+		$result = $plugin->post_fields->define( $slug, $body );
+		if ( is_wp_error( $result ) ) {
+			return $this->error_from_wp_error( $result );
+		}
+
+		$key = sanitize_key( $body['key'] ?? '' );
+		$def = $plugin->post_fields->get( $slug, $key );
+		return new WP_REST_Response( $this->shape_post_field( $key, $def ), 201 );
+	}
+
+	/**
+	 * GET /cpts/{slug}/post-fields/{key} — read one definition.
+	 */
+	public function handle_get_post_field( WP_REST_Request $request ) {
+		$plugin = pre();
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
+
+		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+		}
+		if ( ! $plugin->post_fields || ! $plugin->post_fields->exists( $slug, $key ) ) {
+			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'post-runtime-engine' ), 404 );
+		}
+
+		$def = $plugin->post_fields->get( $slug, $key );
+		return rest_ensure_response( $this->shape_post_field( $key, $def ) );
+	}
+
+	/**
+	 * PUT /cpts/{slug}/post-fields/{key} — update an existing definition.
+	 *
+	 * Same upsert semantics as the grouping update path: the URL key is
+	 * authoritative (body `key` is ignored / forced). connector_version
+	 * is checked for optimistic concurrency.
+	 */
+	public function handle_update_post_field( WP_REST_Request $request ) {
+		$plugin = pre();
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
+
+		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+		}
+		if ( ! $plugin->post_fields || ! $plugin->post_fields->exists( $slug, $key ) ) {
+			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'post-runtime-engine' ), 404 );
+		}
+
+		$body = $this->parse_json_body( $request );
+		if ( is_wp_error( $body ) ) {
+			return $body;
+		}
+
+		// Concurrency check — same shape as the grouping update path so
+		// connector clients use a single pattern across both field types.
+		$version_check = $this->check_connector_version(
+			$request,
+			$body,
+			$plugin->post_fields->get( $slug, $key )
+		);
+		if ( is_wp_error( $version_check ) ) {
+			return $version_check;
+		}
+
+		// URL key wins.
+		$body['key'] = $key;
+		unset( $body['connector_version'] );
+
+		$result = $plugin->post_fields->define( $slug, $body );
+		if ( is_wp_error( $result ) ) {
+			return $this->error_from_wp_error( $result );
+		}
+
+		$def = $plugin->post_fields->get( $slug, $key );
+		return rest_ensure_response( $this->shape_post_field( $key, $def ) );
+	}
+
+	/**
+	 * DELETE /cpts/{slug}/post-fields/{key} — remove a definition.
+	 *
+	 * Per-post stored values are intentionally NOT touched. They're
+	 * orphaned until the post is next saved (which sweeps them) or until
+	 * a future explicit cleanup endpoint lands. This matches the grouping
+	 * delete behavior — preserves user data through accidental deletions.
+	 */
+	public function handle_delete_post_field( WP_REST_Request $request ) {
+		$plugin = pre();
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
+
+		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+		}
+		if ( ! $plugin->post_fields || ! $plugin->post_fields->exists( $slug, $key ) ) {
+			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'post-runtime-engine' ), 404 );
+		}
+
+		$plugin->post_fields->remove( $slug, $key );
+
+		return new WP_REST_Response( null, 204 );
+	}
+
+	/**
+	 * POST /cpts/{slug}/post-fields/reorder — bulk reorder.
+	 *
+	 * Body shape: { "ordered_keys": ["price","status","beds","baths"] }
+	 *
+	 * The submitted list MUST contain exactly the set of currently-defined
+	 * field keys — no additions, no removals, no duplicates. Validation
+	 * happens in PRE_Post_Field_Registry::reorder.
+	 */
+	public function handle_reorder_post_fields( WP_REST_Request $request ) {
+		$plugin = pre();
+		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
+
+		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+		}
+		if ( ! $plugin->post_fields ) {
+			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'post-runtime-engine' ), 500 );
+		}
+
+		$body = $this->parse_json_body( $request );
+		if ( is_wp_error( $body ) ) {
+			return $body;
+		}
+
+		$ordered = isset( $body['ordered_keys'] ) && is_array( $body['ordered_keys'] )
+			? $body['ordered_keys']
+			: array();
+
+		$result = $plugin->post_fields->reorder( $slug, $ordered );
+		if ( is_wp_error( $result ) ) {
+			return $this->error_from_wp_error( $result );
+		}
+
+		// Return the new order as confirmation.
+		$out = array();
+		foreach ( $plugin->post_fields->get_all( $slug ) as $key => $def ) {
+			$out[] = $this->shape_post_field( $key, $def );
+		}
+		return rest_ensure_response( array( 'post_fields' => $out ) );
+	}
+
+	/**
+	 * GET /posts/{id}/field-values — read all field values for a post.
+	 *
+	 * Returns values keyed by field key. Composite types (rating, progress)
+	 * surface as `{ value: ..., count: ... }` / `{ value: ..., goal: ... }`
+	 * arrays so a consumer can read both halves in one call.
+	 */
+	public function handle_get_post_field_values( WP_REST_Request $request ) {
+		$plugin  = pre();
+		$post_id = (int) $this->get_url_param( $request, 'id' );
+
+		$err = $this->require_pre_post( $post_id );
+		if ( is_wp_error( $err ) ) {
+			return $err;
+		}
+
+		$post   = get_post( $post_id );
+		$values = $plugin->post_data ? $plugin->post_data->get_field_values( $post_id ) : array();
+
+		return rest_ensure_response( array(
+			'post_id'      => $post_id,
+			'post_type'    => $post->post_type,
+			'field_values' => $values,
+		) );
+	}
+
+	/**
+	 * PUT /posts/{id}/field-values — bulk write field values.
+	 *
+	 * Body shape: { "values": { "price": 1250000, "status": "for_sale", "beds": 3 } }
+	 * For composite types: { "rating": { "value": 4.8, "count": 1243 } }
+	 *
+	 * Partial-update semantics: fields not present in the payload are
+	 * unchanged. To clear a field, send an explicit null or empty string.
+	 */
+	public function handle_set_post_field_values( WP_REST_Request $request ) {
+		$plugin  = pre();
+		$post_id = (int) $this->get_url_param( $request, 'id' );
+
+		$err = $this->require_pre_post( $post_id );
+		if ( is_wp_error( $err ) ) {
+			return $err;
+		}
+
+		$body = $this->parse_json_body( $request );
+		if ( is_wp_error( $body ) ) {
+			return $body;
+		}
+
+		// Accept either { values: { ... } } (canonical) or a bare field
+		// map at the root for caller convenience. Connector clients are
+		// expected to use the canonical shape; the bare-map fallback
+		// shouldn't be relied on long-term.
+		$values = array();
+		if ( isset( $body['values'] ) && is_array( $body['values'] ) ) {
+			$values = $body['values'];
+		} elseif ( ! isset( $body['values'] ) && ! empty( $body ) ) {
+			$values = $body;
+		}
+
+		if ( ! is_array( $values ) || empty( $values ) ) {
+			return $this->error_response(
+				'pre_empty_field_values',
+				__( 'Body must include a non-empty "values" object mapping field keys to values.', 'post-runtime-engine' ),
+				400
+			);
+		}
+
+		$result = $plugin->post_data->set_field_values( $post_id, $values, 'connector' );
+		if ( is_wp_error( $result ) ) {
+			return $this->error_from_wp_error( $result );
+		}
+
+		// Return the resulting full value set so callers can confirm what landed.
+		return rest_ensure_response( array(
+			'post_id'      => $post_id,
+			'field_values' => $plugin->post_data->get_field_values( $post_id ),
+		) );
+	}
+
+	/**
+	 * GET /posts/{id}/field-visibility — read per-post visibility overrides.
+	 */
+	public function handle_get_post_field_visibility( WP_REST_Request $request ) {
+		$plugin  = pre();
+		$post_id = (int) $this->get_url_param( $request, 'id' );
+
+		$err = $this->require_pre_post( $post_id );
+		if ( is_wp_error( $err ) ) {
+			return $err;
+		}
+
+		$visibility = $plugin->post_data ? $plugin->post_data->get_field_visibility( $post_id ) : array();
+
+		return rest_ensure_response( array(
+			'post_id'    => $post_id,
+			'visibility' => $visibility,
+		) );
+	}
+
+	/**
+	 * PUT /posts/{id}/field-visibility — write per-post visibility overrides.
+	 *
+	 * Body shape: { "visibility": { "price": { "card_hidden": true, "single_hidden": false } } }
+	 *
+	 * Full-replace semantics (replaces all visibility overrides on the
+	 * post). Send an empty object to clear all overrides.
+	 */
+	public function handle_set_post_field_visibility( WP_REST_Request $request ) {
+		$plugin  = pre();
+		$post_id = (int) $this->get_url_param( $request, 'id' );
+
+		$err = $this->require_pre_post( $post_id );
+		if ( is_wp_error( $err ) ) {
+			return $err;
+		}
+
+		$body = $this->parse_json_body( $request );
+		if ( is_wp_error( $body ) ) {
+			return $body;
+		}
+
+		$visibility = isset( $body['visibility'] ) && is_array( $body['visibility'] )
+			? $body['visibility']
+			: ( is_array( $body ) ? $body : array() );
+
+		$result = $plugin->post_data->set_field_visibility( $post_id, $visibility, 'connector' );
+		if ( is_wp_error( $result ) ) {
+			return $this->error_from_wp_error( $result );
+		}
+
+		return rest_ensure_response( array(
+			'post_id'    => $post_id,
+			'visibility' => $plugin->post_data->get_field_visibility( $post_id ),
+		) );
+	}
+
+	/**
+	 * Shape a post field definition for the wire. Adds `key` to the
+	 * response (storage uses the key as the array index, so it's not in
+	 * the definition payload itself).
+	 */
+	private function shape_post_field( $key, array $def ) {
 		return array_merge(
 			array( 'key' => $key ),
 			$def

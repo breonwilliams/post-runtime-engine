@@ -31,18 +31,25 @@ class PRE_Autoloader {
 	 */
 	private static $class_map = array(
 		// Core data layer.
-		'PRE_Validator'         => 'Core/class-pre-validator.php',
-		'PRE_Icon_Library'      => 'Core/class-pre-icon-library.php',
-		'PRE_CPT_Registry'      => 'Core/class-pre-cpt-registry.php',
-		'PRE_Grouping_Registry' => 'Core/class-pre-grouping-registry.php',
-		'PRE_Post_Data'         => 'Core/class-pre-post-data.php',
-		'PRE_Capabilities'      => 'Core/class-pre-capabilities.php',
+		'PRE_Validator'           => 'Core/class-pre-validator.php',
+		'PRE_Icon_Library'        => 'Core/class-pre-icon-library.php',
+		'PRE_CPT_Registry'        => 'Core/class-pre-cpt-registry.php',
+		'PRE_Grouping_Registry'   => 'Core/class-pre-grouping-registry.php',
+		'PRE_Post_Field_Registry' => 'Core/class-pre-post-field-registry.php',
+		'PRE_Post_Data'           => 'Core/class-pre-post-data.php',
+		'PRE_Capabilities'        => 'Core/class-pre-capabilities.php',
 
 		// Phase 2 frontend rendering.
 		'PRE_Template_Router' => 'Core/class-pre-template-router.php',
 		'PRE_Source_Resolver' => 'Core/class-pre-source-resolver.php',
 		'PRE_Renderer'        => 'Frontend/class-pre-renderer.php',
 		'PRE_Frontend_Assets' => 'Frontend/class-pre-frontend-assets.php',
+
+		// Phase 9 (v1.1) post-field rendering.
+		'PRE_Card_Renderer'      => 'Frontend/class-pre-card-renderer.php',
+
+		// Phase 12 (v1.1) AISB PostGrid + theme archive integration.
+		'PRE_Card_Filter_Hooks'  => 'Frontend/class-pre-card-filter-hooks.php',
 
 		// Phase 3: Connector REST + admin.
 		// One API class owns all 18 routes (FRE pattern); auth + settings
@@ -53,10 +60,12 @@ class PRE_Autoloader {
 		'PRE_Connector_Admin'    => 'Connector/class-pre-connector-admin.php',
 
 		// Phase 1 admin UI.
-		'PRE_Admin'           => 'Admin/class-pre-admin.php',
-		'PRE_Admin_CPTs'      => 'Admin/class-pre-admin-cpts.php',
-		'PRE_Admin_Groupings' => 'Admin/class-pre-admin-groupings.php',
-		'PRE_Meta_Box'        => 'Admin/class-pre-meta-box.php',
+		'PRE_Admin'                  => 'Admin/class-pre-admin.php',
+		'PRE_Admin_CPTs'             => 'Admin/class-pre-admin-cpts.php',
+		'PRE_Admin_Groupings'        => 'Admin/class-pre-admin-groupings.php',
+		'PRE_Admin_Post_Fields'      => 'Admin/class-pre-admin-post-fields.php',
+		'PRE_Meta_Box'               => 'Admin/class-pre-meta-box.php',
+		'PRE_Meta_Box_Post_Fields'   => 'Admin/class-pre-meta-box-post-fields.php',
 		// Pending in next pass:
 		// 'PRE_Settings'        => 'Admin/class-pre-settings.php',
 	);

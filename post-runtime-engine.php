@@ -36,7 +36,14 @@ define( 'PRE_VERSION', '0.3.4' );
 //   0.3.0 — meta_match source mode + auto-registration of meta_match meta
 //           keys via register_post_meta() on init priority 6. No data
 //           migration required — purely additive runtime behavior.
-define( 'PRE_DATA_VERSION', '0.3.0' );
+//   0.4.0 — v1.1 Phase 8: post fields (second field type). Adds the
+//           pre_post_fields_{cpt_slug} option family and the
+//           _pre_field_{key} / _pre_field_visibility post meta keys.
+//           No data migration required — purely additive opt-in;
+//           CPTs without post fields render identically to v0.3.x.
+//           Version bump exists as a marker so future upgrades can
+//           confidently assume the v1.1 storage shape is available.
+define( 'PRE_DATA_VERSION', '0.4.0' );
 
 // Plugin paths and URLs.
 define( 'PRE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -82,6 +89,17 @@ final class Post_Runtime_Engine {
 	 * @var PRE_Grouping_Registry|null
 	 */
 	public $groupings = null;
+
+	/**
+	 * Post field registry instance (v1.1). Populated on init().
+	 *
+	 * Owns the second field type — scalar post fields keyed by display
+	 * type and position. Distinct from $groupings (repeatable items).
+	 * Design contract: docs/POST_FIELDS_V1_1_DESIGN.md.
+	 *
+	 * @var PRE_Post_Field_Registry|null
+	 */
+	public $post_fields = null;
 
 	/**
 	 * Post-data accessor instance. Populated on init().
@@ -202,9 +220,14 @@ final class Post_Runtime_Engine {
 	 * phases — they are NOT instantiated here.
 	 */
 	public function init() {
-		$this->cpts      = new PRE_CPT_Registry();
-		$this->groupings = new PRE_Grouping_Registry();
-		$this->post_data = new PRE_Post_Data( $this->cpts, $this->groupings );
+		$this->cpts        = new PRE_CPT_Registry();
+		$this->groupings   = new PRE_Grouping_Registry();
+		// v1.1: post field registry. Instantiated BEFORE PRE_Post_Data so
+		// the constructor injection path resolves to the populated
+		// registry rather than falling through to the lazy-resolve in
+		// PRE_Post_Data::get_post_field_registry().
+		$this->post_fields = new PRE_Post_Field_Registry();
+		$this->post_data   = new PRE_Post_Data( $this->cpts, $this->groupings, null, $this->post_fields );
 
 		// Admin module is only loaded inside wp-admin. Frontend / REST
 		// requests don't need any of this.
@@ -219,6 +242,14 @@ final class Post_Runtime_Engine {
 		// and admin previews need the renderer too.
 		$this->template_router = new PRE_Template_Router();
 		$this->frontend_assets = new PRE_Frontend_Assets();
+
+		// v1.1 Phase 12: card filter hooks. Subscribes to the actions
+		// exposed by Promptless WP's PostGrid renderer and the Promptless
+		// theme's archive card template so post fields render in those
+		// surfaces too. When the upstream consumers don't exist (different
+		// theme, no PostGrid section on the page) the actions never fire
+		// and this listener stays silent — no overhead, no dependency.
+		( new PRE_Card_Filter_Hooks() )->init();
 
 		// Wire render-cache invalidation hooks. Static — no instance
 		// state required. The renderer caches output per-post via a

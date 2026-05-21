@@ -1,0 +1,657 @@
+/*
+ * Post Runtime Engine — post field rendering styles (v1.1).
+ *
+ * Powers PRE_Card_Renderer output. Two render contexts share these rules:
+ *   - Single-post hero (.pre-card-fields--single-hero, .pre-hero) — fields render
+ *     alongside the post title and featured image inside the existing
+ *     .pre-hero wrapper. Inherits the .pre-single intermediate variables
+ *     already declared in frontend.css; no separate mode declarations
+ *     needed for this context.
+ *   - Card (.pre-card-fields--card) — fields render inside PostGrid card
+ *     wrappers and theme archive cards. Lacks the .pre-single ancestor,
+ *     so the intermediate variables are declared here directly.
+ *
+ * Mode handling, token consumption, and the no-!important / no-hardcoded-
+ * color discipline all mirror frontend.css. See docs/AISB_TOKEN_CONTRACT.md
+ * for the full --aisb-* contract the intermediates flow through.
+ *
+ * Component class composition:
+ *   .pre-card-fields                          wrapper
+ *   .pre-card-fields--{card|single-hero}      context
+ *   .pre-card-fields__position                position container
+ *   .pre-card-fields__position--{position}    position modifier
+ *   .pre-field                                field base
+ *   .pre-field--{display_type}                display-type modifier
+ *   .pre-field--position-{position}           per-field position hook
+ *   .pre-field--badge-{intent}                color-intent for badge type
+ *   .pre-field--key-{field_key}               per-field customization hook
+ *
+ * @since 1.1.0
+ */
+
+/* ----------------------------------------------------------------------- */
+/* Mode variables for card context                                          */
+/*                                                                          */
+/* Single-hero inherits these from .pre-single (set in frontend.css).       */
+/* Cards declare them here so PostGrid / archive cards render correctly     */
+/* even when .pre-single isn't an ancestor.                                 */
+/* ----------------------------------------------------------------------- */
+
+.pre-card-fields--card,
+.aisb-features__item {
+	--pre-color-text: var(--aisb-color-text, #1f2937);
+	--pre-color-text-muted: var(--aisb-color-text-muted, #6b7280);
+	--pre-color-background: var(--aisb-color-background, #ffffff);
+	--pre-color-surface: var(--aisb-color-surface, #f9fafb);
+	--pre-color-border: var(--aisb-color-border, #e5e7eb);
+	--pre-color-primary: var(--aisb-color-primary, #6366f1);
+
+	--pre-color-success-bg: var(--aisb-color-success-bg, rgba(16, 185, 129, 0.12));
+	--pre-color-success-text: var(--aisb-color-success, #047857);
+	--pre-color-warning-bg: var(--aisb-color-warning-bg, rgba(245, 158, 11, 0.14));
+	--pre-color-warning-text: var(--aisb-color-warning, #b45309);
+	--pre-color-danger-bg: var(--aisb-color-error-bg, rgba(239, 68, 68, 0.12));
+	--pre-color-danger-text: var(--aisb-color-error, #b91c1c);
+	--pre-color-info-bg: var(--aisb-color-info-bg, rgba(59, 130, 246, 0.12));
+	--pre-color-info-text: var(--aisb-color-info, #1d4ed8);
+	--pre-color-neutral-bg: var(--aisb-color-surface, rgba(0, 0, 0, 0.05));
+	--pre-color-neutral-text: var(--aisb-color-text-muted, #4b5563);
+}
+
+/* When PRE post fields are injected DIRECTLY into AISB PostGrid /
+ * theme archive cards (Phase 12), the .aisb-features__item-image-wrapper
+ * needs position: relative so the image_overlay anchors correctly. The
+ * :has() guard means we only touch wrappers that contain our overlay —
+ * existing AISB cards without post fields are untouched. */
+.aisb-features__item-image-wrapper:has(.pre-card-fields__position--image-overlay) {
+	position: relative;
+}
+
+/* Dark mode (inside .aisb-section--dark). Same pattern as frontend.css. */
+.aisb-section--dark .pre-card-fields--card,
+.pre-card-fields--card.is-dark {
+	--pre-color-text: var(--aisb-color-dark-text, #fafafa);
+	--pre-color-text-muted: var(--aisb-color-dark-text-muted, #9ca3af);
+	--pre-color-background: var(--aisb-color-dark-background, #1a1a1a);
+	--pre-color-surface: var(--aisb-color-dark-surface, #2a2a2a);
+	--pre-color-border: var(--aisb-color-dark-border, #4b5563);
+}
+
+/* Single-hero context: declare success/warning/danger/info intent
+ * tokens on the wrapper so badges work even when this CSS is loaded
+ * before frontend.css's .pre-single block has resolved. */
+.pre-card-fields--single-hero, .pre-hero {
+	--pre-color-success-bg: var(--aisb-color-success-bg, rgba(16, 185, 129, 0.12));
+	--pre-color-success-text: var(--aisb-color-success, #047857);
+	--pre-color-warning-bg: var(--aisb-color-warning-bg, rgba(245, 158, 11, 0.14));
+	--pre-color-warning-text: var(--aisb-color-warning, #b45309);
+	--pre-color-danger-bg: var(--aisb-color-error-bg, rgba(239, 68, 68, 0.12));
+	--pre-color-danger-text: var(--aisb-color-error, #b91c1c);
+	--pre-color-info-bg: var(--aisb-color-info-bg, rgba(59, 130, 246, 0.12));
+	--pre-color-info-text: var(--aisb-color-info, #1d4ed8);
+	--pre-color-neutral-bg: var(--aisb-color-surface, rgba(0, 0, 0, 0.05));
+	--pre-color-neutral-text: var(--aisb-color-text-muted, #4b5563);
+}
+
+/* ----------------------------------------------------------------------- */
+/* Wrapper + position containers                                            */
+/* ----------------------------------------------------------------------- */
+
+/* Anchor for the absolutely-positioned image_overlay position. The
+ * existing .pre-hero__media (set in frontend.css) defaults to static
+ * positioning, which would let the overlay escape the media wrapper.
+ * Scoping the relative position to a media wrapper that ACTUALLY
+ * contains an overlay child means existing v0.3.x pages without post
+ * fields aren't repositioned. */
+.pre-hero__media:has(.pre-card-fields__position--image-overlay) {
+	position: relative;
+}
+
+/* Fallback for browsers without :has() support (Firefox < 121, Safari
+ * < 15.4). Slightly less surgical — applies position: relative to every
+ * media wrapper on a single-post page that ALSO has the post-field
+ * stylesheet loaded. Net effect on existing pages: zero visual change,
+ * since position: relative on a static-laid-out block has no effect
+ * unless it contains absolute children. */
+.pre-single .pre-hero__media {
+	position: relative;
+}
+
+.pre-card-fields {
+	font-family: var(--aisb-section-font-body, inherit);
+	color: var(--pre-color-text);
+}
+
+.pre-card-fields__position {
+	display: block;
+}
+
+/* Headline position: flex container with baseline alignment so when two
+ * or more fields share the headline (price + bed count, salary + role,
+ * date + duration), they lay out inline on the same line. Single-field
+ * headlines still render correctly because a flex container with one
+ * child collapses to that child's size. The gap provides comfortable
+ * separation when fields ARE compound (Zillow-style "$2,328+ 2 bds"). */
+.pre-card-fields__position--headline {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.4em 0.85em;
+}
+
+/* meta_strip is the only position with horizontal layout — flex with gap
+ * and a thin separator between items. Other positions stack vertically. */
+.pre-card-fields__position--meta-strip {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5em 0.85em;
+}
+
+/* Visible separator between meta_strip items. The :not(:last-child) pseudo
+ * means we never paint a trailing separator. */
+.pre-card-fields__position--meta-strip > .pre-field:not(:last-child)::after {
+	content: "·";
+	margin-left: 0.85em;
+	color: var(--pre-color-text-muted);
+	opacity: 0.6;
+}
+
+/* image_overlay positions absolutely over the parent media wrapper. The
+ * caller (PRE_Renderer for the hero, AISB PostGrid for cards) provides
+ * a position: relative container. */
+.pre-card-fields__position--image-overlay {
+	position: absolute;
+	top: 0.75rem;
+	left: 0.75rem;
+	z-index: 2;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	pointer-events: none;
+}
+
+.pre-card-fields__position--image-overlay .pre-field {
+	pointer-events: auto;
+}
+
+/* Vertical rhythm between sibling position blocks. */
+:is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position + .pre-card-fields__position {
+	margin-top: 0.5em;
+}
+
+:is(.pre-card-fields--card, .aisb-features__item) .pre-card-fields__position + .pre-card-fields__position {
+	margin-top: 0.35em;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Field base                                                               */
+/* ----------------------------------------------------------------------- */
+
+.pre-field {
+	display: inline-flex;
+	align-items: baseline;
+	color: var(--pre-color-text);
+	font-family: inherit;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Per-display-type styling                                                 */
+/* ----------------------------------------------------------------------- */
+
+/* Currency — prominent value, brand-color tint when at headline position */
+.pre-field--currency {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+:is(.pre-card-fields--single-hero, .pre-hero) .pre-field--currency.pre-field--position-headline {
+	font-size: clamp(1.5rem, 2.5vw, 2rem);
+	line-height: 1.15;
+	display: block;
+	margin-bottom: 0.25em;
+}
+
+:is(.pre-card-fields--card, .aisb-features__item) .pre-field--currency.pre-field--position-headline {
+	font-size: 1.25rem;
+	line-height: 1.2;
+	display: block;
+	margin-bottom: 0.15em;
+}
+
+/* number_with_label — used heavily in meta_strip. Plain inline. */
+.pre-field--number-with-label {
+	color: var(--pre-color-text-muted);
+	font-size: 0.875em;
+	font-variant-numeric: tabular-nums;
+}
+
+:is(.pre-card-fields--single-hero, .pre-hero) .pre-field--number-with-label.pre-field--position-headline,
+:is(.pre-card-fields--card, .aisb-features__item) .pre-field--number-with-label.pre-field--position-headline {
+	color: var(--pre-color-text);
+	font-size: 1.125em;
+	font-weight: 600;
+	display: block;
+}
+
+/* Badge — pill with color intent */
+.pre-field--badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.2em 0.7em;
+	border-radius: 999px;
+	font-size: 0.75em;
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: 0.01em;
+	white-space: nowrap;
+	background: var(--pre-color-neutral-bg);
+	color: var(--pre-color-neutral-text);
+}
+
+.pre-field--badge-success {
+	background: var(--pre-color-success-bg);
+	color: var(--pre-color-success-text);
+}
+
+.pre-field--badge-warning {
+	background: var(--pre-color-warning-bg);
+	color: var(--pre-color-warning-text);
+}
+
+.pre-field--badge-danger {
+	background: var(--pre-color-danger-bg);
+	color: var(--pre-color-danger-text);
+}
+
+.pre-field--badge-info {
+	background: var(--pre-color-info-bg);
+	color: var(--pre-color-info-text);
+}
+
+/* ---------------------------------------------------------------------
+ * Primary v1.1 intent set: primary / secondary / neutral.
+ *
+ * Text colors use the SmartColorManager-computed tokens
+ * (--aisb-button-primary-text, --aisb-button-secondary-text). These are
+ * recalculated by AISB at wp_head priority 11 to guarantee WCAG AA
+ * contrast against the user's brand color choice — no matter what color
+ * the user picks for --aisb-color-primary, the text token resolves to a
+ * legible value. Same pattern AISB's own primary buttons and SALE badge
+ * use, so badges and buttons stay visually aligned and uniformly
+ * accessible.
+ *
+ * Neutral is intentionally NOT brand-coupled — it's a semi-transparent
+ * dark overlay with white text. Used as the safe default and as the
+ * Zillow "Designer finishes" pattern: works on any image background,
+ * works regardless of brand choice, and reads as informational rather
+ * than promotional.
+ * --------------------------------------------------------------------- */
+
+.pre-field--badge-primary {
+	background: var(--aisb-color-primary, #6366f1);
+	color: var(--aisb-button-primary-text, #ffffff);
+}
+
+.pre-field--badge-secondary {
+	background: var(--aisb-color-secondary, #8b5cf6);
+	color: var(--aisb-button-secondary-text, var(--aisb-color-text-inverse, #ffffff));
+}
+
+.pre-field--badge-neutral {
+	background: rgba(15, 23, 42, 0.85);
+	color: #ffffff;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+
+/* Image overlay badges need solid, high-contrast backgrounds to stay
+ * readable on top of arbitrary photo content. The default rgba(_, _, _,
+ * 0.12) tints work great in subtitle / meta_strip / footer_meta where the
+ * background is the card surface — but they vanish against bright photo
+ * pixels. Image_overlay-positioned badges get saturated solid backgrounds
+ * with white text instead. Matches the Zillow / Airbnb / Booking pattern
+ * for card image badges. */
+.pre-field--badge.pre-field--position-image-overlay {
+	background: rgba(15, 23, 42, 0.85);
+	color: #ffffff;
+	font-weight: 600;
+	padding: 0.3em 0.85em;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+
+.pre-field--badge.pre-field--position-image-overlay.pre-field--badge-success {
+	background: var(--aisb-color-success, #047857);
+	color: #ffffff;
+}
+
+.pre-field--badge.pre-field--position-image-overlay.pre-field--badge-warning {
+	background: var(--aisb-color-warning, #b45309);
+	color: #ffffff;
+}
+
+.pre-field--badge.pre-field--position-image-overlay.pre-field--badge-danger {
+	background: var(--aisb-color-error, #b91c1c);
+	color: #ffffff;
+}
+
+.pre-field--badge.pre-field--position-image-overlay.pre-field--badge-info {
+	background: var(--aisb-color-info, #1d4ed8);
+	color: #ffffff;
+}
+
+.pre-field--badge.pre-field--position-image-overlay.pre-field--badge-neutral {
+	background: rgba(15, 23, 42, 0.85);
+	color: #ffffff;
+}
+
+/* Image overlay variants for the v1.1 intent set. Same SmartColor-
+ * computed text tokens as the non-overlay variants — accessibility is
+ * the same whether the badge sits on a card surface or over an image.
+ * Token alignment with AISB's .aisb-productgrid__sale-badge means SALE
+ * flash on WooCommerce cards and brand-color badges on PRE cards stay
+ * visually identical. */
+.pre-field--badge.pre-field--position-image-overlay.pre-field--badge-primary {
+	background: var(--aisb-color-primary, #6366f1);
+	color: var(--aisb-button-primary-text, #ffffff);
+}
+
+.pre-field--badge.pre-field--position-image-overlay.pre-field--badge-secondary {
+	background: var(--aisb-color-secondary, #8b5cf6);
+	color: var(--aisb-button-secondary-text, var(--aisb-color-text-inverse, #ffffff));
+}
+
+/* meta_pair — icon + value, designed for meta_strip layouts */
+.pre-field--meta-pair {
+	color: var(--pre-color-text-muted);
+	font-size: 0.875em;
+	gap: 0.3em;
+}
+
+.pre-field--meta-pair .pre-field__icon {
+	display: inline-flex;
+	align-items: center;
+	width: 1em;
+	height: 1em;
+	flex-shrink: 0;
+}
+
+.pre-field--meta-pair .pre-field__icon svg,
+.pre-field--meta-pair .pre-field__icon iconify-icon {
+	width: 1em;
+	height: 1em;
+	color: currentColor;
+}
+
+.pre-field--meta-pair .pre-field__value {
+	font-variant-numeric: tabular-nums;
+}
+
+/* date — small muted text by default; promotes to larger size in
+ * headline / subtitle positions */
+.pre-field--date {
+	color: var(--pre-color-text-muted);
+	font-size: 0.85em;
+}
+
+.pre-field--date.pre-field--position-headline {
+	color: var(--pre-color-text);
+	font-size: 1.25em;
+	font-weight: 600;
+	display: block;
+}
+
+:is(.pre-card-fields--single-hero, .pre-hero) .pre-field--date.pre-field--position-headline {
+	font-size: clamp(1.25rem, 2vw, 1.75rem);
+}
+
+.pre-field--date.pre-field--position-subtitle {
+	font-size: 1em;
+}
+
+/* text — inherits color; promotes weight at headline */
+.pre-field--text {
+	color: var(--pre-color-text);
+}
+
+.pre-field--text.pre-field--position-subtitle {
+	color: var(--pre-color-text-muted);
+	font-size: 0.95em;
+}
+
+.pre-field--text.pre-field--position-footer-meta {
+	color: var(--pre-color-text-muted);
+	font-size: 0.8em;
+}
+
+/* rating — composite element: stars + value + optional count */
+.pre-field--rating {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	font-size: 0.9em;
+}
+
+.pre-field--rating .pre-field__stars {
+	color: var(--aisb-color-warning, #f59e0b);
+	letter-spacing: 0.02em;
+	line-height: 1;
+}
+
+.pre-field--rating .pre-field__rating-value {
+	font-weight: 600;
+	color: var(--pre-color-text);
+	font-variant-numeric: tabular-nums;
+}
+
+.pre-field--rating .pre-field__rating-count {
+	color: var(--pre-color-text-muted);
+	font-size: 0.85em;
+}
+
+/* progress — bar + label. Uses block display because the bar needs width. */
+.pre-field--progress {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35em;
+	min-width: 12em;
+	max-width: 100%;
+}
+
+.pre-field--progress .pre-field__progress-track {
+	width: 100%;
+	height: 0.5em;
+	border-radius: 999px;
+	background: var(--pre-color-surface);
+	border: 1px solid var(--pre-color-border);
+	overflow: hidden;
+}
+
+.pre-field--progress .pre-field__progress-bar {
+	height: 100%;
+	background: var(--pre-color-primary);
+	border-radius: 999px;
+	transition: width 0.3s ease-out;
+}
+
+.pre-field--progress .pre-field__progress-label {
+	font-size: 0.85em;
+	color: var(--pre-color-text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+:is(.pre-card-fields--card, .aisb-features__item) .pre-field--progress {
+	min-width: 100%;
+}
+
+/* multi_badge — multiple small pills with optional per-segment intent */
+.pre-field--multi-badge {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 0.3em;
+}
+
+.pre-field__multi-badge-pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.15em 0.55em;
+	border-radius: 999px;
+	font-size: 0.7em;
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: 0.01em;
+	white-space: nowrap;
+	background: var(--pre-color-neutral-bg);
+	color: var(--pre-color-neutral-text);
+}
+
+.pre-field__multi-badge-pill--success {
+	background: var(--pre-color-success-bg);
+	color: var(--pre-color-success-text);
+}
+
+.pre-field__multi-badge-pill--warning {
+	background: var(--pre-color-warning-bg);
+	color: var(--pre-color-warning-text);
+}
+
+.pre-field__multi-badge-pill--danger {
+	background: var(--pre-color-danger-bg);
+	color: var(--pre-color-danger-text);
+}
+
+.pre-field__multi-badge-pill--info {
+	background: var(--pre-color-info-bg);
+	color: var(--pre-color-info-text);
+}
+
+.pre-field__multi-badge-pill--neutral {
+	background: var(--pre-color-neutral-bg);
+	color: var(--pre-color-neutral-text);
+}
+
+.pre-field__multi-badge-pill--primary {
+	background: var(--aisb-color-primary, #6366f1);
+	color: var(--aisb-button-primary-text, #ffffff);
+}
+
+.pre-field__multi-badge-pill--secondary {
+	background: var(--aisb-color-secondary, #8b5cf6);
+	color: var(--aisb-button-secondary-text, var(--aisb-color-text-inverse, #ffffff));
+}
+
+/* ----------------------------------------------------------------------- */
+/* Single-hero specific layout polish                                       */
+/* ----------------------------------------------------------------------- */
+
+/* headline position in single-hero gets generous breathing room above the
+ * post title. The card renderer's output is interleaved with the existing
+ * .pre-hero__title h1 by PRE_Renderer. */
+:is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position--headline {
+	margin-bottom: 0.5em;
+}
+
+:is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position--subtitle {
+	margin-top: 0.25em;
+	margin-bottom: 0.75em;
+}
+
+:is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position--meta-strip {
+	margin-top: 1rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid var(--pre-color-border);
+}
+
+:is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position--footer-meta {
+	margin-top: 0.5rem;
+	color: var(--pre-color-text-muted);
+	font-size: 0.85em;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Card-specific layout polish                                              */
+/* ----------------------------------------------------------------------- */
+
+:is(.pre-card-fields--card, .aisb-features__item) .pre-card-fields__position--meta-strip {
+	font-size: 0.85em;
+}
+
+:is(.pre-card-fields--card, .aisb-features__item) .pre-card-fields__position--footer-meta {
+	margin-top: 0.5em;
+	color: var(--pre-color-text-muted);
+	font-size: 0.75em;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Mobile responsive                                                        */
+/* ----------------------------------------------------------------------- */
+
+@media (max-width: 600px) {
+	.pre-card-fields__position--meta-strip {
+		gap: 0.4em 0.65em;
+	}
+
+	:is(.pre-card-fields--single-hero, .pre-hero) .pre-field--currency.pre-field--position-headline {
+		font-size: 1.5rem;
+	}
+
+	:is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position--meta-strip {
+		flex-wrap: wrap;
+	}
+
+	/* Hide the dot separators on mobile when the meta strip wraps —
+	 * they read awkwardly mid-line-break. */
+	.pre-card-fields__position--meta-strip > .pre-field:not(:last-child)::after {
+		display: none;
+	}
+
+	.pre-card-fields__position--meta-strip > .pre-field {
+		flex-basis: auto;
+	}
+}
+
+/* ----------------------------------------------------------------------- */
+/* Neo-brutalist mode                                                       */
+/*                                                                          */
+/* When Promptless WP's neo-brutalist mode is on (body class                */
+/* aisb-neo-brutalist-cards), bump badge borders + drop the soft radii      */
+/* on progress bars. Mirrors frontend.css's existing neo treatment.         */
+/* ----------------------------------------------------------------------- */
+
+body.aisb-neo-brutalist-cards .pre-field--badge,
+body.aisb-neo-brutalist-cards .pre-field__multi-badge-pill {
+	border: var(--aisb-neo-border-width, 2px) solid currentColor;
+	border-radius: var(--aisb-section-radius-button, 4px);
+	background: var(--pre-color-background);
+}
+
+body.aisb-neo-brutalist-cards .pre-field--progress .pre-field__progress-track {
+	border-radius: 0;
+	border-width: var(--aisb-neo-border-width, 2px);
+}
+
+body.aisb-neo-brutalist-cards .pre-field--progress .pre-field__progress-bar {
+	border-radius: 0;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Print styles — keep the field values legible, drop decorative chrome     */
+/* ----------------------------------------------------------------------- */
+
+@media print {
+	.pre-card-fields__position--image-overlay {
+		position: static;
+	}
+
+	.pre-field--badge,
+	.pre-field__multi-badge-pill {
+		background: transparent !important;
+		border: 1px solid #000;
+		color: #000;
+	}
+
+	.pre-field--progress .pre-field__progress-bar {
+		background: #888;
+	}
+}

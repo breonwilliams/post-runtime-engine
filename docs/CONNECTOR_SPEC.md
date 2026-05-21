@@ -546,7 +546,202 @@ The HTML is rendered with the **current** stored grouping data — the renderer 
 
 ---
 
-### 5.7 Introspection
+### 5.7 Post fields (v1.1)
+
+> **Status:** v1.1 (data-version 0.4.0). Available alongside the v1.0 groupings surface; both field types coexist on every CPT. See `docs/POST_FIELDS_V1_1_DESIGN.md` for the locked design contract.
+
+Post fields are scalar (single-value-per-post) data points with a closed enum of display types and positions. Distinct from groupings (which are repeatable). All field definitions and per-post values pass through `PRE_Validator` with strict-mode shape checks; invalid input rejected at write time with stable error codes.
+
+#### GET `/cpts/{slug}/post-fields`
+
+List all post field definitions for a CPT, in render order.
+
+**Response 200:**
+
+```json
+{
+  "post_fields": [
+    {
+      "key": "price",
+      "label": "Price",
+      "display_type": "currency",
+      "card_position": "headline",
+      "single_position": "headline",
+      "currency_code": "USD",
+      "description": "",
+      "required": false,
+      "options": {},
+      "connector_version": 1,
+      "created_at": "2026-05-21 14:00:00",
+      "updated_at": "2026-05-21 14:00:00"
+    }
+  ]
+}
+```
+
+Empty array when the CPT has no post fields. `{ post_fields: [] }` not `{ post_fields: null }` — consumers can iterate without null-guards.
+
+**Errors:** `404 pre_cpt_not_found`.
+
+#### POST `/cpts/{slug}/post-fields`
+
+Create a new post field definition. Returns the created definition.
+
+**Body:**
+
+```json
+{
+  "key": "price",
+  "label": "Price",
+  "display_type": "currency",
+  "card_position": "headline",
+  "single_position": "headline",
+  "currency_code": "USD"
+}
+```
+
+**Required:** `key`, `label`, `display_type`, `card_position`, `single_position`.
+
+**Optional (conditional on display_type):**
+- `description` (string ≤ 500 chars)
+- `color_intent` (one of `success` / `warning` / `danger` / `info` / `neutral`) — for `badge` and `multi_badge`
+- `options` (object mapping option key → `{ label, color_intent? }`) — for `badge` and `multi_badge`
+- `icon` (PRE_Icon_Library slug or Iconify code) — for `meta_pair`
+- `date_format` (`absolute` / `relative` / `custom`) — for `date`
+- `date_format_string` (PHP date format string) — for `date` with format=custom
+- `currency_code` (ISO 4217) — for `currency` and `progress`
+- `max` (number) — for `rating` (default 5) and `progress` (default 100)
+- `unit_label` (string) — for `number_with_label` and `progress`
+- `required` (bool, admin-UX hint only)
+
+**Response 201:** the created field definition with `connector_version: 1`, timestamps.
+
+**Errors:** `404 pre_cpt_not_found`, `422 pre_invalid_*` (validation), `422 pre_max_field_count_exceeded` (hard cap of 12).
+
+#### GET `/cpts/{slug}/post-fields/{key}`
+
+Read a single field definition.
+
+**Response 200:** the field shape from the list endpoint.
+
+**Errors:** `404 pre_cpt_not_found`, `404 pre_post_field_not_found`.
+
+#### PUT `/cpts/{slug}/post-fields/{key}`
+
+Update a definition. URL `key` is authoritative (body `key` is forced to match). Optimistic concurrency via `connector_version` — pass the value from the previous read; if it doesn't match the stored version, returns 409.
+
+**Body:** same shape as POST, plus `connector_version` (the value you just read).
+
+**Response 200:** the updated definition.
+
+**Errors:** `404`, `422`, `409 pre_connector_version_mismatch`.
+
+#### DELETE `/cpts/{slug}/post-fields/{key}`
+
+Remove a field definition.
+
+**Response 204** (no body).
+
+Per-post values stored at `_pre_field_{key}` are intentionally preserved — orphaned until the post is next saved (the meta box save sweeps them) or until a future explicit cleanup endpoint. Matches the grouping delete behavior; protects against accidental data loss.
+
+**Errors:** `404`.
+
+#### POST `/cpts/{slug}/post-fields/reorder`
+
+Bulk-rewrite the field render order. The submitted list MUST contain exactly the set of currently-defined field keys — no additions, no removals, no duplicates. Order determines render order within each position (especially important for `meta_strip`).
+
+**Body:**
+
+```json
+{ "ordered_keys": ["status", "price", "location", "beds", "baths", "sqft", "listed_date"] }
+```
+
+**Response 200:** the full post fields list in the new order.
+
+**Errors:** `404`, `422 pre_reorder_keys_mismatch`, `422 pre_reorder_duplicate_keys`.
+
+#### GET `/posts/{id}/field-values`
+
+Read all per-post field values for a single post. Composite display types (`rating`, `progress`) return as arrays.
+
+**Response 200:**
+
+```json
+{
+  "post_id": 42,
+  "post_type": "listings",
+  "field_values": {
+    "price": "1250000",
+    "status": "for_sale",
+    "beds": "3",
+    "baths": "2",
+    "sqft": "1800",
+    "rating": { "value": 4.7, "count": 156 }
+  }
+}
+```
+
+**Errors:** `404 pre_post_not_found`, `400 pre_post_type_not_managed`.
+
+#### PUT `/posts/{id}/field-values`
+
+Bulk update field values for a post. Partial-update semantics: fields not present in the payload are left unchanged. To clear a field, pass `null` or empty string.
+
+**Body:**
+
+```json
+{
+  "values": {
+    "price": 1250000,
+    "status": "for_sale",
+    "rating": { "value": 4.7, "count": 156 }
+  }
+}
+```
+
+Composite types (`rating`, `progress`) accept the array shape `{ value, count }` or `{ value, goal }`. Both halves write to their respective post meta keys (`_pre_field_{key}`, `_pre_field_{key}_count` for rating; `_pre_field_{key}_goal` for progress). To clear a composite, send `null` for the field key (clears both halves).
+
+**Response 200:** the full field values map after the write, so callers can diff to confirm.
+
+**Errors:** `404`, `400`, `422 pre_unknown_field_key`, `422 pre_invalid_*` (per-display-type validation).
+
+#### GET `/posts/{id}/field-visibility`
+
+Read per-post visibility overrides. Fields not in the response use default visibility (visible in both contexts).
+
+**Response 200:**
+
+```json
+{
+  "post_id": 42,
+  "visibility": {
+    "price": { "card_hidden": true, "single_hidden": false }
+  }
+}
+```
+
+#### PUT `/posts/{id}/field-visibility`
+
+Write per-post visibility overrides. **Full-replace** semantics (unlike `field-values` which is partial). Send `{ "visibility": {} }` to clear all overrides.
+
+**Body:**
+
+```json
+{
+  "visibility": {
+    "price":       { "card_hidden": true,  "single_hidden": false },
+    "agent_phone": { "card_hidden": true,  "single_hidden": false }
+  }
+}
+```
+
+Each entry's `card_hidden` and `single_hidden` are optional (default false). Position overrides are NOT supported — positions stay locked at the CPT level. This is the design coherence principle.
+
+**Response 200:** the full visibility map after the write.
+
+**Errors:** `404`, `422 pre_invalid_visibility_*`.
+
+### 5.8 Introspection
 
 These three endpoints expose the data-layer's enumerations so agents know what's valid before writing.
 
@@ -630,6 +825,16 @@ The MCP layer is a thin wrapper around the REST endpoints. Each tool calls one R
 | `postruntime_list_icons` | `GET /icons` | Icon catalog |
 | `postruntime_list_variants` | `GET /variants` | Variant catalog |
 | `postruntime_list_positions` | `GET /positions` | Position catalog |
+| `postruntime_list_post_fields` | `GET /cpts/{slug}/post-fields` | List post field definitions for a CPT (v1.1) |
+| `postruntime_define_post_field` | `POST /cpts/{slug}/post-fields` | Create a post field definition (v1.1) |
+| `postruntime_get_post_field` | `GET /cpts/{slug}/post-fields/{key}` | Read one post field definition (v1.1) |
+| `postruntime_update_post_field` | `PUT /cpts/{slug}/post-fields/{key}` | Update a post field definition (v1.1) |
+| `postruntime_delete_post_field` | `DELETE /cpts/{slug}/post-fields/{key}` | Remove a post field definition (v1.1) |
+| `postruntime_reorder_post_fields` | `POST /cpts/{slug}/post-fields/reorder` | Reorder the field render order (v1.1) |
+| `postruntime_get_post_field_values` | `GET /posts/{id}/field-values` | Read a post's field values (v1.1) |
+| `postruntime_set_post_field_values` | `PUT /posts/{id}/field-values` | Bulk update a post's field values (v1.1) |
+| `postruntime_get_post_field_visibility` | `GET /posts/{id}/field-visibility` | Read a post's visibility overrides (v1.1) |
+| `postruntime_set_post_field_visibility` | `PUT /posts/{id}/field-visibility` | Write a post's visibility overrides (v1.1) |
 
 Each tool's input schema mirrors the REST endpoint's required + optional parameters. Each tool's description is tuned for AI agent discovery (clear purpose, when to use, common patterns, links to related tools).
 

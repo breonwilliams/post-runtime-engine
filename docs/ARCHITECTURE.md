@@ -510,12 +510,12 @@ These are documented in `CLAUDE.md` and worth restating here:
 
 ## Critical guardrails for AI sessions working on this plugin
 
-- **Plugin is in PLANNING PHASE.** Do not write Phase 1+ code without explicit confirmation from Breon.
-- **Resist scope creep on field types.** v1 has ONE field type. The temptation to add a date picker, number field, taxonomy selector, or nested repeater will be intense. Don't. Adding a second field type is a v1.1 conversation triggered by real client demand.
+- **Plugin status (updated 2026-05-20).** v1.0 phases 1–6 shipped (v0.3.x). v1.1 scope expansion locked in `docs/POST_FIELDS_V1_1_DESIGN.md` — six new phases (7–12) for the post-fields second field type. Read that doc before starting any Phase 7+ work; this ARCHITECTURE.md remains the canonical v1.0 design contract.
+- **Resist scope creep on field types.** v1.0 has ONE field type (grouping); v1.1 adds a SECOND deliberately-scoped field type (post fields — see `docs/POST_FIELDS_V1_1_DESIGN.md`). Both v1.0 and v1.1 enums are CLOSED — no filter-based custom display types, no per-instance shape overrides. Any THIRD field type (relationship fields, computed fields, etc.) is a v1.2+ conversation triggered by real client demand.
 - **Do not depend on Promptless WP at the PHP level.** Reading `--aisb-*` CSS tokens with documented fallbacks is the only allowed coupling.
-- **Do not integrate with ACF, MetaBox, or Pods in v1.0.** This plugin owns the field model end-to-end.
+- **Do not integrate with ACF, MetaBox, or Pods in v1.0 or v1.1.** This plugin owns the field model end-to-end through both v1.0 (groupings) and v1.1 (post fields).
 - **Honor the design-token contract.** Every `--aisb-*` reference in this plugin's CSS must have a documented fallback in `docs/AISB_TOKEN_CONTRACT.md`.
 - **The default WP editor handles main content.** Do not build a new editing surface for prose.
-- **Three layout positions only.** Resist adding a fourth without an architectural conversation.
-- **No custom DB tables in v1.0.** Use `wp_options` and post meta.
+- **Three single-post grouping positions; five post-field positions.** Groupings in `PRE_Validator::POSITIONS` (3); post fields in `PRE_Validator::FIELD_POSITIONS` (5 + hidden). Both enums closed.
+- **No custom DB tables in v1.0 or v1.1.** Use `wp_options` (definitions) and post meta (values + visibility overrides).
 - **Test coverage is required for v1 ship.** Each new field-type behavior, layout variant, and renderer pass ships with unit tests. Coverage target: >80%.

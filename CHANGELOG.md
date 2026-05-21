@@ -4,6 +4,59 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [Unreleased] — v1.1.0 development
+
+v1.1 introduces the second field type — **post fields** — for scalar metadata display in both the single-post hero and card / archive / PostGrid contexts. Design contract: `docs/POST_FIELDS_V1_1_DESIGN.md`. Roadmap: `docs/ROADMAP.md` § 11.
+
+### Added (Phase 8 — data layer)
+
+- **`PRE_Post_Field_Registry` class** (`includes/Core/class-pre-post-field-registry.php`). CRUD over the `pre_post_fields_{cpt_slug}` option family. Mirrors the structure of `PRE_Grouping_Registry`: lazy per-CPT memoization, validator injection, `define()` / `get_all()` / `get()` / `remove()` / `reorder()` / `remove_all_for_cpt()`. Enforces the hard field-count cap (12 by default, filterable via `pre_max_post_fields_per_cpt`). Fires `pre_post_field_defined`, `pre_post_field_removed`, `pre_post_fields_reordered` actions.
+- **`PRE_Validator` extensions.** New constants: `DISPLAY_TYPES` (9 closed types: currency, number_with_label, badge, meta_pair, date, text, rating, progress, multi_badge), `FIELD_POSITIONS` (5 + hidden, symmetric across card and single-hero contexts), `COLOR_INTENTS` (success / warning / danger / info / neutral), `DATE_FORMATS` (absolute / relative / custom), `SUPPORTED_CURRENCIES` (closed ISO 4217 set with `pre_supported_currencies` filter), plus length caps and the field-count thresholds. New methods: `validate_post_field_definition()`, `validate_post_field_value()` with per-display-type checks, `validate_post_field_visibility()` for per-post override shape.
+- **`PRE_Post_Data` extensions.** Optional 4th constructor parameter (`$post_fields`) with lazy fallback to the global plugin instance — preserves backward compatibility with v0.3.x 3-arg callers. New methods: `get_field_values()`, `get_field_value()`, `set_field_values()`, `set_field_value()`, `get_field_visibility()`, `set_field_visibility()`, `is_field_visible()`. Composite display types (rating, progress) handle array-shape input transparently. Per-field meta keys (`_pre_field_{key}`) keep values queryable via WP_Query meta_query. Fires `pre_post_field_values_saved`, `pre_post_field_visibility_saved` actions.
+- **`PRE_DATA_VERSION` bumped to 0.4.0** as a marker for v1.1 storage availability. No data migration required — post fields are purely additive opt-in.
+
+### Added (Phase 9 — card renderer + CSS)
+
+- **`PRE_Card_Renderer` class** (`includes/Frontend/class-pre-card-renderer.php`). Single entry point: `render( $post_id, $context )` where context is `card` or `single_hero`. Buckets visible fields by position, renders each of the 5 positions in semantic order with BEM-style classes (`.pre-card-fields__position--{position}`, `.pre-field--{display_type}`, `.pre-field--badge-{intent}`). Nine per-display-type render methods. Three-tier currency resolution chain: field-level `currency_code` → AISB Business Identity → `pre_currency` option → USD fallback. Locale-aware formatting via `number_format_i18n()` and `date_i18n()`. Filter hooks for per-field (`pre_card_field_html`) and whole-payload (`pre_card_fields_html`) customization.
+- **`assets/css/cards.css` stylesheet.** Two-layer pattern: structural rules per position + per-display-type styling, context overrides (`.pre-card-fields--card` vs `.pre-card-fields--single-hero`). Color-intent variants for badge type. Mobile-responsive meta_strip layout. Neo-brutalist mode integration via existing `body.aisb-neo-brutalist-cards` class. Reads `--aisb-*` tokens via existing `--pre-color-*` intermediates with documented fallbacks per `docs/AISB_TOKEN_CONTRACT.md`.
+- **Single-post hero integration.** `PRE_Renderer::render_hero()` now interleaves post field positions with the existing post title, featured image, and excerpt. `image_overlay` renders inside the media wrapper; `headline` renders above the title; `subtitle` renders directly below the title; `meta_strip` and `footer_meta` render below the excerpt. Existing CPTs without post fields render identically to v0.3.x (zero additional markup).
+- **Conditional `cards.css` enqueue.** `PRE_Frontend_Assets::enqueue()` loads `cards.css` alongside `frontend.css` on registered CPT singles. PostGrid + archive integrations land in Phase 12 with their own enqueue paths.
+
+### Added (Phase 10 — admin UI)
+
+- **`PRE_Admin_Post_Fields` class** (`includes/Admin/class-pre-admin-post-fields.php`). New admin page at `admin.php?page=pre-post-fields&cpt={slug}`, mirroring the existing Groupings admin page structure (list view + new/edit form, server-rendered, server-side validation, POST-redirect-GET notices). Reachable from the CPT list row actions ("Post Fields" link added between "Groupings" and "Remove"). Form view exposes the closed display-type / position / color-intent enums via `<select>` controls. Conditional editor sections (badge options, meta_pair icon picker, date format, currency code, rating/progress max + unit label) toggle visibility based on the selected display type. Field-count cap surfaces as a soft warning banner at 8 fields and a hard error at 12. Drag-to-reorder via jQuery UI Sortable; "Save order" persists via a dedicated `reorder` POST.
+- **`PRE_Meta_Box_Post_Fields` class** (`includes/Admin/class-pre-meta-box-post-fields.php`). New post-edit-screen meta box rendered alongside the existing `PRE_Meta_Box` (groupings). Only registers on CPTs that have at least one post field defined, so unused boxes don't clutter the edit screen. Renders the right input control per display type: numeric with currency-symbol prefix for `currency`, native `<input type="date">` for `date`, select dropdown for `badge` when `options` are defined, paired value + count inputs for `rating`, paired value + goal inputs for `progress`, comma-separated text for `multi_badge`. Per-field visibility toggles ("Hide on cards" / "Hide in single-page hero") render below each input. Own nonce (`pre_post_fields_nonce`) so the two meta boxes' save handlers don't collide. Composite display-type values normalize into the array shape `PRE_Post_Data::set_field_values()` expects.
+- **`assets/js/post-fields-editor.js`** — plain jQuery, enqueued only on the Post Fields admin page. Drives two interactions: (1) toggling the conditional form sections based on the selected display type via `data-shown-when` attributes, and (2) jQuery UI Sortable for the list-view drag-to-reorder.
+- **Admin CSS additions** (`assets/css/admin.css`). Drag-handle column, sortable placeholder styling, field-row layout in the post meta box (label + display-type chip + input + visibility toggles), per-input-type sub-components (currency symbol prefix, number unit suffix, paired rating/progress inputs).
+
+### Added (Phase 11 — connector REST + preflight)
+
+- **10 new REST endpoints** added to `class-pre-connector-api.php`, parallel to the existing groupings surface and gated by the same auth stack (`PRE_Connector_Auth::build_callback()` / `build_per_post_callback()`):
+  - `GET /cpts/{slug}/post-fields` — list field definitions
+  - `POST /cpts/{slug}/post-fields` — create a field
+  - `GET /cpts/{slug}/post-fields/{key}` — read one
+  - `PUT /cpts/{slug}/post-fields/{key}` — update (with `connector_version` concurrency)
+  - `DELETE /cpts/{slug}/post-fields/{key}` — remove (preserves per-post values)
+  - `POST /cpts/{slug}/post-fields/reorder` — bulk reorder, registered before the `{key}` route so "reorder" doesn't get captured as a field key
+  - `GET /posts/{id}/field-values` — read all per-post field values
+  - `PUT /posts/{id}/field-values` — partial bulk write (composite types accept `{ value, count }` / `{ value, goal }` shape)
+  - `GET /posts/{id}/field-visibility` — read visibility overrides
+  - `PUT /posts/{id}/field-visibility` — full-replace visibility overrides
+- **Preflight extension.** The `/preflight` response now surfaces a `post_field_enums` block exposing the 9 display types, 5 positions, 5 color intents, 3 date formats, 30 supported currencies, and field count thresholds — each with human labels and descriptions so Cowork agents can pick valid values without trial-and-error against the validator. The `critical_rules` block gains six new entries documenting post-field authoring patterns (post fields vs groupings, position semantics, display-type chooser, value shape per type, count cap, visibility model). The `field_name_hints` block gains a `post_field_definition` entry listing the valid keys on a field definition payload.
+- **CONNECTOR_SPEC.md updated** with full documentation for the new endpoints (section 5.7 — request bodies, response shapes, error codes, examples) and the new MCP tools (section 6 — `postruntime_*_post_field*` tool inventory).
+
+### Deviations from the locked design contract
+
+- **Live preview pane deferred.** The design contract (§ 8) called for a two-pane editor with a live-updating card and single-hero preview on the right. Phase 10 ships without it because the existing PRE admin (Groupings, CPTs) doesn't include any live preview, and adding one for the new page alone would be UX inconsistent. The deferral is captured here so the choice is auditable; if real client demand surfaces for the live preview, it ships as Phase 10.5 with a unified design that updates the Groupings admin in the same pass.
+
+### Notes
+
+- Phases 8 + 9 + 10 + 11 are merged in this entry because they ship together as the v1.1 connector-ready feature surface (data layer + frontend rendering + human-facing admin + AI / connector authoring). Phase 12 (AISB PostGrid filter + theme archive integration) follows in a subsequent release with cross-repo coordination.
+- The MCP tool layer itself (the 10 `postruntime_*_post_field*` tools) is implemented in the upstream Promptless MCP server, not in this plugin. This plugin exposes the REST endpoints; the MCP server wraps them 1:1 per the existing pattern. Spec is in CONNECTOR_SPEC.md § 6.
+- Greppable AISB-independence check still passes: zero new PHP-level references to AISB classes in Phase 11. The only AISB read is the soft `get_option('aisb_business_settings')` inherited from Phase 9's currency resolution chain.
+- No automated tests added in this pass. The v1.0 test-coverage gap (`POST_RUNTIME_AUDIT.md` Critical #1) is now also a v1.1 gap; building unit-test scaffolding for both field types together remains the recommended path before v1.1 ships publicly.
+- Open questions in design doc § 12 (sitewide currency setting, date format default, icon library reuse, live preview placeholder data, per-CPT field count cap) all resolved with concrete decisions during Phase 7.
+
 ## [0.3.4] — 2026-05-17
 
 ### Changed

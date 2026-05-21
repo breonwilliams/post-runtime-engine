@@ -666,3 +666,206 @@
 .pre-meta-auto-source p {
 	margin: 0;
 }
+
+/* =====================================================================
+ * v1.1 — Post Fields admin page + meta box
+ *
+ * Mirrors the existing Groupings admin in structure (list view + form
+ * view) so styling is intentionally minimal. Rules below are scoped to
+ * elements unique to post-fields surfaces so they don't interfere with
+ * the v1.0 admin.
+ * ===================================================================== */
+
+/* List view — drag handle column. */
+.pre-post-fields-table .pre-col-handle {
+	width: 28px;
+	padding-left: 8px;
+	padding-right: 0;
+	text-align: center;
+	cursor: move;
+}
+
+.pre-drag-handle {
+	color: #8c8f94;
+	font-size: 18px;
+	line-height: 1;
+	vertical-align: middle;
+	cursor: grab;
+}
+
+.pre-drag-handle:active {
+	cursor: grabbing;
+}
+
+.pre-post-fields-sortable__placeholder {
+	background: #fff8e5;
+	border: 1px dashed #c4b04a;
+	height: 38px;
+}
+
+.pre-reorder-hint {
+	margin-top: 8px;
+	margin-bottom: 8px;
+	font-style: italic;
+}
+
+/* Form view — conditional blocks. JS shows/hides via display: none. */
+.pre-post-field-form .pre-field-cond {
+	padding-top: 8px;
+	margin-top: 24px;
+	border-top: 1px solid #e5e7eb;
+}
+
+.pre-post-field-form .pre-field-cond > h2 {
+	font-size: 14px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #4b5563;
+	margin: 0 0 8px;
+}
+
+.pre-post-field-form .required {
+	color: #dc2626;
+	margin-left: 2px;
+}
+
+/* Meta box — per-field row */
+.pre-meta-box--post-fields .pre-field-row {
+	padding: 14px 0;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.pre-meta-box--post-fields .pre-field-row:last-child {
+	border-bottom: none;
+}
+
+.pre-field-row__label {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 6px;
+}
+
+.pre-field-row__label > label {
+	font-weight: 600;
+	font-size: 13px;
+	color: #1f2937;
+}
+
+.pre-field-row__required {
+	color: #dc2626;
+	font-weight: 600;
+}
+
+.pre-field-row__type-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 1px 8px;
+	font-size: 11px;
+	font-weight: 500;
+	color: #4b5563;
+	background: #f3f4f6;
+	border: 1px solid #e5e7eb;
+	border-radius: 999px;
+	font-family: ui-monospace, "SF Mono", Menlo, Monaco, monospace;
+	text-transform: lowercase;
+	letter-spacing: 0.02em;
+}
+
+.pre-field-row__input {
+	margin-bottom: 6px;
+}
+
+.pre-field-row__description {
+	margin: 0 0 6px;
+	color: #6b7280;
+}
+
+.pre-field-row__visibility {
+	display: flex;
+	gap: 16px;
+	font-size: 12px;
+	color: #6b7280;
+	margin-top: 6px;
+}
+
+.pre-field-row__visibility-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	cursor: pointer;
+}
+
+.pre-field-row__visibility-toggle input[type="checkbox"] {
+	margin: 0;
+}
+
+/* Per-input-type sub-components */
+.pre-input-currency {
+	display: inline-flex;
+	align-items: stretch;
+	border: 1px solid #8c8f94;
+	border-radius: 4px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.pre-input-currency__symbol {
+	padding: 0 10px;
+	background: #f6f7f7;
+	border-right: 1px solid #dcdcde;
+	color: #4b5563;
+	font-weight: 500;
+	display: flex;
+	align-items: center;
+}
+
+.pre-input-currency input[type="number"] {
+	border: 0;
+	box-shadow: none;
+	margin: 0;
+	padding: 0 10px;
+	min-width: 160px;
+}
+
+.pre-input-number {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pre-input-number__unit {
+	color: #6b7280;
+	font-size: 13px;
+}
+
+.pre-input-rating,
+.pre-input-progress {
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+	align-items: flex-end;
+}
+
+.pre-input-rating__label,
+.pre-input-progress__label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 12px;
+	color: #6b7280;
+}
+
+.pre-input-rating__max {
+	color: #6b7280;
+	font-size: 12px;
+	margin-left: 6px;
+}
+
+@media (max-width: 600px) {
+	.pre-field-row__visibility {
+		flex-direction: column;
+		gap: 4px;
+	}
+}

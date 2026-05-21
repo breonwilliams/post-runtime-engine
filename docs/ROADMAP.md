@@ -1,13 +1,14 @@
 # Post Runtime Engine — Roadmap
 
-**Document status:** Phases 0–6 shipped in v0.1.0. v0.2.0 layered on hero layouts + smart-token routing + variant intent + default_icon. v0.3.0 hardens the connector authoring contract from real hosted-pressure-test findings: critical_rules + field_name_hints in preflight, CDATA sanitization, link-aware cross-CPT icon resolution, update_post tool, _site envelope. v0.3.1 ships renderer global-$post fix and icon validator hints from a 2026-05-10 pressure test.
+**Document status:** Phases 0–6 shipped in v0.1.0. v0.2.0 layered on hero layouts + smart-token routing + variant intent + default_icon. v0.3.0 hardens the connector authoring contract from real hosted-pressure-test findings: critical_rules + field_name_hints in preflight, CDATA sanitization, link-aware cross-CPT icon resolution, update_post tool, _site envelope. v0.3.1 ships renderer global-$post fix and icon validator hints from a 2026-05-10 pressure test. **v1.1 (Phases 7–12) planned 2026-05-20** — adds the second field type (post fields, scalar) for card / hero metadata display. Design contract: `docs/POST_FIELDS_V1_1_DESIGN.md`.
 
 > **💼 Licensing note (clarified 2026-05-10):** This plugin is **FREE**. References below to "premium gating," "premium-license gating," or "Freemius wiring" are stale planning language from when the business model was undecided. Only Promptless WP is sold via Freemius. PRE, FRE, and FlowMint are all free plugins. Connector endpoints are gated by WP user capability + the per-site connector enable toggle — never by license state. See `CLAUDE.md` for the canonical statement.
 **Author:** Breon Williams + Claude (planning + build sessions)
-**Last updated:** 2026-05-08
+**Last updated:** 2026-05-20 (v1.1 planning added)
 **Plugin name:** Post Runtime Engine (PRE) — confirmed
 **Initial commit:** 2026-05-08 (v0.1.0)
 **Latest release:** 2026-05-08 (v0.3.0)
+**Next planned release:** v1.1.0 (post fields)
 
 ## Completion log
 
@@ -412,9 +413,150 @@ In rough priority order:
 
 Each deferred feature can be scoped against the v1.0 architecture without major rework. The phases above leave clean extension points.
 
+> **Update 2026-05-20:** Item 2 ("additional field types") is now being scoped as v1.1. The triggering client demand is directory-style sites that need scalar metadata (price, beds/baths, status, rating, duration, salary, etc.) displayed both in the single-post hero AND in card / archive / PostGrid contexts. See `docs/POST_FIELDS_V1_1_DESIGN.md` for the locked design contract and § 11 below for the phased build plan.
+
 ---
 
-## 11. How this document evolves
+## 11. v1.1 — Post fields (scalar field type for card + hero metadata)
+
+**Why v1.1, not v1.0.** The v1.0 guardrails in `CLAUDE.md` explicitly anticipated this conversation: *"Adding a second field type is a v1.1 conversation triggered by real client demand."* That trigger condition is now met. Real-estate, law-firm, medical, course, event, and directory-style use cases consistently require scalar metadata that the grouping primitive doesn't fit cleanly. v1.1 adds a second field type — **post fields** — focused on that scalar surface.
+
+**Design contract.** Locked in `docs/POST_FIELDS_V1_1_DESIGN.md`. Read that doc before starting any Phase 7+ work. The summary:
+
+- New scalar field type alongside the existing grouping repeater.
+- 9 display types (currency, number_with_label, badge, meta_pair, date, text, rating, progress, multi_badge).
+- 5 positions symmetric across single-post hero and card contexts (image_overlay, headline, subtitle, meta_strip, footer_meta).
+- Per-CPT configuration with hide-only per-post overrides.
+- AISB PostGrid integration via a new filter (`aisb_postgrid_card_content`).
+- Promptless theme archive integration via a parallel filter (`promptless_archive_card_content`).
+- Same connector + MCP authoring pattern as groupings.
+
+### v1.1 phased build plan
+
+| Phase | Title | Hours est | Cumulative | Output |
+|---|---|---|---|---|
+| 7 | v1.1 planning + design contract | 6 | 6 | `docs/POST_FIELDS_V1_1_DESIGN.md`; ROADMAP updates; CLAUDE.md guardrail updates |
+| 8 | Post field data layer | 12 | 18 | `PRE_Post_Field_Registry`; `PRE_Validator` extensions (DISPLAY_TYPES, FIELD_POSITIONS, COLOR_INTENTS constants + validation methods); `PRE_Post_Data` extensions for field values + visibility |
+| 9 | Card renderer + position × display-type CSS | 14 | 32 | `PRE_Card_Renderer` class with 9 per-display-type render methods; `assets/css/cards.css` covering 9 × 5 × 2 contexts (display × position × card-or-hero); integration into existing `PRE_Renderer` single-post template |
+| 10 | Admin UI: Post Fields tab + meta box | 12 | 44 | New CPT edit-screen "Post Fields" tab with inline field editor and dual live preview; per-post meta box extended with appropriate inputs per display type plus visibility-override checkboxes |
+| 11 | Connector REST + MCP tools | 10 | 54 | All endpoints under `/cpts/{slug}/post-fields/*` and `/posts/{id}/field-values`, `/field-visibility`; MCP tool surface (register_post_field, update_post_field, delete_post_field, list_post_fields, reorder_post_fields, set_post_field_values, get_post_field_values, set_post_field_visibility); preflight extensions exposing the new enums |
+| 12 | AISB PostGrid + theme archive integration | 8 | 62 | `aisb_postgrid_card_content` filter added to Promptless WP's PostGrid section; parallel `promptless_archive_card_content` filter added to Promptless theme's archive card template; PRE hooks both via existing `PRE_Card_Renderer`; side-by-side verification on a real client install |
+| **Total** | | **~62 hours** | | |
+
+Phase 13 (schema.org integration per display type — emitting `RealEstateListing`, `JobPosting`, `Event`, etc. based on field config) is deferred to v1.2. Substantial enough to deserve its own dedicated phase rather than being half-built in v1.1.
+
+### Phase 7 — v1.1 planning + design contract (6 hours, in progress)
+
+**Goal.** Lock the architectural decisions for v1.1 before any code is written. Same shape as the v1.0 Phase 0 that this build emulates.
+
+**Deliverables.**
+- `docs/POST_FIELDS_V1_1_DESIGN.md` — locked design contract ✅
+- This roadmap section ✅
+- `CLAUDE.md` updates: field-type guardrail revised to v1.1 posture; documentation map adds the new design doc; status block notes v1.1 planning ✅
+- `docs/ARCHITECTURE.md` updates: status note added at the guardrails section; field-type guardrail revised; position guardrail split into grouping (3) + post-field (5) caps ✅
+- Open questions in design doc § 12 (sitewide currency, date format default, icon library reuse, live preview placeholder data, per-CPT field count cap) — all five resolved ✅
+- `docs/INTEGRATION_PROMPTLESS.md` update documenting the new AISB filter contract (deferred — happens in Phase 12 when wiring begins)
+
+**Acceptance gate.** Founder approves the design contract and the five resolved open questions in § 12. Phase 8 begins after that approval.
+
+### Phase 8 — Post field data layer (12 hours)
+
+**Goal.** A second field type — scalar post fields — registers, persists, validates, and reads back through the same API shape as groupings.
+
+**Deliverables.**
+
+```
+includes/
+  Core/
+    class-pre-post-field-registry.php   ← NEW: CRUD over pre_post_fields_{cpt_slug} option
+    class-pre-validator.php              ← UPDATED: add DISPLAY_TYPES, FIELD_POSITIONS, COLOR_INTENTS constants; add validate_post_field_definition / validate_post_field_value / validate_post_field_visibility methods
+    class-pre-post-data.php              ← UPDATED: add get_field_values / set_field_values / get_field_visibility / set_field_visibility methods
+```
+
+Plus capability-version bump to 0.4.0 (no new caps needed; bump is a marker only).
+
+**Acceptance gate.** All field-type validation tests pass. Round-trip read/write of field values and visibility overrides works correctly. Existing v0.3.x behavior unchanged (regression suite green).
+
+### Phase 9 — Card renderer + CSS (14 hours)
+
+**Goal.** All 9 display types render correctly in all 5 positions in both contexts (card + single-post hero).
+
+**Deliverables.**
+
+```
+includes/
+  Frontend/
+    class-pre-card-renderer.php          ← NEW: render($post_id, $context) entry point; 9 per-display-type render methods (render_currency, render_number_with_label, render_badge, render_meta_pair, render_date, render_text, render_rating, render_progress, render_multi_badge); position bucketing + ordering
+    class-pre-renderer.php                ← UPDATED: call PRE_Card_Renderer::render($post_id, 'single_hero') inside the hero block
+assets/
+  css/
+    cards.css                             ← NEW: per-position base layout, per-display-type styling, per-context overrides (.pre-card vs .pre-single-hero), color-intent variants for badges
+```
+
+CSS reads `--aisb-*` tokens with documented fallbacks per the existing AISB_TOKEN_CONTRACT. Adds new tokens to the contract only if needed (likely yes for the badge color_intent ramps).
+
+**Acceptance gate.** Visual regression review of every display type × position combination on a real-content fixture. Per-context CSS proves out: cards render compact, hero renders prominent, both visually coherent.
+
+### Phase 10 — Admin UI (12 hours)
+
+**Goal.** A non-Cowork user can configure post fields on a CPT and fill in per-post values through the WP admin in under five minutes for a typical 5-field setup.
+
+**Deliverables.**
+
+```
+includes/
+  Admin/
+    class-pre-admin-post-fields.php      ← NEW: Post Fields tab on CPT edit screen; inline field editor; live preview panel
+    class-pre-admin.php                   ← UPDATED: register the new tab alongside existing Groupings tab
+    class-pre-meta-box.php                ← UPDATED: render per-display-type inputs for each registered field; visibility-override checkboxes
+assets/
+  js/
+    post-fields-editor.js                 ← NEW: drag-to-reorder, live preview updates, conditional field display per display type
+  css/
+    admin.css                             ← UPDATED: tab styling, field editor layout, live preview pane
+```
+
+**Acceptance gate.** Founder configures a 5-field real-estate listings CPT end-to-end without consulting docs. Live preview updates reliably. Per-post inputs render correctly per display type.
+
+### Phase 11 — Connector REST + MCP (10 hours)
+
+**Goal.** Cowork can configure post fields end-to-end through MCP, parity with the existing grouping connector surface.
+
+**Deliverables.**
+
+```
+includes/
+  Connector/
+    class-pre-connector-api.php           ← UPDATED: 10 new REST routes under /post-fields/* and /field-values, /field-visibility
+    class-pre-connector-preflight.php     ← UPDATED: surface DISPLAY_TYPES, FIELD_POSITIONS, COLOR_INTENTS in preflight response
+```
+
+Plus MCP server updates (likely in the broader Promptless MCP repo, not in this plugin): 8 new tool definitions mirroring the new REST endpoints.
+
+**Acceptance gate.** Cowork session creates a CPT, registers post fields, populates a sample post's field values, and verifies the rendered preview — all via MCP, no admin step. Pressure test against the v0.3 connector test suite to confirm no regression on existing endpoints.
+
+### Phase 12 — AISB + theme integration (8 hours)
+
+**Goal.** A CPT with post fields renders consistently in PostGrid sections, native archive pages, and search results — without AISB or the theme needing any knowledge of PRE's internals.
+
+**Deliverables.**
+
+- New filter exposed by Promptless WP's PostGrid renderer: `aisb_postgrid_card_content` (called inside `PostGridRenderer::render_card()` or equivalent).
+- Parallel filter exposed by Promptless theme's `template-parts/archive/card.php`: `promptless_archive_card_content`.
+- PRE registers handlers for both filters in a new `includes/Frontend/class-pre-card-filter-hooks.php`.
+- Optional: `pre_card_html` filter on PRE's own output for third-party customization.
+
+**Cross-repo coordination.** Phase 12 requires changes in three repos: PRE (handler), Promptless WP (PostGrid filter), Promptless theme (archive card filter). All three changes must ship in coordinated releases.
+
+**Acceptance gate.** A real-estate CPT with post fields displays the same field treatment in (a) an AISB PostGrid section on the homepage, (b) the native `/listings/` archive page, and (c) WP search results for listings. Verified side-by-side on a real client install. AISB source has zero PRE class references (`grep -r 'PRE_' /path/to/promptless-wp/` returns empty).
+
+### v1.1 success criteria
+
+Inherits from v1.0's success criteria plus the v1.1-specific gates documented in `docs/POST_FIELDS_V1_1_DESIGN.md` § 13. The primary new criterion: same field config drives both single-post hero and AISB PostGrid card on a single client install, verified visually side-by-side.
+
+---
+
+## 12. How this document evolves
 
 This is a living planning document. Edit it during the build:
 

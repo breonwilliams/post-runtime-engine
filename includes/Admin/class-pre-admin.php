@@ -32,9 +32,10 @@ class PRE_Admin {
 	/**
 	 * Sub-page slugs.
 	 */
-	const PAGE_CPTS      = 'post-runtime-engine';
-	const PAGE_GROUPINGS = 'pre-groupings';
-	const PAGE_SETTINGS  = 'pre-settings';
+	const PAGE_CPTS        = 'post-runtime-engine';
+	const PAGE_GROUPINGS   = 'pre-groupings';
+	const PAGE_POST_FIELDS = 'pre-post-fields';
+	const PAGE_SETTINGS    = 'pre-settings';
 
 	/**
 	 * CPT management page renderer.
@@ -49,6 +50,13 @@ class PRE_Admin {
 	 * @var PRE_Admin_Groupings|null
 	 */
 	private $groupings_page = null;
+
+	/**
+	 * Post field management page renderer (v1.1).
+	 *
+	 * @var PRE_Admin_Post_Fields|null
+	 */
+	private $post_fields_page = null;
 
 	/**
 	 * Post-edit-screen meta box.
@@ -68,6 +76,10 @@ class PRE_Admin {
 		// Meta box self-registers its own hooks (add_meta_boxes, save_post,
 		// admin_enqueue_scripts) so we instantiate it eagerly.
 		$this->meta_box = new PRE_Meta_Box();
+
+		// v1.1 post-fields meta box. Same self-registering pattern; only
+		// renders on CPTs that have at least one post field defined.
+		new PRE_Meta_Box_Post_Fields();
 	}
 
 	/**
@@ -117,6 +129,18 @@ class PRE_Admin {
 			self::PAGE_GROUPINGS,
 			array( $this, 'render_groupings_page' )
 		);
+
+		// "Post Fields" subpage (v1.1). Same hidden-by-design pattern as
+		// Groupings — only reachable via deep links from the CPT list,
+		// because both pages require a CPT context to be meaningful.
+		add_submenu_page(
+			null, // hidden.
+			__( 'Manage Post Fields', 'post-runtime-engine' ),
+			__( 'Manage Post Fields', 'post-runtime-engine' ),
+			$cap,
+			self::PAGE_POST_FIELDS,
+			array( $this, 'render_post_fields_page' )
+		);
 	}
 
 	/**
@@ -143,6 +167,20 @@ class PRE_Admin {
 			array(),
 			PRE_VERSION
 		);
+
+		// v1.1: conditional field display + drag reorder on the Post
+		// Fields admin page. Loaded only on that page to keep the rest
+		// of the admin lean.
+		$current_page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( $current_page === self::PAGE_POST_FIELDS ) {
+			wp_enqueue_script(
+				'pre-post-fields-editor',
+				PRE_PLUGIN_URL . 'assets/js/post-fields-editor.js',
+				array( 'jquery', 'jquery-ui-sortable' ),
+				PRE_VERSION,
+				true
+			);
+		}
 	}
 
 	/**
@@ -162,6 +200,8 @@ class PRE_Admin {
 			$this->get_cpts_page()->handle_action();
 		} elseif ( $page === self::PAGE_GROUPINGS ) {
 			$this->get_groupings_page()->handle_action();
+		} elseif ( $page === self::PAGE_POST_FIELDS ) {
+			$this->get_post_fields_page()->handle_action();
 		}
 	}
 
@@ -197,6 +237,23 @@ class PRE_Admin {
 	}
 
 	/**
+	 * Render the per-CPT post-fields management page (v1.1).
+	 */
+	public function render_post_fields_page() {
+		if ( ! PRE_Capabilities::current_user_can_manage() ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'post-runtime-engine' ) );
+		}
+
+		$page = $this->get_post_fields_page();
+
+		echo '<div class="pre-admin-notice-host">';
+		$page->render_notice();
+		echo '</div>';
+
+		$page->render();
+	}
+
+	/**
 	 * Lazily instantiate and return the CPTs page handler.
 	 *
 	 * @return PRE_Admin_CPTs
@@ -218,5 +275,17 @@ class PRE_Admin {
 			$this->groupings_page = new PRE_Admin_Groupings();
 		}
 		return $this->groupings_page;
+	}
+
+	/**
+	 * Lazily instantiate and return the Post Fields page handler.
+	 *
+	 * @return PRE_Admin_Post_Fields
+	 */
+	private function get_post_fields_page() {
+		if ( $this->post_fields_page === null ) {
+			$this->post_fields_page = new PRE_Admin_Post_Fields();
+		}
+		return $this->post_fields_page;
 	}
 }

@@ -4,7 +4,9 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
-## [Unreleased] — v1.1.0 development
+## [0.4.0] — 2026-05-22
+
+First release of the v1.1 post-fields feature surface (data layer + frontend rendering + admin UI + connector REST + MCP bridge), plus the post-staging-deploy fix cluster, the per-CPT archive-card meta toggles, and the modern 2026 design refinement pass. Backward-compatible — existing v0.3.x CPTs continue to render identically until they opt in to post fields.
 
 v1.1 introduces the second field type — **post fields** — for scalar metadata display in both the single-post hero and card / archive / PostGrid contexts. Design contract: `docs/POST_FIELDS_V1_1_DESIGN.md`. Roadmap: `docs/ROADMAP.md` § 11.
 

@@ -3,7 +3,7 @@
  * Plugin Name: Post Runtime Engine
  * Plugin URI: https://promptlesswp.com
  * Description: Render custom-post-type single pages with structured data display through Promptless's design system. Companion plugin to Promptless WP and Form Runtime Engine.
- * Version: 0.3.4
+ * Version: 0.4.0
  * Requires at least: 5.0
  * Requires PHP: 7.4
  * Author: Breon Williams
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin version. Bumped on every meaningful release.
-define( 'PRE_VERSION', '0.3.4' );
+define( 'PRE_VERSION', '0.4.0' );
 
 // Minimum data-storage schema version. Bumped when option / post-meta shapes
 // change in a way that requires migration, or when a new capability needs to

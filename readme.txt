@@ -2,7 +2,7 @@
 Contributors: flowmint
 Tags: custom post types, cpt, page builder, post template, structured content
 Requires at least: 5.0
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 7.4
 Stable tag: 0.4.0
 License: GPLv2 or later

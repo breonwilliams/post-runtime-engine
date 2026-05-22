@@ -112,10 +112,12 @@ class PRE_Meta_Box {
 		// uses, so when both plugins are active the browser caches one copy.
 		// Type="module" because iconify-icon ships as an ES module — WordPress
 		// honors the script_loader_tag filter so adding the attribute via
-		// wp_script_add_data() makes WP emit type="module".
+		// wp_script_add_data() makes WP emit type="module". Bundled
+		// locally at assets/js/iconify-icon.min.js — see comment in
+		// PRE_Frontend_Assets::enqueue() for rationale.
 		wp_enqueue_script(
 			'pre-iconify-icon',
-			'https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js',
+			PRE_PLUGIN_URL . 'assets/js/iconify-icon.min.js',
 			array(),
 			'2.1.0',
 			true
@@ -436,8 +438,8 @@ class PRE_Meta_Box {
 					<p class="pre-item__icon-help description">
 						<?php
 						printf(
-							/* translators: %s: Iconify icon-sets URL */
 							wp_kses(
+								/* translators: %s: Iconify icon-sets URL */
 								__( 'Any <a href="%s" target="_blank" rel="noopener">Iconify code</a> or pick one below.', 'post-runtime-engine' ),
 								array(
 									'a' => array(

@@ -214,27 +214,50 @@ class PRE_Card_Filter_Hooks {
 		}
 		$this->assets_enqueued = true;
 
-		// CSS — late-inject if not already enqueued upstream.
-		if ( ! wp_style_is( 'pre-cards', 'registered' ) && ! wp_style_is( 'pre-cards', 'enqueued' ) ) {
-			printf(
-				'<link rel="stylesheet" id="pre-cards-late-css" href="%s?ver=%s" media="all">',
-				esc_url( PRE_PLUGIN_URL . 'assets/css/cards.css' ),
-				esc_attr( PRE_VERSION )
-			);
+		// CSS — register/enqueue/print through the standard wp_*_style
+		// API rather than emitting a raw <link> tag. We're firing mid-
+		// response (the action that triggers this enqueue happens during
+		// card rendering, after wp_head has closed) so we have to call
+		// wp_print_styles() explicitly to force WordPress to emit the
+		// <link> tag now. Using the API instead of raw printf means the
+		// dependency / version / cache-busting machinery all works.
+		if ( ! wp_style_is( 'pre-cards', 'enqueued' ) ) {
+			if ( ! wp_style_is( 'pre-cards', 'registered' ) ) {
+				wp_register_style(
+					'pre-cards',
+					PRE_PLUGIN_URL . 'assets/css/cards.css',
+					array(),
+					PRE_VERSION
+				);
+			}
+			wp_enqueue_style( 'pre-cards' );
+			// Force immediate emission. wp_head has already passed.
+			wp_print_styles( array( 'pre-cards' ) );
 		}
 
-		// Iconify web component — late-inject if not already enqueued.
-		// Required for the <iconify-icon icon="mdi:..."> elements the
-		// meta_pair display type emits to actually render their SVG.
-		// Without the JS that registers the custom element, those tags
-		// stay as empty 14×14 placeholders (the user sees no glyph).
-		// The script ships from jsDelivr's CDN and is cached site-wide
-		// after the first load.
-		if ( ! wp_script_is( 'pre-iconify-icon', 'registered' ) && ! wp_script_is( 'pre-iconify-icon', 'enqueued' ) ) {
-			printf(
-				'<script id="pre-iconify-icon-late-js" type="module" src="%s"></script>',
-				esc_url( 'https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js' )
-			);
+		// Iconify web component — same pattern. Required for the
+		// <iconify-icon icon="mdi:..."> elements the meta_pair display
+		// type emits to actually render their SVG. Without the JS that
+		// registers the custom element, those tags stay as empty 14×14
+		// placeholders (the user sees no glyph). Bundled locally at
+		// assets/js/iconify-icon.min.js.
+		if ( ! wp_script_is( 'pre-iconify-icon', 'enqueued' ) ) {
+			if ( ! wp_script_is( 'pre-iconify-icon', 'registered' ) ) {
+				wp_register_script(
+					'pre-iconify-icon',
+					PRE_PLUGIN_URL . 'assets/js/iconify-icon.min.js',
+					array(),
+					'2.1.0',
+					true
+				);
+				wp_script_add_data( 'pre-iconify-icon', 'type', 'module' );
+			}
+			wp_enqueue_script( 'pre-iconify-icon' );
+			// Force immediate emission. wp_footer hasn't fired yet but
+			// we want the script available the moment the first
+			// <iconify-icon> element appears in the DOM so the custom
+			// element registers before the browser tries to render it.
+			wp_print_scripts( array( 'pre-iconify-icon' ) );
 		}
 	}
 

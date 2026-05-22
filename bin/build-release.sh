@@ -87,10 +87,13 @@ REQUIRED=(
     "README.md"
     "includes/class-pre-autoloader.php"
     "includes/Connector/assets/post-runtime-connector.js"
+    "includes/Updates/class-pre-github-updater.php"
     "templates/single-base.php"
     "assets/css/frontend.css"
     "assets/css/admin.css"
+    "assets/css/cards.css"
     "assets/js/meta-box.js"
+    "assets/js/iconify-icon.min.js"
 )
 for f in "${REQUIRED[@]}"; do
     if [ ! -f "${TEMP_DIR}/${f}" ]; then

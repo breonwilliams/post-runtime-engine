@@ -126,6 +126,18 @@ const TOOLS = [
           description:
             "Optional fallback icon used when a grouping item resolves to no media. Accepts EITHER a legacy curated id (e.g. 'home', 'user', 'shield' — call postruntime_list_icons to discover all 53 inline-SVG icons) OR any Iconify code in collection:name form (e.g. 'mdi:home', 'logos:wordpress', 'fa6-solid:tooth' — 200,000+ icons at icon-sets.iconify.design). Especially relevant for compact-grid and horizontal-row variants (icon-only by design). Pick a generic shape that fits the CPT (e.g. 'mdi:home' for listings, 'mdi:account' for team members). Leave empty to render iconless.",
         },
+        archive_show_post_date: {
+          type: "boolean",
+          default: true,
+          description:
+            "Whether the theme archive card should render the post's create-date byline. Default true (backward compatible). Set false when the CPT already exposes a meaningful date via a post-field (e.g. an event CPT whose event_date field IS the date that matters — showing both the post create-date AND event_date on a card is duplicative). Affects only the theme-rendered archive card; the AISB PostGrid section has its own show-date toggle.",
+        },
+        archive_show_post_author: {
+          type: "boolean",
+          default: true,
+          description:
+            "Whether the theme archive card should render the post author byline. Default true. Set false for CPTs where the author is irrelevant or noisy (e.g. a multi-author publication where every post is by 'admin', or a directory CPT where the author identity isn't the point). Affects only the theme-rendered archive card.",
+        },
       },
       required: ["slug", "label_singular", "label_plural"],
     },
@@ -162,6 +174,8 @@ const TOOLS = [
         hero_image_position: { type: "string", enum: ["left", "right"] },
         hero_image_aspect: { type: "string", enum: ["square", "landscape", "wide"] },
         default_icon: { type: "string", description: "Curated icon id (e.g. 'home') OR Iconify code in collection:name form (e.g. 'mdi:home'), or empty string to remove the fallback. See postruntime_list_icons." },
+        archive_show_post_date: { type: "boolean", description: "Hide the theme-rendered post create-date on archive cards by setting false. Default true." },
+        archive_show_post_author: { type: "boolean", description: "Hide the theme-rendered post author byline on archive cards by setting false. Default true." },
       },
       required: ["slug", "connector_version"],
     },
@@ -375,6 +389,198 @@ const TOOLS = [
       required: ["id"],
     },
   },
+
+  // -------------------------------------------------------------------------
+  // Post fields (v1.1) — scalar values with typed display that decorate the
+  // single-post hero AND cards (archive + AISB PostGrid sections). Closed
+  // enums for display_type / position / color_intent / date_format /
+  // supported_currencies live in preflight.post_field_enums. Authoring
+  // guidance lives in preflight.critical_rules (post_fields_vs_groupings,
+  // post_field_positions, post_field_display_types, post_field_value_shape,
+  // post_field_count_cap, post_field_visibility_model). 12-field hard cap
+  // per CPT, soft warning at 8.
+  // -------------------------------------------------------------------------
+
+  {
+    name: "postruntime_list_post_fields",
+    description:
+      "List every post field defined on a CPT, in render order. Each entry surfaces key, label, display_type, card_position, single_position, plus the conditional fields meaningful for that display_type (color_intent + options for badge / multi_badge; icon for meta_pair; date_format / date_format_string for date; currency_code + value_suffix for currency; max + unit_label for rating / progress / number_with_label), connector_version (for optimistic concurrency on update), and timestamps. Use to discover what's defined before adding more, or to read the current order before reordering.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "CPT slug" },
+      },
+      required: ["slug"],
+    },
+  },
+  {
+    name: "postruntime_define_post_field",
+    description:
+      "Define a new post field on a CPT. Up to 12 fields per CPT enforced server-side (HARD_FIELD_COUNT_LIMIT); soft warning at 8. After definition, populate per-post values via postruntime_set_post_field_values. See preflight.field_name_hints.post_field_definition for the accepted-keys list and preflight.post_field_enums for closed enums. Examples by display_type — currency: { key:'price', label:'Price', display_type:'currency', card_position:'headline', single_position:'headline', currency_code:'USD', value_suffix:'+' }. badge: { key:'status', label:'Status', display_type:'badge', card_position:'image_overlay', single_position:'image_overlay', options:{ for_sale:{ label:'For sale', color_intent:'primary' }, sold:{ label:'Sold', color_intent:'neutral' } } }. meta_pair: { key:'beds', label:'Beds', display_type:'meta_pair', card_position:'meta_strip', single_position:'meta_strip', icon:'mdi:bed-outline' }. rating: { key:'reviews', label:'Reviews', display_type:'rating', card_position:'meta_strip', single_position:'meta_strip', max:5 }. progress: { key:'capacity', label:'Capacity', display_type:'progress', card_position:'meta_strip', single_position:'meta_strip' }. date: { key:'event_date', label:'Event date', display_type:'date', card_position:'headline', single_position:'headline', date_format:'custom', date_format_string:'F j · g:i A' }. multi_badge: { key:'topics', label:'Topics', display_type:'multi_badge', card_position:'footer_meta', single_position:'footer_meta', color_intent:'neutral' }. number_with_label: { key:'duration', label:'Duration', display_type:'number_with_label', card_position:'meta_strip', single_position:'meta_strip', unit_label:'min' }. Use card_position:'hidden' or single_position:'hidden' to opt out of one context.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "CPT slug the field is attached to" },
+        key: { type: "string", description: "Field key (snake_case, unique per CPT)" },
+        label: { type: "string", description: "Author-facing label shown in the meta box" },
+        description: { type: "string" },
+        display_type: {
+          type: "string",
+          enum: ["currency", "number_with_label", "badge", "meta_pair", "date", "text", "rating", "progress", "multi_badge"],
+        },
+        card_position: {
+          type: "string",
+          enum: ["image_overlay", "headline", "subtitle", "meta_strip", "footer_meta", "hidden"],
+        },
+        single_position: {
+          type: "string",
+          enum: ["image_overlay", "headline", "subtitle", "meta_strip", "footer_meta", "hidden"],
+        },
+        color_intent: {
+          type: "string",
+          enum: ["primary", "secondary", "neutral"],
+          description: "For badge / multi_badge. Per-option color_intent in options[] takes precedence.",
+        },
+        icon: { type: "string", description: "For meta_pair — curated icon id or Iconify code (e.g. mdi:bed-outline)" },
+        options: { description: "For badge / multi_badge — object mapping option keys to { label, color_intent }. May be sent as a JSON string; the bridge parses it." },
+        required: { type: "boolean" },
+        date_format: { type: "string", enum: ["absolute", "relative", "custom"], description: "For date" },
+        date_format_string: { type: "string", description: "For date when date_format is custom (PHP date format, e.g. 'F j · g:i A')" },
+        currency_code: { type: "string", description: "For currency — ISO 4217 from preflight.post_field_enums.supported_currencies" },
+        value_suffix: { type: "string", description: "For currency — appended after the formatted amount ('+', '/mo', '/night', etc.)" },
+        max: { type: "number", description: "For rating (defaults to 5), progress, or number_with_label" },
+        unit_label: { type: "string", description: "For number_with_label — unit suffix (sqft, mi, hrs, min, etc.)" },
+      },
+      required: ["slug", "key", "label", "display_type", "card_position", "single_position"],
+    },
+  },
+  {
+    name: "postruntime_get_post_field",
+    description: "Read a single post-field definition by CPT slug + field key. Returns the full shape including connector_version for use in subsequent update calls.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        key: { type: "string" },
+      },
+      required: ["slug", "key"],
+    },
+  },
+  {
+    name: "postruntime_update_post_field",
+    description: "Update an existing post-field definition. URL key is authoritative — body `key` is ignored if sent. Requires connector_version from a prior read for optimistic concurrency; mismatch returns pre_stale_connector_version (HTTP 409). All other fields are partial-update: only keys present in the call are touched.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        key: { type: "string" },
+        connector_version: { type: "integer", description: "From the field's last read — required for optimistic concurrency" },
+        label: { type: "string" },
+        description: { type: "string" },
+        display_type: {
+          type: "string",
+          enum: ["currency", "number_with_label", "badge", "meta_pair", "date", "text", "rating", "progress", "multi_badge"],
+        },
+        card_position: {
+          type: "string",
+          enum: ["image_overlay", "headline", "subtitle", "meta_strip", "footer_meta", "hidden"],
+        },
+        single_position: {
+          type: "string",
+          enum: ["image_overlay", "headline", "subtitle", "meta_strip", "footer_meta", "hidden"],
+        },
+        color_intent: { type: "string", enum: ["primary", "secondary", "neutral"] },
+        icon: { type: "string" },
+        options: { description: "May be sent as a JSON string; the bridge parses it." },
+        required: { type: "boolean" },
+        date_format: { type: "string", enum: ["absolute", "relative", "custom"] },
+        date_format_string: { type: "string" },
+        currency_code: { type: "string" },
+        value_suffix: { type: "string" },
+        max: { type: "number" },
+        unit_label: { type: "string" },
+      },
+      required: ["slug", "key", "connector_version"],
+    },
+  },
+  {
+    name: "postruntime_delete_post_field",
+    description: "Remove a post-field definition from a CPT. Per-post stored values are intentionally NOT purged — they're orphaned until the post is next saved or until a future explicit cleanup endpoint lands. Matches the grouping delete behavior so a misclick is recoverable by re-defining the same field key.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        key: { type: "string" },
+      },
+      required: ["slug", "key"],
+    },
+  },
+  {
+    name: "postruntime_reorder_post_fields",
+    description: "Bulk reorder all post fields on a CPT. ordered_keys MUST contain exactly the set of currently-defined keys — no additions, no removals, no duplicates. Validation runs server-side and returns pre_reorder_key_mismatch (HTTP 422) if the set diverges. Render order matters: fields share positions (e.g. multiple meta_pair fields in meta_strip) and render in this order within each position.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        ordered_keys: {
+          type: "array",
+          items: { type: "string" },
+          description: "Full set of currently-defined field keys in the desired order",
+        },
+      },
+      required: ["slug", "ordered_keys"],
+    },
+  },
+  {
+    name: "postruntime_get_post_field_values",
+    description: "Read all post-field values for a single post. Returns field_values keyed by field key. Composite display types surface as objects — rating: { value: 4.8, count: 1243 }, progress: { value: 320000, goal: 500000 } — so consumers can read both halves in one call. Storage and admin entries always hold raw values; only webhook payloads are subject to option-label resolution.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "Post ID (must belong to a PRE-registered CPT)" },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "postruntime_set_post_field_values",
+    description: "Bulk write post-field values on a single post. Partial-update semantics: fields not present in `values` are unchanged; to clear a field, send explicit null or empty string. Composite types accept either the canonical shape ({ rating: { value: 4.8, count: 1243 } }) OR a bare scalar for the primary value with secondary defaulting to null ({ rating: 4.8 }). Per-display-type validation runs server-side — see preflight.critical_rules.post_field_value_shape for the rules. Unknown field keys are silently dropped with a warning so existing data isn't corrupted by a typo. Returns the resulting full value set so the caller can confirm what landed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "Post ID" },
+        values: {
+          description: "Object mapping field keys to values. May be sent as a JSON string; the bridge parses it. Examples: { price: 1485000, status: 'for_sale', beds: 3, baths: 2, rating: { value: 4.8, count: 89 }, topics: ['React', 'Performance', 'Accessibility'] }",
+        },
+      },
+      required: ["id", "values"],
+    },
+  },
+  {
+    name: "postruntime_get_post_field_visibility",
+    description: "Read per-post visibility overrides for a single post. Returns visibility keyed by field key, with card_hidden / single_hidden booleans. Empty object means no overrides — the CPT-level card_position / single_position settings apply unmodified.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "Post ID" },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "postruntime_set_post_field_visibility",
+    description: "Write per-post visibility overrides for a single post. Full-replace semantics — send the entire desired visibility map; missing field keys default to unhidden. To clear ALL overrides on a post, send an empty object. Layers on top of the CPT-level position settings: a field defined with card_position:'headline' can be hidden on a specific post's card via { price: { card_hidden: true } } without redefining the field. Positions themselves can't be overridden per post; only visibility.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "Post ID" },
+        visibility: {
+          description: "Object mapping field keys to { card_hidden: bool, single_hidden: bool }. May be sent as a JSON string; the bridge parses it.",
+        },
+      },
+      required: ["id", "visibility"],
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -581,6 +787,8 @@ async function handleTool(name, args) {
         "hero_image_position",
         "hero_image_aspect",
         "default_icon",
+        "archive_show_post_date",
+        "archive_show_post_author",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
@@ -609,6 +817,8 @@ async function handleTool(name, args) {
         "hero_image_position",
         "hero_image_aspect",
         "default_icon",
+        "archive_show_post_date",
+        "archive_show_post_author",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
@@ -762,6 +972,133 @@ async function handleTool(name, args) {
         "GET",
         `/posts/${encodeURIComponent(args.id)}/preview`
       );
+
+    // -----------------------------------------------------------------
+    // Post fields (v1.1)
+    // -----------------------------------------------------------------
+
+    case "postruntime_list_post_fields":
+      return await makeRequest(
+        "GET",
+        `/cpts/${encodeURIComponent(args.slug)}/post-fields`
+      );
+
+    case "postruntime_define_post_field": {
+      const payload = {};
+      [
+        "key",
+        "label",
+        "description",
+        "display_type",
+        "card_position",
+        "single_position",
+        "color_intent",
+        "icon",
+        "options",
+        "required",
+        "date_format",
+        "date_format_string",
+        "currency_code",
+        "value_suffix",
+        "max",
+        "unit_label",
+      ].forEach((k) => {
+        if (args[k] !== undefined) payload[k] = args[k];
+      });
+      // MCP framework workaround — options arrives as a JSON string when the
+      // model emits it as a nested object, since the schema declares it as a
+      // looser type. Pre-parse so the REST validator sees the canonical shape.
+      if ("options" in payload) {
+        payload.options = maybeParseJsonObjectString(payload.options);
+      }
+      return await makeRequest(
+        "POST",
+        `/cpts/${encodeURIComponent(args.slug)}/post-fields`,
+        payload
+      );
+    }
+
+    case "postruntime_get_post_field":
+      return await makeRequest(
+        "GET",
+        `/cpts/${encodeURIComponent(args.slug)}/post-fields/${encodeURIComponent(args.key)}`
+      );
+
+    case "postruntime_update_post_field": {
+      const payload = { connector_version: args.connector_version };
+      [
+        "label",
+        "description",
+        "display_type",
+        "card_position",
+        "single_position",
+        "color_intent",
+        "icon",
+        "options",
+        "required",
+        "date_format",
+        "date_format_string",
+        "currency_code",
+        "value_suffix",
+        "max",
+        "unit_label",
+      ].forEach((k) => {
+        if (args[k] !== undefined) payload[k] = args[k];
+      });
+      if ("options" in payload) {
+        payload.options = maybeParseJsonObjectString(payload.options);
+      }
+      return await makeRequest(
+        "PUT",
+        `/cpts/${encodeURIComponent(args.slug)}/post-fields/${encodeURIComponent(args.key)}`,
+        payload
+      );
+    }
+
+    case "postruntime_delete_post_field":
+      return await makeRequest(
+        "DELETE",
+        `/cpts/${encodeURIComponent(args.slug)}/post-fields/${encodeURIComponent(args.key)}`
+      );
+
+    case "postruntime_reorder_post_fields":
+      return await makeRequest(
+        "POST",
+        `/cpts/${encodeURIComponent(args.slug)}/post-fields/reorder`,
+        { ordered_keys: args.ordered_keys }
+      );
+
+    case "postruntime_get_post_field_values":
+      return await makeRequest(
+        "GET",
+        `/posts/${encodeURIComponent(args.id)}/field-values`
+      );
+
+    case "postruntime_set_post_field_values": {
+      // values may arrive as a JSON string when emitted as a nested object;
+      // the bridge canonicalizes it.
+      const values = maybeParseJsonObjectString(args.values);
+      return await makeRequest(
+        "PUT",
+        `/posts/${encodeURIComponent(args.id)}/field-values`,
+        { values }
+      );
+    }
+
+    case "postruntime_get_post_field_visibility":
+      return await makeRequest(
+        "GET",
+        `/posts/${encodeURIComponent(args.id)}/field-visibility`
+      );
+
+    case "postruntime_set_post_field_visibility": {
+      const visibility = maybeParseJsonObjectString(args.visibility);
+      return await makeRequest(
+        "PUT",
+        `/posts/${encodeURIComponent(args.id)}/field-visibility`,
+        { visibility }
+      );
+    }
 
     default:
       throw new Error(`Unknown tool: ${name}`);

@@ -509,6 +509,22 @@ class PRE_Validator {
 			}
 		}
 
+		// archive_show_post_date / archive_show_post_author — control whether
+		// the theme renders the post's create-date and author byline on
+		// archive cards. Default true (backward compatible). Booleans only.
+		foreach ( array( 'archive_show_post_date', 'archive_show_post_author' ) as $bool_key ) {
+			if ( isset( $definition[ $bool_key ] ) && ! is_bool( $definition[ $bool_key ] ) ) {
+				return new WP_Error(
+					'pre_invalid_archive_meta_flag',
+					sprintf(
+						/* translators: %s: the offending key */
+						__( 'CPT %s must be a boolean.', 'post-runtime-engine' ),
+						$bool_key
+					)
+				);
+			}
+		}
+
 		return true;
 	}
 

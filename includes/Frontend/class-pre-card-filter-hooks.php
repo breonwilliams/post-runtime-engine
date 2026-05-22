@@ -49,13 +49,13 @@ class PRE_Card_Filter_Hooks {
 	private $renderer = null;
 
 	/**
-	 * Tracks whether cards.css has been enqueued during this request.
-	 * Set when the first relevant action fires. Avoids redundant enqueue
-	 * checks per card.
+	 * Tracks whether the card assets (cards.css + iconify-icon JS) have
+	 * been enqueued / late-injected during this request. Set when the
+	 * first relevant action fires. Avoids redundant injections per card.
 	 *
 	 * @var bool
 	 */
-	private $css_enqueued = false;
+	private $assets_enqueued = false;
 
 	/**
 	 * Wire the hooks. Called once during plugin init.
@@ -68,6 +68,64 @@ class PRE_Card_Filter_Hooks {
 
 		// Promptless theme archive card. 2 args: position, post_id.
 		add_action( 'promptless_archive_card_section', array( $this, 'on_archive_card_section' ), 10, 2 );
+
+		// Per-CPT toggles for the theme's archive-card date + author byline.
+		// Default true. When a CPT is registered with PRE and its definition
+		// includes `archive_show_post_date: false`, that filter returns
+		// false for that CPT's posts, suppressing the theme-rendered date.
+		// Non-PRE CPTs are unaffected (filter returns the incoming value).
+		add_filter( 'promptless_archive_card_show_date', array( $this, 'filter_archive_show_date' ), 10, 2 );
+		add_filter( 'promptless_archive_card_show_author', array( $this, 'filter_archive_show_author' ), 10, 2 );
+	}
+
+	/**
+	 * Filter callback: return the CPT's `archive_show_post_date` flag
+	 * when the post belongs to a PRE-registered CPT. Falls through to
+	 * the default (the incoming $show value, typically true) for any
+	 * post type PRE doesn't manage.
+	 *
+	 * @param bool $show    Current decision from the theme.
+	 * @param int  $post_id Post being rendered.
+	 * @return bool
+	 */
+	public function filter_archive_show_date( $show, $post_id ) {
+		return $this->cpt_toggle( $show, $post_id, 'archive_show_post_date' );
+	}
+
+	/**
+	 * Filter callback: return the CPT's `archive_show_post_author` flag.
+	 *
+	 * @param bool $show    Current decision from the theme.
+	 * @param int  $post_id Post being rendered.
+	 * @return bool
+	 */
+	public function filter_archive_show_author( $show, $post_id ) {
+		return $this->cpt_toggle( $show, $post_id, 'archive_show_post_author' );
+	}
+
+	/**
+	 * Shared CPT-lookup helper for the archive-meta filters above.
+	 *
+	 * @param bool   $show     Theme's incoming value.
+	 * @param int    $post_id  Post being filtered.
+	 * @param string $cpt_key  Definition key on the CPT registry to read.
+	 * @return bool
+	 */
+	private function cpt_toggle( $show, $post_id, $cpt_key ) {
+		$post = get_post( $post_id );
+		if ( ! ( $post instanceof WP_Post ) ) {
+			return $show;
+		}
+		$plugin = function_exists( 'pre' ) ? pre() : null;
+		if ( ! $plugin || ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
+			// Not a PRE-managed CPT — defer to the theme's decision.
+			return $show;
+		}
+		$def = $plugin->cpts->get( $post->post_type );
+		if ( ! is_array( $def ) || ! array_key_exists( $cpt_key, $def ) ) {
+			return $show;
+		}
+		return (bool) $def[ $cpt_key ];
 	}
 
 	/**
@@ -121,7 +179,7 @@ class PRE_Card_Filter_Hooks {
 		// still need this BEFORE the render call so the styles are queued
 		// before any inline output, but only conditional on us being about
 		// to render fields for a managed CPT.
-		$this->maybe_enqueue_css();
+		$this->maybe_enqueue_card_assets();
 
 		$renderer = $this->get_renderer();
 		$html     = $renderer->render_position_html( $post_id, $position, 'card' );
@@ -135,34 +193,49 @@ class PRE_Card_Filter_Hooks {
 	}
 
 	/**
-	 * Enqueue cards.css if it hasn't been queued for this request yet.
-	 * Idempotent — the per-request flag plus wp_style_is() inside the
-	 * actual enqueue call mean this is safe to invoke from any hook firing.
+	 * Inject cards.css AND the iconify-icon web component JS into the
+	 * response if neither has been queued yet for this request.
+	 *
+	 * Two cases land here:
+	 *   1. PostGrid section inside a Promptless page (a non-CPT URL like
+	 *      `/home/`). PRE_Frontend_Assets::enqueue() never fires because
+	 *      this isn't a registered CPT page; we late-inject both assets.
+	 *   2. Theme archive of a registered CPT where PRE_Frontend_Assets
+	 *      DOES fire (it now covers archives, not just singles). In that
+	 *      case wp_style_is() / wp_script_is() returns true and we skip
+	 *      the duplicate injection.
+	 *
+	 * Idempotent at three levels: the per-request flag, the WP enqueue
+	 * registry, and the browser cache.
 	 */
-	private function maybe_enqueue_css() {
-		if ( $this->css_enqueued ) {
+	private function maybe_enqueue_card_assets() {
+		if ( $this->assets_enqueued ) {
 			return;
 		}
-		$this->css_enqueued = true;
+		$this->assets_enqueued = true;
 
-		// The action fires inside the body of the response — too late for
-		// wp_enqueue_style() to add a <link> in <head>. Print the
-		// stylesheet inline at the point of first use. This is a known WP
-		// pattern for late-discovered CSS dependencies.
-		if ( wp_style_is( 'pre-cards', 'registered' ) || wp_style_is( 'pre-cards', 'enqueued' ) ) {
-			// Already loaded via PRE_Frontend_Assets (e.g. on a registered
-			// CPT single that contains a PostGrid section). Nothing to do.
-			return;
+		// CSS — late-inject if not already enqueued upstream.
+		if ( ! wp_style_is( 'pre-cards', 'registered' ) && ! wp_style_is( 'pre-cards', 'enqueued' ) ) {
+			printf(
+				'<link rel="stylesheet" id="pre-cards-late-css" href="%s?ver=%s" media="all">',
+				esc_url( PRE_PLUGIN_URL . 'assets/css/cards.css' ),
+				esc_attr( PRE_VERSION )
+			);
 		}
 
-		// Print directly. The stylesheet is small (~17KB) so inlining late
-		// is acceptable; the alternative (a header pre-scan) is more
-		// complex and only saves bytes when no fields render.
-		printf(
-			'<link rel="stylesheet" id="pre-cards-late-css" href="%s?ver=%s" media="all">',
-			esc_url( PRE_PLUGIN_URL . 'assets/css/cards.css' ),
-			esc_attr( PRE_VERSION )
-		);
+		// Iconify web component — late-inject if not already enqueued.
+		// Required for the <iconify-icon icon="mdi:..."> elements the
+		// meta_pair display type emits to actually render their SVG.
+		// Without the JS that registers the custom element, those tags
+		// stay as empty 14×14 placeholders (the user sees no glyph).
+		// The script ships from jsDelivr's CDN and is cached site-wide
+		// after the first load.
+		if ( ! wp_script_is( 'pre-iconify-icon', 'registered' ) && ! wp_script_is( 'pre-iconify-icon', 'enqueued' ) ) {
+			printf(
+				'<script id="pre-iconify-icon-late-js" type="module" src="%s"></script>',
+				esc_url( 'https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js' )
+			);
+		}
 	}
 
 	/**

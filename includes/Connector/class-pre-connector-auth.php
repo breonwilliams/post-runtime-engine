@@ -50,31 +50,44 @@ class PRE_Connector_Auth {
 	 */
 	const RATE_LIMITS = array(
 		// Reads (60/min).
-		'preflight'           => 60,
-		'list_cpts'           => 60,
-		'get_cpt'             => 60,
-		'list_groupings'      => 60,
-		'get_grouping'        => 60,
-		'get_post_groupings'  => 60,
-		'preview_post'        => 60,
-		'list_icons'          => 60,
-		'list_variants'       => 60,
-		'list_positions'      => 60,
+		'preflight'                   => 60,
+		'list_cpts'                   => 60,
+		'get_cpt'                     => 60,
+		'list_groupings'              => 60,
+		'get_grouping'                => 60,
+		'get_post_groupings'          => 60,
+		'preview_post'                => 60,
+		'list_icons'                  => 60,
+		'list_variants'               => 60,
+		'list_positions'              => 60,
+		'list_post_fields'            => 60,
+		'get_post_field'              => 60,
+		'get_post_field_values'       => 60,
+		'get_post_field_visibility'   => 60,
 
 		// Light writes (30/min).
-		'set_post_groupings' => 30,
-		'create_post'        => 30,
-		'update_post'        => 30,
+		'set_post_groupings'          => 30,
+		'create_post'                 => 30,
+		'update_post'                 => 30,
+		'set_post_field_values'       => 30,
+		'set_post_field_visibility'   => 30,
+		'reorder_post_fields'         => 30,
 
-		// Config writes (10/min).
-		'register_cpt'     => 10,
-		'update_cpt'       => 10,
-		'define_grouping'  => 10,
-		'update_grouping'  => 10,
+		// Config writes (30/min for post-field define/update — bulk-define
+		// is a legitimate AI-agent setup pattern, e.g. defining 10 fields
+		// on a fresh CPT in one session. Groupings stay at 10/min because
+		// they're less likely to be bulk-defined).
+		'register_cpt'                => 10,
+		'update_cpt'                  => 10,
+		'define_grouping'             => 10,
+		'update_grouping'             => 10,
+		'define_post_field'           => 30,
+		'update_post_field'           => 30,
 
 		// Destructive (5/min).
-		'delete_cpt'      => 5,
-		'delete_grouping' => 5,
+		'delete_cpt'         => 5,
+		'delete_grouping'    => 5,
+		'delete_post_field'  => 5,
 	);
 
 	/**

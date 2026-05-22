@@ -54,6 +54,7 @@ rsync -av --exclude-from=- . "${TEMP_DIR}/" >/dev/null <<'EXCLUDE'
 .DS_Store
 .idea
 .vscode
+.claude
 *.swp
 *.swo
 *~
@@ -65,12 +66,16 @@ build
 tests
 bin
 CLAUDE.md
+POST_RUNTIME_AUDIT.md
 phpunit.xml
 phpunit.xml.dist
 composer.lock
 .phpcs.xml
 .phpcs.xml.dist
 .phpunit.result.cache
+dev-*.php
+seed-*.php
+scratch-*.php
 EXCLUDE
 
 # Sanity-check that the essential files made it through. If the rsync

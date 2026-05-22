@@ -453,12 +453,16 @@ class PRE_Renderer {
 			$hero_classes[] = 'pre-hero--has-image';
 		}
 
-		// v1.1: render post fields if the CPT has any registered. The
-		// PRE_Card_Renderer emits a wrapper containing only the position
-		// buckets that have visible fields with values — empty string if
-		// none, so existing v0.3.x CPTs behave identically.
+		// v1.1: render post fields if the CPT has any registered. We render
+		// each position individually via render_position_html() — this is
+		// the building-block API the card renderer exposes for exactly this
+		// "inline at semantic points" use case. Previous versions extracted
+		// positions from a single render() output using a regex; that
+		// approach broke when a position contained nested divs (e.g. the
+		// `progress` display type) because the non-greedy match stopped at
+		// the wrong </div>. render_position_html is self-contained per
+		// position with no string parsing involved.
 		$card_renderer = new PRE_Card_Renderer();
-		$fields_html   = $card_renderer->render( $post->ID, 'single_hero' );
 
 		?>
 		<header class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>">
@@ -484,7 +488,7 @@ class PRE_Renderer {
 						$image_size = $layout === 'stacked' ? 'full' : 'large';
 						echo get_the_post_thumbnail( $post->ID, $image_size, $args );
 						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						echo $this->extract_overlay_field_html( $fields_html );
+						echo $card_renderer->render_position_html( $post->ID, 'image_overlay', 'single_hero' );
 						?>
 					</div>
 				<?php endif; ?>
@@ -494,7 +498,7 @@ class PRE_Renderer {
 					// Headline-position fields render above the title (the
 					// "price above the address" pattern).
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo $this->extract_position_field_html( $fields_html, 'headline' );
+					echo $card_renderer->render_position_html( $post->ID, 'headline', 'single_hero' );
 					?>
 
 					<h1 class="pre-hero__title"><?php echo esc_html( $title ); ?></h1>
@@ -502,7 +506,7 @@ class PRE_Renderer {
 					<?php
 					// Subtitle-position fields render directly under the title.
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo $this->extract_position_field_html( $fields_html, 'subtitle' );
+					echo $card_renderer->render_position_html( $post->ID, 'subtitle', 'single_hero' );
 					?>
 
 					<?php if ( $excerpt !== '' ) : ?>
@@ -513,9 +517,9 @@ class PRE_Renderer {
 					// meta_strip and footer_meta land below the excerpt
 					// but inside the text column.
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo $this->extract_position_field_html( $fields_html, 'meta_strip' );
+					echo $card_renderer->render_position_html( $post->ID, 'meta_strip', 'single_hero' );
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo $this->extract_position_field_html( $fields_html, 'footer_meta' );
+					echo $card_renderer->render_position_html( $post->ID, 'footer_meta', 'single_hero' );
 					?>
 				</div>
 			</div>
@@ -542,29 +546,14 @@ class PRE_Renderer {
 	 * @param string $position    Position key (e.g. 'headline').
 	 * @return string Position's container HTML or empty string.
 	 */
-	private function extract_position_field_html( $fields_html, $position ) {
-		if ( $fields_html === '' ) {
-			return '';
-		}
-		$modifier = str_replace( '_', '-', $position );
-		$pattern  = '#<div class="pre-card-fields__position pre-card-fields__position--' . preg_quote( $modifier, '#' ) . '">.*?</div>#s';
-		if ( preg_match( $pattern, $fields_html, $matches ) ) {
-			return $matches[0];
-		}
-		return '';
-	}
-
-	/**
-	 * Extract the image_overlay position markup specifically (mirrors
-	 * extract_position_field_html for the one position rendered inside
-	 * the media wrapper rather than the text column).
-	 *
-	 * @param string $fields_html Full card-renderer output.
-	 * @return string image_overlay HTML or empty string.
-	 */
-	private function extract_overlay_field_html( $fields_html ) {
-		return $this->extract_position_field_html( $fields_html, 'image_overlay' );
-	}
+	// Note: previous versions of this class had extract_position_field_html
+	// and extract_overlay_field_html helpers that used a regex to slice
+	// positions out of a single PRE_Card_Renderer::render() output. They
+	// were removed in v0.4.0 because the non-greedy regex `.*?</div>`
+	// stopped at the first </div> it found, truncating positions whose
+	// fields contained nested divs (specifically the `progress` display
+	// type). The replacement is to call PRE_Card_Renderer::render_position_html
+	// once per position — no string parsing required, never had the bug.
 
 	/**
 	 * Render a single grouping using its effective variant.

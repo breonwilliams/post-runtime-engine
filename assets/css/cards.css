@@ -139,8 +139,30 @@
 	gap: 0.4em 0.85em;
 }
 
-/* meta_strip is the only position with horizontal layout — flex with gap
- * and a thin separator between items. Other positions stack vertically. */
+/* Subtitle position: same flex+gap treatment as headline, but baseline-
+ * aligned and slightly tighter. Without this, multiple subtitle fields
+ * (e.g. room + early-bird-price on a session, location + cuisine on a
+ * restaurant) render adjacent with no visible separation between them. */
+.pre-card-fields__position--subtitle {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.3em 0.85em;
+}
+
+/* Footer-meta position: flex+gap so multi_badge + adjacent fields (e.g.
+ * topics + "N sessions in track") sit on the same row with visible
+ * separation. Tighter gap than meta_strip because footer-meta items are
+ * informational rather than primary. */
+.pre-card-fields__position--footer-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4em 0.85em;
+}
+
+/* meta_strip is the canonical horizontal layout — flex with gap and a
+ * thin separator between items. */
 .pre-card-fields__position--meta-strip {
 	display: flex;
 	flex-wrap: wrap;
@@ -207,7 +229,11 @@
 
 :is(.pre-card-fields--single-hero, .pre-hero) .pre-field--currency.pre-field--position-headline {
 	font-size: clamp(1.5rem, 2.5vw, 2rem);
-	line-height: 1.15;
+	/* Tighter line-height for display-size type, plus a small negative
+	 * letter-spacing — standard typography convention for headings ≥24px
+	 * to keep large numerals visually cohesive. */
+	line-height: 1.1;
+	letter-spacing: -0.01em;
 	display: block;
 	margin-bottom: 0.25em;
 }
@@ -235,14 +261,20 @@
 }
 
 /* Badge — pill with color intent */
+/* Badges — pill-shape, bold, brand-color-driven. Font sizes use `rem`
+ * (html-rooted, absolute) rather than `em` so pills don't compound-
+ * shrink when they land inside parents that already scale down (e.g.
+ * footer_meta inside cards inside post grids). 12-13px floor is the
+ * modern pill standard (Linear, Stripe Primer, Vercel Geist) and the
+ * accessibility-comfortable lower bound for non-body text. */
 .pre-field--badge {
 	display: inline-flex;
 	align-items: center;
-	padding: 0.2em 0.7em;
+	padding: 0.3em 0.85em;
 	border-radius: 999px;
-	font-size: 0.75em;
+	font-size: 0.75rem; /* 12px absolute — modern pill floor */
 	font-weight: 600;
-	line-height: 1.3;
+	line-height: 1.4;
 	letter-spacing: 0.01em;
 	white-space: nowrap;
 	background: var(--pre-color-neutral-bg);
@@ -316,7 +348,10 @@
 	background: rgba(15, 23, 42, 0.85);
 	color: #ffffff;
 	font-weight: 600;
-	padding: 0.3em 0.85em;
+	/* Slightly bigger + more padded than other badge contexts — overlay
+	 * badges sit on photos and need real presence to be readable. */
+	font-size: 0.8125rem; /* 13px absolute */
+	padding: 0.45em 0.95em;
 	backdrop-filter: blur(4px);
 	-webkit-backdrop-filter: blur(4px);
 }
@@ -362,19 +397,27 @@
 	color: var(--aisb-button-secondary-text, var(--aisb-color-text-inverse, #ffffff));
 }
 
-/* meta_pair — icon + value, designed for meta_strip layouts */
+/* meta_pair — icon + value, designed for meta_strip layouts. Override
+ * the inherited `align-items: baseline` from .pre-field with `center` so
+ * the icon glyph (which has its own internal layout) sits visually
+ * centered with the text rather than dropped to the text baseline. */
 .pre-field--meta-pair {
+	align-items: center;
 	color: var(--pre-color-text-muted);
-	font-size: 0.875em;
-	gap: 0.3em;
+	/* rem-based so meta_pair text reads at 14px regardless of whether
+	 * the meta_strip parent shrunk to 0.85em (card context) or not. */
+	font-size: 0.875rem;
+	gap: 0.4em;
 }
 
 .pre-field--meta-pair .pre-field__icon {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	width: 1em;
 	height: 1em;
 	flex-shrink: 0;
+	line-height: 1;
 }
 
 .pre-field--meta-pair .pre-field__icon svg,
@@ -382,10 +425,12 @@
 	width: 1em;
 	height: 1em;
 	color: currentColor;
+	display: block;
 }
 
 .pre-field--meta-pair .pre-field__value {
 	font-variant-numeric: tabular-nums;
+	line-height: 1.2;
 }
 
 /* date — small muted text by default; promotes to larger size in
@@ -420,22 +465,40 @@
 	font-size: 0.95em;
 }
 
+/* When multiple fields land in subtitle (e.g. location + early-bird
+ * price), normalize ALL of them to the same scale so they read as a
+ * single typographic line rather than as two unrelated sizes. */
+.pre-card-fields__position--subtitle > .pre-field {
+	font-size: 0.95em;
+}
+
+/* Currency in subtitle keeps its semibold weight (it's still a price)
+ * but harmonizes with neighbour sizes. */
+.pre-field--currency.pre-field--position-subtitle {
+	font-weight: 600;
+}
+
 .pre-field--text.pre-field--position-footer-meta {
 	color: var(--pre-color-text-muted);
-	font-size: 0.8em;
+	/* 13px absolute — touch-friendly + accessibility floor for muted text. */
+	font-size: 0.8125rem;
 }
 
 /* rating — composite element: stars + value + optional count */
 .pre-field--rating {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.35em;
-	font-size: 0.9em;
+	gap: 0.4em;
+	/* 14px absolute — readable in card + hero contexts without compounding. */
+	font-size: 0.875rem;
 }
 
 .pre-field--rating .pre-field__stars {
 	color: var(--aisb-color-warning, #f59e0b);
-	letter-spacing: 0.02em;
+	/* Stars need real breathing room — 0.02em was too tight. 0.08em
+	 * matches the visual spacing of how rating widgets render in
+	 * Linear / Apple Maps / Yelp. */
+	letter-spacing: 0.08em;
 	line-height: 1;
 }
 
@@ -450,7 +513,9 @@
 	font-size: 0.85em;
 }
 
-/* progress — bar + label. Uses block display because the bar needs width. */
+/* progress — bar + label. Default layout is column-stacked (bar above
+ * label) for use as a standalone or in headline / subtitle positions
+ * where the bar can take real horizontal real estate. */
 .pre-field--progress {
 	display: flex;
 	flex-direction: column;
@@ -481,8 +546,40 @@
 	font-variant-numeric: tabular-nums;
 }
 
+/* Progress in meta_strip: flip to ROW layout so the bar + label sit
+ * inline next to siblings (meta_pair, rating) without making the strip
+ * three times taller. Without this override the stacked-column layout
+ * forces the whole meta_strip row to ~65-80px tall and breaks the
+ * inline rhythm. */
+.pre-field--progress.pre-field--position-meta-strip {
+	flex-direction: row;
+	align-items: center;
+	gap: 0.55em;
+	min-width: 0; /* let the bar shrink */
+}
+
+.pre-field--progress.pre-field--position-meta-strip .pre-field__progress-track {
+	width: 6em;
+	flex-shrink: 0;
+	height: 0.45em;
+}
+
+.pre-field--progress.pre-field--position-meta-strip .pre-field__progress-label {
+	font-size: 0.875rem; /* matches meta_strip's 14px floor */
+	white-space: nowrap;
+}
+
 :is(.pre-card-fields--card, .aisb-features__item) .pre-field--progress {
 	min-width: 100%;
+}
+
+/* Card-context meta_strip: card columns are narrow, so the inline
+ * progress bar should be tighter than the single-hero version. */
+:is(.pre-card-fields--card, .aisb-features__item) .pre-field--progress.pre-field--position-meta-strip {
+	min-width: 0;
+}
+:is(.pre-card-fields--card, .aisb-features__item) .pre-field--progress.pre-field--position-meta-strip .pre-field__progress-track {
+	width: 4.5em;
 }
 
 /* multi_badge — multiple small pills with optional per-segment intent */
@@ -492,14 +589,19 @@
 	gap: 0.3em;
 }
 
+/* Multi-badge pills. Same `rem`-based sizing as .pre-field--badge — pills
+ * need to read at ~12px regardless of where the multi_badge field lands
+ * (footer_meta on cards shrinks the parent twice over and the old
+ * 0.7em rule compounded to ~9px). 12px is the modern floor; the bigger
+ * padding gives the pill enough body to feel like a chip, not a label. */
 .pre-field__multi-badge-pill {
 	display: inline-flex;
 	align-items: center;
-	padding: 0.15em 0.55em;
+	padding: 0.35em 0.8em;
 	border-radius: 999px;
-	font-size: 0.7em;
+	font-size: 0.75rem; /* 12px absolute, matches .pre-field--badge */
 	font-weight: 600;
-	line-height: 1.3;
+	line-height: 1.4;
 	letter-spacing: 0.01em;
 	white-space: nowrap;
 	background: var(--pre-color-neutral-bg);
@@ -553,20 +655,23 @@
 }
 
 :is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position--subtitle {
-	margin-top: 0.25em;
-	margin-bottom: 0.75em;
+	/* Modern hero rhythm — subtitle gets more breathing room from the
+	 * title than from the meta strip below it. */
+	margin-top: 0.5rem;
+	margin-bottom: 1rem;
 }
 
 :is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position--meta-strip {
-	margin-top: 1rem;
-	padding-top: 0.75rem;
+	margin-top: 1.25rem;
+	padding-top: 1rem;
 	border-top: 1px solid var(--pre-color-border);
 }
 
 :is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position--footer-meta {
-	margin-top: 0.5rem;
+	margin-top: 0.75rem;
 	color: var(--pre-color-text-muted);
-	font-size: 0.85em;
+	/* 14px absolute — accessibility-floor for muted body-adjacent text. */
+	font-size: 0.875rem;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -574,13 +679,17 @@
 /* ----------------------------------------------------------------------- */
 
 :is(.pre-card-fields--card, .aisb-features__item) .pre-card-fields__position--meta-strip {
-	font-size: 0.85em;
+	/* 14px absolute on cards too — was 0.85em (relative) which dropped
+	 * to ~12px on smaller card layouts. */
+	font-size: 0.875rem;
 }
 
 :is(.pre-card-fields--card, .aisb-features__item) .pre-card-fields__position--footer-meta {
 	margin-top: 0.5em;
 	color: var(--pre-color-text-muted);
-	font-size: 0.75em;
+	/* 13px absolute — slightly smaller than single-hero footer (14px)
+	 * but above the 12px touch-friendly floor. */
+	font-size: 0.8125rem;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -589,6 +698,12 @@
 
 @media (max-width: 600px) {
 	.pre-card-fields__position--meta-strip {
+		gap: 0.5em 0.75em;
+	}
+
+	/* Footer-meta pills get slightly tighter row-gap on mobile so the
+	 * wrapped row stack stays compact without losing touch-comfort. */
+	.pre-card-fields__position--footer-meta {
 		gap: 0.4em 0.65em;
 	}
 
@@ -608,6 +723,22 @@
 
 	.pre-card-fields__position--meta-strip > .pre-field {
 		flex-basis: auto;
+	}
+
+	/* Touch-comfort: pills get a minimum tap-target height on mobile.
+	 * 24px is below WCAG's 44px button minimum (badges aren't tap
+	 * targets here) but matches the visual rhythm of native iOS / Android
+	 * chips. If badges later become interactive, bump to 44px. */
+	.pre-field--badge,
+	.pre-field__multi-badge-pill {
+		min-height: 24px;
+	}
+
+	/* Bigger image-overlay badges on mobile — photos shrink so the
+	 * badge needs to keep enough presence to read at a glance. */
+	.pre-field--badge.pre-field--position-image-overlay {
+		font-size: 0.875rem;
+		padding: 0.5em 1em;
 	}
 }
 

@@ -377,7 +377,10 @@ class PRE_Card_Renderer {
 	 */
 	private function render_number_with_label( array $field_def, $value, $position, $context ) {
 		$number = is_numeric( $value ) ? number_format_i18n( (float) $value ) : (string) $value;
-		$label  = $field_def['unit_label'] ?? $field_def['label'] ?? '';
+		// Trim the label so a stored " sessions" (with leading space, often
+		// authored that way to add a "natural" separator) doesn't produce
+		// a double space when the renderer inserts its own separator.
+		$label  = trim( (string) ( $field_def['unit_label'] ?? $field_def['label'] ?? '' ) );
 		$display = $label !== '' ? sprintf( '%s %s', $number, $label ) : $number;
 
 		return sprintf(
@@ -542,7 +545,9 @@ class PRE_Card_Renderer {
 				$this->format_currency( $goal, $field_def )
 			);
 		} elseif ( ! empty( $field_def['unit_label'] ) ) {
-			$label = sprintf( '%s%% %s', number_format_i18n( $pct, 0 ), $field_def['unit_label'] );
+			// Trim to avoid double-space when authors include a leading
+			// space in unit_label (e.g. " funded").
+			$label = sprintf( '%s%% %s', number_format_i18n( $pct, 0 ), trim( (string) $field_def['unit_label'] ) );
 		} else {
 			$label = sprintf( '%s%%', number_format_i18n( $pct, 0 ) );
 		}
@@ -832,7 +837,14 @@ class PRE_Card_Renderer {
 	 * @return string Space-separated class list.
 	 */
 	private function classes_for_field( array $field_def, $position ) {
-		$display = sanitize_html_class( $field_def['display_type'] ?? 'text' );
+		// Normalize underscores to hyphens for both display_type and
+		// position so CSS selectors can use the conventional hyphenated
+		// form (`.pre-field--meta-pair`, `.pre-field--multi-badge`,
+		// `.pre-field--number-with-label`) without having to also support
+		// the underscored form from the enum value. Previously only
+		// position was normalized, which silently disabled all styling
+		// for the three underscore-containing display types.
+		$display = sanitize_html_class( str_replace( '_', '-', $field_def['display_type'] ?? 'text' ) );
 		$pos     = sanitize_html_class( str_replace( '_', '-', $position ) );
 		$field_key = sanitize_html_class( $field_def['key'] ?? '' );
 

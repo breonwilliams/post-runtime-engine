@@ -101,6 +101,22 @@ class PRE_Meta_Box_Post_Fields {
 		$values     = $plugin->post_data ? $plugin->post_data->get_field_values( $post->ID ) : array();
 		$visibility = $plugin->post_data ? $plugin->post_data->get_field_visibility( $post->ID ) : array();
 
+		// Detect image_overlay fields with no featured image to warn on.
+		// These fields silently drop at render time when there's no image
+		// to overlay them on. Authors expect them to appear somewhere; a
+		// visible warning here prevents the "where did my badge go?"
+		// support question.
+		$overlay_field_labels = array();
+		if ( ! has_post_thumbnail( $post->ID ) ) {
+			foreach ( $fields as $f_key => $f_def ) {
+				$card_pos   = $f_def['card_position'] ?? '';
+				$single_pos = $f_def['single_position'] ?? '';
+				if ( $card_pos === 'image_overlay' || $single_pos === 'image_overlay' ) {
+					$overlay_field_labels[] = $f_def['label'] ?? $f_key;
+				}
+			}
+		}
+
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME );
 
 		?>
@@ -108,6 +124,21 @@ class PRE_Meta_Box_Post_Fields {
 			<p class="description">
 				<?php esc_html_e( 'These values render on this post\'s single page (in the hero) and on any cards listing posts of this type. Leave a field empty to skip it in both contexts.', 'post-runtime-engine' ); ?>
 			</p>
+
+			<?php if ( ! empty( $overlay_field_labels ) ) : ?>
+				<div class="notice notice-warning inline pre-meta-box__overlay-warning">
+					<p>
+						<strong><?php esc_html_e( 'Image-overlay badges need a featured image.', 'post-runtime-engine' ); ?></strong><br />
+						<?php
+						printf(
+							/* translators: %s: comma-separated list of field labels */
+							esc_html__( 'The following field(s) are configured to render as badges over the featured image, but this post has no featured image set: %s. They will be skipped in both card and single-page rendering until you add a featured image (see the Featured image meta box).', 'post-runtime-engine' ),
+							esc_html( implode( ', ', $overlay_field_labels ) )
+						);
+						?>
+					</p>
+				</div>
+			<?php endif; ?>
 
 			<?php foreach ( $fields as $key => $def ) : ?>
 				<?php $this->render_field_row( $key, $def, $values[ $key ] ?? null, $visibility[ $key ] ?? array() ); ?>

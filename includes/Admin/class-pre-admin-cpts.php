@@ -628,6 +628,38 @@ class PRE_Admin_CPTs {
 				</tr>
 			</table>
 
+			<h2><?php esc_html_e( 'Archive card meta', 'post-runtime-engine' ); ?></h2>
+			<p class="description" style="margin-top:0;">
+				<?php esc_html_e( 'Control which theme-rendered meta items appear under each card on the post-type archive page. Affects only the theme archive — the AISB PostGrid section has its own per-section toggles.', 'post-runtime-engine' ); ?>
+			</p>
+
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Post date', 'post-runtime-engine' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="archive_show_post_date" value="1" <?php checked( ! empty( $values['archive_show_post_date'] ) ); ?>>
+							<?php esc_html_e( 'Show the post create-date on archive cards', 'post-runtime-engine' ); ?>
+						</label>
+						<p class="description">
+							<?php esc_html_e( 'Turn off when this CPT already exposes a meaningful date via a post-field (e.g. an event CPT whose event_date is the date that matters). Showing both the post create-date AND a custom event date on the same card is duplicative.', 'post-runtime-engine' ); ?>
+						</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Post author', 'post-runtime-engine' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="archive_show_post_author" value="1" <?php checked( ! empty( $values['archive_show_post_author'] ) ); ?>>
+							<?php esc_html_e( 'Show the post author byline on archive cards', 'post-runtime-engine' ); ?>
+						</label>
+						<p class="description">
+							<?php esc_html_e( 'Turn off for CPTs where the author identity is irrelevant or noisy (directories, multi-author publications where every post is by the same admin user).', 'post-runtime-engine' ); ?>
+						</p>
+					</td>
+				</tr>
+			</table>
+
 			<?php submit_button( $is_edit ? __( 'Save changes', 'post-runtime-engine' ) : __( 'Register post type', 'post-runtime-engine' ) ); ?>
 
 			<p>
@@ -795,6 +827,13 @@ class PRE_Admin_CPTs {
 			'hero_image_position' => $hero_image_position,
 			'hero_image_aspect'   => $hero_image_aspect,
 			'default_icon'        => $default_icon,
+			// Archive card meta toggles. Checkboxes are unchecked when the
+			// post param is missing, so the default behavior of `!empty()`
+			// (which would treat missing as false) is intentional here —
+			// once the form is rendered with these inputs, the user's
+			// explicit choice always wins.
+			'archive_show_post_date'   => ! empty( $_POST['archive_show_post_date'] ),
+			'archive_show_post_author' => ! empty( $_POST['archive_show_post_author'] ),
 		);
 	}
 
@@ -892,6 +931,14 @@ class PRE_Admin_CPTs {
 			'hero_image_position' => $definition['hero_image_position'] ?? 'left',
 			'hero_image_aspect'   => $definition['hero_image_aspect'] ?? 'square',
 			'default_icon'        => $definition['default_icon'] ?? '',
+			// Archive card meta toggles. Defaults to true (backward compatible
+			// — existing CPTs without these keys behave exactly as before).
+			'archive_show_post_date'   => array_key_exists( 'archive_show_post_date', $definition )
+				? (bool) $definition['archive_show_post_date']
+				: true,
+			'archive_show_post_author' => array_key_exists( 'archive_show_post_author', $definition )
+				? (bool) $definition['archive_show_post_author']
+				: true,
 		);
 	}
 
@@ -920,6 +967,8 @@ class PRE_Admin_CPTs {
 			'hero_image_position' => 'left',
 			'hero_image_aspect'   => 'square',
 			'default_icon'        => '',
+			'archive_show_post_date'   => true,
+			'archive_show_post_author' => true,
 		);
 	}
 }

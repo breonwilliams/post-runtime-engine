@@ -29,26 +29,14 @@ class PRE_Frontend_Assets {
 	}
 
 	/**
-	 * Enqueue the frontend stylesheet on registered CPT singles.
+	 * Enqueue the frontend stylesheet on registered CPT singles AND on the
+	 * matching post-type archive page (so theme archive cards get the
+	 * Iconify web component + cards.css that the post fields rely on).
+	 * PostGrid sections inside Promptless pages take the late-inject
+	 * fallback path through PRE_Card_Filter_Hooks.
 	 */
 	public function enqueue() {
-		if ( ! is_singular() ) {
-			return;
-		}
-
-		$post = get_queried_object();
-		if ( ! ( $post instanceof WP_Post ) ) {
-			return;
-		}
-
-		$plugin = pre();
-		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
-			return;
-		}
-
-		// If Promptless took over this post, its assets are loading instead;
-		// don't add ours.
-		if ( get_post_meta( $post->ID, '_aisb_enabled', true ) ) {
+		if ( ! $this->is_pre_managed_page() ) {
 			return;
 		}
 
@@ -96,5 +84,57 @@ class PRE_Frontend_Assets {
 			true
 		);
 		wp_script_add_data( 'pre-iconify-icon', 'type', 'module' );
+	}
+
+	/**
+	 * Decide whether this page is one PRE should decorate with its frontend
+	 * assets. True on:
+	 *   - Single posts of a registered PRE CPT (where the hero renders)
+	 *   - Post-type archives of a registered PRE CPT (where cards render via
+	 *     the theme's archive template, hooked through
+	 *     `promptless_archive_card_section`).
+	 *
+	 * Returns false (and assets are skipped) when:
+	 *   - We're on a non-CPT page (homepage, taxonomy, search, etc.)
+	 *   - The CPT isn't registered with PRE
+	 *   - The post is AISB-managed (Promptless takes over)
+	 *
+	 * PostGrid sections living inside a Promptless page on a non-CPT URL
+	 * still get assets via the late-inject path in
+	 * PRE_Card_Filter_Hooks::maybe_enqueue_card_assets().
+	 *
+	 * @return bool
+	 */
+	private function is_pre_managed_page() {
+		$plugin = pre();
+		if ( ! $plugin->cpts ) {
+			return false;
+		}
+
+		if ( is_singular() ) {
+			$post = get_queried_object();
+			if ( ! ( $post instanceof WP_Post ) ) {
+				return false;
+			}
+			if ( ! $plugin->cpts->exists( $post->post_type ) ) {
+				return false;
+			}
+			// If Promptless took over this post, its assets are loading
+			// instead; don't add ours.
+			if ( get_post_meta( $post->ID, '_aisb_enabled', true ) ) {
+				return false;
+			}
+			return true;
+		}
+
+		if ( is_post_type_archive() ) {
+			$post_type_obj = get_queried_object();
+			if ( ! $post_type_obj || ! isset( $post_type_obj->name ) ) {
+				return false;
+			}
+			return $plugin->cpts->exists( $post_type_obj->name );
+		}
+
+		return false;
 	}
 }

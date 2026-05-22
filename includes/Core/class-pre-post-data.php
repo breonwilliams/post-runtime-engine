@@ -887,11 +887,17 @@ class PRE_Post_Data {
 		// Normalize value shapes that vary by display type.
 		switch ( $display_type ) {
 			case 'date':
-				// Normalize to YYYY-MM-DD for consistent storage. We've
-				// already validated parseability via strtotime().
-				$ts = is_numeric( $primary ) ? (int) $primary : strtotime( (string) $primary );
+				// Preserve time if the input string contains a time
+				// component, otherwise normalize to date-only. This lets
+				// the same display type cover both "May 20, 2026" (date-
+				// only) and "May 20 · 2:30 PM" (event time) use cases.
+				// The renderer's date_i18n() call works with either
+				// stored shape.
+				$raw = (string) $primary;
+				$has_time = is_string( $primary ) && preg_match( '/\d{1,2}:\d{2}/', $raw ) === 1;
+				$ts = is_numeric( $primary ) ? (int) $primary : strtotime( $raw );
 				if ( $ts !== false ) {
-					$primary = gmdate( 'Y-m-d', $ts );
+					$primary = $has_time ? gmdate( 'Y-m-d H:i:s', $ts ) : gmdate( 'Y-m-d', $ts );
 				}
 				break;
 

@@ -392,6 +392,15 @@ class PRE_CPT_Registry {
 			// Validated at register time, so empty string here is the only
 			// path that bypasses the icon-library check.
 			'default_icon'        => '',
+
+			// Archive card meta — whether the theme should render the post
+			// date and author byline on archive cards. Default true to
+			// preserve existing-site behavior; turn off per-CPT when the
+			// CPT already exposes a date field of its own (e.g. an event
+			// CPT whose `event_date` post field is the meaningful date
+			// rather than the post's create-date).
+			'archive_show_post_date'   => true,
+			'archive_show_post_author' => true,
 		);
 
 		// wp_parse_args is shallow — it only fills missing top-level keys.

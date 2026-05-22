@@ -600,7 +600,7 @@ class PRE_Connector_API {
 				'card-grid'       => array( 'heading', 'supporting_text', 'icon_id', 'image_id', 'link', 'link_post_id', 'link_text', 'link_target' ),
 				'featured-card'   => array( 'heading', 'supporting_text', 'icon_id', 'image_id', 'link', 'link_post_id', 'link_text', 'link_target' ),
 			),
-			'cpt_definition'       => array( 'slug', 'label_singular', 'label_plural', 'supports', 'public', 'has_archive', 'show_in_rest', 'show_in_menu', 'menu_position', 'menu_icon', 'taxonomies', 'capability_type', 'description', 'rewrite', 'hero_layout', 'hero_image_position', 'hero_image_aspect', 'default_icon' ),
+			'cpt_definition'       => array( 'slug', 'label_singular', 'label_plural', 'supports', 'public', 'has_archive', 'show_in_rest', 'show_in_menu', 'menu_position', 'menu_icon', 'taxonomies', 'capability_type', 'description', 'rewrite', 'hero_layout', 'hero_image_position', 'hero_image_aspect', 'default_icon', 'archive_show_post_date', 'archive_show_post_author' ),
 			'grouping_definition'  => array( 'key', 'label', 'description', 'default_variant', 'default_position', 'default_source', 'max_items', 'heading_required', 'supporting_text_required', 'link_required', 'icon_or_image_required' ),
 			'post_field_definition' => array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'options', 'required', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'max', 'unit_label' ),
 			'notes'                => 'icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails). Post field definition fields not in post_field_definition above are silently dropped on write by PRE_Validator; conditional fields (color_intent, options for badge; icon for meta_pair; date_format / date_format_string for date; currency_code for currency; max + unit_label for rating / progress / number_with_label) are only meaningful when paired with the right display_type.',
@@ -853,8 +853,23 @@ class PRE_Connector_API {
 			return $version_check;
 		}
 
-		// Pass through to registry.
+		// Pass through to registry. The registry's register() method is
+		// an upsert that always re-runs the full validator (label_singular
+		// / label_plural required, etc.) — so for a true partial-update
+		// we must merge the body INTO the existing definition first.
+		// Without this merge a caller doing `update_cpt(slug, has_archive: true)`
+		// would be rejected with `pre_missing_label_singular`. The slug-
+		// keyed registry storage already discards anything we don't pass
+		// here; merging just fills in the required keys from the
+		// last-known-good state.
 		unset( $body['slug'], $body['connector_version'], $body['created_at'], $body['updated_at'] );
+		$existing = $plugin->cpts->get( $slug );
+		if ( is_array( $existing ) ) {
+			// Strip stamp/connector_version fields off the existing definition
+			// before merging so register() can re-stamp them cleanly.
+			unset( $existing['connector_version'], $existing['created_at'], $existing['updated_at'] );
+			$body = array_merge( $existing, $body );
+		}
 		$result = $plugin->cpts->register( $slug, $body );
 		if ( is_wp_error( $result ) ) {
 			return $this->error_from_wp_error( $result );

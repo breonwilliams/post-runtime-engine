@@ -68,6 +68,10 @@ class PRE_Autoloader {
 		'PRE_Meta_Box_Post_Fields'   => 'Admin/class-pre-meta-box-post-fields.php',
 		// Pending in next pass:
 		// 'PRE_Settings'        => 'Admin/class-pre-settings.php',
+
+		// GitHub auto-updater. Loaded only inside wp-admin (see main
+		// plugin file) so frontend requests don't incur its overhead.
+		'PRE_GitHub_Updater'         => 'Updates/class-pre-github-updater.php',
 	);
 
 	/**

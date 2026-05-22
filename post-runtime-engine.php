@@ -235,6 +235,14 @@ final class Post_Runtime_Engine {
 			$this->admin           = new PRE_Admin();
 			$this->connector_admin = new PRE_Connector_Admin();
 			$this->connector_admin->init();
+
+			// GitHub auto-updater. Checks GitHub Releases for newer tags
+			// on the standard update-plugins transient cycle and surfaces
+			// them in the WP admin's Updates page. No external library —
+			// see includes/Updates/class-pre-github-updater.php for the
+			// repo it targets and the optional PRE_GITHUB_TOKEN constant
+			// for private-repo support.
+			new PRE_GitHub_Updater();
 		}
 
 		// Frontend rendering — instantiated regardless of context because

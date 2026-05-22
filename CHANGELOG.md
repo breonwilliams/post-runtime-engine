@@ -6,7 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [0.4.0] — 2026-05-22
 
-First release of the v1.1 post-fields feature surface (data layer + frontend rendering + admin UI + connector REST + MCP bridge), plus the post-staging-deploy fix cluster, the per-CPT archive-card meta toggles, and the modern 2026 design refinement pass. Backward-compatible — existing v0.3.x CPTs continue to render identically until they opt in to post fields.
+First release of the v1.1 post-fields feature surface (data layer + frontend rendering + admin UI + connector REST + MCP bridge), plus the post-staging-deploy fix cluster, the per-CPT archive-card meta toggles, the modern 2026 design refinement pass, AND the GitHub auto-updater so sites that install this plugin can pick up future releases automatically. Backward-compatible — existing v0.3.x CPTs continue to render identically until they opt in to post fields.
+
+### Added (release infrastructure)
+
+- **`PRE_GitHub_Updater` class** (`includes/Updates/class-pre-github-updater.php`). Self-contained GitHub auto-updater — no external library — modeled after the same pattern used by Form Runtime Engine. Polls the GitHub Releases API for the latest tag on a 12-hour cache, compares against the installed `PRE_VERSION`, surfaces newer releases through WordPress's standard `pre_set_site_transient_update_plugins` filter so the update appears in WP admin → Updates and in the plugins list with a one-click "Update now" button. Loaded only inside `is_admin()` so frontend requests carry no overhead. Targets `breonwilliams/post-runtime-engine` by default — edit the `$github_repo` property in the class if your fork is hosted elsewhere. Private repos are supported by defining the `PRE_GITHUB_TOKEN` constant in `wp-config.php` (a GitHub Personal Access Token with `repo` scope); the updater adds the auth header to both the API check and the zip download. Includes the "fix-source-dir" filter so GitHub's auto-generated `username-repo-hash` zipball directory name gets renamed back to `post-runtime-engine/` during extraction — WordPress recognizes it as the same plugin and updates in place rather than creating a duplicate.
 
 v1.1 introduces the second field type — **post fields** — for scalar metadata display in both the single-post hero and card / archive / PostGrid contexts. Design contract: `docs/POST_FIELDS_V1_1_DESIGN.md`. Roadmap: `docs/ROADMAP.md` § 11.
 

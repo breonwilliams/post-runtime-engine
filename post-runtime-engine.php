@@ -10,7 +10,6 @@
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: post-runtime-engine
- * Domain Path: /languages
  *
  * @package PostRuntimeEngine
  */
@@ -187,8 +186,12 @@ final class Post_Runtime_Engine {
 		// docblock for the full rationale.
 		add_action( 'init', array( $this, 'register_meta_match_keys' ), 6 );
 
-		// Load the text domain for translations.
-		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
+		// Translation loading: WordPress 4.6+ automatically loads .mo files
+		// for plugins hosted on WordPress.org. For GitHub-distributed copies,
+		// translations also load automatically as long as the .mo files are
+		// in the standard WP_LANG_DIR/plugins/post-runtime-engine-{locale}.mo
+		// path. No explicit load_plugin_textdomain() call is needed — and
+		// Plugin Check flags that call as discouraged for WP.org plugins.
 
 		// Run lightweight data-version upgrade tasks (capability grants,
 		// option migrations) on every admin/CLI request. The check itself is
@@ -439,17 +442,6 @@ final class Post_Runtime_Engine {
 				do_action( 'pre_meta_match_key_registered', $cpt_slug, $meta_key );
 			}
 		}
-	}
-
-	/**
-	 * Load the plugin text domain for translations.
-	 */
-	public function load_textdomain() {
-		load_plugin_textdomain(
-			'post-runtime-engine',
-			false,
-			dirname( PRE_PLUGIN_BASENAME ) . '/languages'
-		);
 	}
 
 	/**

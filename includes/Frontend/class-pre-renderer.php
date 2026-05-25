@@ -43,6 +43,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *     - `pre_render_cache_lifetime` (int, $post): TTL in seconds; default
  *       1 hour. Caching plugins (WP Rocket, W3TC) cache the full page so
  *       this layer matters most for pages without those plugins active.
+ *
+ * phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+ * phpcs:disable WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude
+ *
+ * Justification: The "related posts" footer block legitimately uses
+ * tax_query (to find sibling posts sharing a taxonomy term) and
+ * post__not_in (to exclude the current post from the related list).
+ * These are documented WordPress query patterns flagged as advisory.
  */
 class PRE_Renderer {
 

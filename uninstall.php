@@ -22,6 +22,16 @@
  * silently.
  *
  * @package PostRuntimeEngine
+ *
+ * phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+ * phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+ * phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+ *
+ * Justification: uninstall.php runs once during plugin deletion to scrub
+ * plugin-owned options and (optionally) plugin post meta across all
+ * posts. Direct queries are required (the meta_key scans affect rows
+ * across the whole site, not a single post); caching is irrelevant
+ * since the plugin is being removed.
  */
 
 // Bail if not invoked by WordPress's uninstall flow.

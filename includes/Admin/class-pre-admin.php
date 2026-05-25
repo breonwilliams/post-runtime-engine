@@ -12,6 +12,16 @@
  * only fill in groupings without managing CPT registrations.
  *
  * @package PostRuntimeEngine
+ *
+ * phpcs:disable WordPress.Security.NonceVerification.Missing
+ * phpcs:disable WordPress.Security.NonceVerification.Recommended
+ *
+ * Justification: This coordinator dispatches to focused admin pages
+ * (PRE_Admin_CPTs, PRE_Admin_Groupings, etc.). Page selection from
+ * $_GET['page'] is a read-only navigation check, not a state-changing
+ * action — no nonce required per WordPress core admin conventions
+ * (same pattern used by WP_List_Table filter parameters). Each page's
+ * actual save/delete handlers verify nonces via check_admin_referer().
  */
 
 // Prevent direct access.

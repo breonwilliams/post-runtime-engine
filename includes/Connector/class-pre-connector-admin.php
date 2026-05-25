@@ -20,7 +20,13 @@
  *
  * @package PostRuntimeEngine
  *
+ * phpcs:disable WordPress.Security.NonceVerification.Missing
  * phpcs:disable WordPress.Security.NonceVerification.Recommended
+ *
+ * Justification: All AJAX handlers in this class call verify_ajax() at
+ * the top, which runs check_ajax_referer() + capability checks before
+ * any $_POST data is read. Plugin Check's static analyzer cannot trace
+ * the verification across that helper-method boundary.
  */
 
 // Prevent direct access.

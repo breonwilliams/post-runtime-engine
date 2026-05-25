@@ -1,6 +1,6 @@
 === Post Runtime Engine ===
 Contributors: flowmint
-Tags: custom post types, cpt, page builder, post template, structured content
+Tags: custom post types, post template, structured content, custom fields, single page
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
@@ -8,7 +8,7 @@ Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Renders WordPress custom-post-type single pages with structured data display through Promptless WP's design system. Companion plugin to Form Runtime Engine and Promptless WP.
+Render CPT single pages with structured data display, layout variants, and admin or AI population. Works standalone or with Promptless WP.
 
 == Description ==
 
@@ -87,10 +87,10 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 Connector admin page UI cleanup. Status card now shows connection state at a glance with the kill-switch toggle inline. Setup steps are cleaner. App password check works correctly on local dev environments. No data changes.
 
 = 0.3.3 =
-Admin meta-box UX rebuild and a class of bug fixes around icons and content authoring. Icon picker is now a compact dropdown grouped by category (the bulky 53-button visual grid is gone) — the Iconify text input above it still accepts any of the 200,000+ Iconify codes. Per-grouping variant gating hides the "Add image" button on icon-only layouts (compact-grid, horizontal-row) so uploaded images never silently disappear at render. Frontend Iconify icons now render at the same size as curated SVG icons across every variant (the underlying bug: web-component icons size by font-size, not CSS width/height — fixed with a `--pre-icon-size` source-of-truth variable). Connector now auto-converts raw HTML in post_content to proper Gutenberg block format, so AI-generated pages open with discrete editable blocks instead of a single Classic-Editor wrapper. Critical demo bug fixed: image upload silently failed on profile cards due to a stale `$iconSelect` ReferenceError. Recommended for all users.
+Admin meta-box UX rebuild plus icon and content-authoring bug fixes. Icon picker is now a category-grouped dropdown; Iconify text input still accepts 200,000+ codes. Variant gating prevents image-upload buttons from showing on icon-only layouts. Recommended for all users.
 
 = 0.3.2 =
-Icon system is now dual-format: existing curated IDs keep working alongside any Iconify code (200,000+ icons). Admin meta-box dropdown becomes a text input + quick-pick row. No data migration; existing post meta renders unchanged. Restores icon vocabulary parity with Promptless WP for connector workflows. Recommended for all users.
+Icon system is now dual-format: curated IDs keep working alongside any Iconify code (200,000+ icons). Admin dropdown becomes a text input + quick-pick row. No data migration required. Recommended for all users.
 
 = 0.3.1 =
 Compatibility update — passes WordPress.org Plugin Check cleanly. No feature or behavior changes.

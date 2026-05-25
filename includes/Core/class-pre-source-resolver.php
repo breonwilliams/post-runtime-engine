@@ -14,6 +14,18 @@
  * added in Phase 6 once production usage shows whether it pays.
  *
  * @package PostRuntimeEngine
+ *
+ * phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+ * phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+ * phpcs:disable WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude
+ *
+ * Justification: This class implements the three documented source modes
+ * (`manual`, `child_posts`, `taxonomy_match`, `meta_match`). The auto
+ * modes legitimately require tax_query / meta_query (to match the
+ * configured taxonomy term or meta key/value) and post__not_in (to
+ * exclude the current post from "related items" results). These are
+ * exactly the query patterns PRE was designed around — Plugin Check
+ * flags them as performance-advisory but they're load-bearing here.
  */
 
 // Prevent direct access.

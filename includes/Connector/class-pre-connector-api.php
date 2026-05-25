@@ -25,6 +25,12 @@
  * Contract documented in docs/CONNECTOR_SPEC.md.
  *
  * @package PostRuntimeEngine
+ *
+ * phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+ *
+ * Justification: Connector endpoints legitimately query posts by
+ * registered meta keys for the meta_match source mode lookups. These
+ * are documented patterns flagged as performance-advisory.
  */
 
 // Prevent direct access.

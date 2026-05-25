@@ -14,6 +14,15 @@
  * writes it.
  *
  * @package PostRuntimeEngine
+ *
+ * phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+ * phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+ * phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+ *
+ * Justification: delete_all() runs once during uninstall to clean up
+ * user-meta markers across all users. Direct query is required (the
+ * meta_key scan affects multiple users, not a single user); caching
+ * is irrelevant since the site is being torn down.
  */
 
 // Prevent direct access.

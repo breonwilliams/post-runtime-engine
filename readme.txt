@@ -1,10 +1,10 @@
-=== Post Runtime Engine ===
-Contributors: flowmint
+=== Promptless CPT Pages ===
+Contributors: promptlesswp
 Tags: custom post types, post template, structured content, custom fields, single page
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.4.0
+Stable tag: 0.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ Render CPT single pages with structured data display, layout variants, and admin
 
 == Description ==
 
-Post Runtime Engine (PRE) provides a constrained, opinionated primitive for repeatable structured content on custom-post-type single pages:
+Promptless CPT Pages provides a constrained, opinionated primitive for repeatable structured content on custom-post-type single pages:
 
 * Register custom post types from an admin UI — no ACF / MetaBox / Pods dependency.
 * Define "groupings" per CPT — named clusters of items sharing a layout variant and a position (above main / below main / sidebar).
@@ -23,7 +23,7 @@ Post Runtime Engine (PRE) provides a constrained, opinionated primitive for repe
 * Connector REST API + MCP tools (18 endpoints under `/wp-json/post-runtime/v1/connector/`) so AI assistants like Claude Cowork can register CPTs, define groupings, populate per-post values, and preview rendered output.
 * Design-token inheritance from Promptless WP — colors, spacing, typography, radii. Graceful fallback when Promptless is not installed.
 
-PRE is positioned as a free companion plugin to Promptless WP (the page builder) and Form Runtime Engine (the form renderer). It owns dynamic CPT single-page rendering; it does not replace Promptless for landing-page composition or FRE for forms.
+Promptless CPT Pages is positioned as a free companion plugin to Promptless WP (the page builder) and Promptless Forms (the form renderer). It owns dynamic CPT single-page rendering; it does not replace Promptless for landing-page composition or Promptless Forms for forms.
 
 == Installation ==
 
@@ -40,15 +40,26 @@ For full documentation see `CLAUDE.md` and `docs/` inside the plugin folder.
 
 No. PRE renders standalone with sensible default styling. When Promptless WP is active, PRE automatically inherits its `--aisb-*` design tokens for visual consistency.
 
-= Can I use existing ACF / MetaBox fields with PRE groupings? =
+= Can I use existing ACF / MetaBox fields with groupings? =
 
-Not in this version. PRE owns its own field model end-to-end via grouping items. ACF interop is out of scope for v0.x.
+Not in this version. Promptless CPT Pages owns its own field model end-to-end via grouping items. ACF interop is out of scope for v0.x.
 
 = Where is the data stored? =
 
 Per-post grouping values live in WordPress post meta. CPT and grouping definitions live in `wp_options`. No custom database tables.
 
+== Screenshots ==
+
+1. Admin UI for registering a custom post type — name, slug, labels, icon picker, archive on/off
+2. Grouping definitions per CPT — define a named cluster of items sharing a layout variant and a position (above main / below main / sidebar)
+3. The per-post meta box for filling in grouping items, with the four layout-variant preview cards
+4. Frontend render of a CPT single page with the compact-grid variant for an "amenities" grouping
+5. Claude Cowork connector setup — opt-in App Password generation, default-disabled kill switch
+
 == Changelog ==
+
+= 0.4.1 =
+* WordPress.org compliance pass. Class `Post_Runtime_Engine` renamed to `Promptless_CPT_Pages` (`class_alias` preserves backward compatibility for the old name). GitHub auto-updater instantiation gated by `class_exists` so the WP.org build (which excludes the updater) doesn't fatal. All inline `<script>` / `<style>` blocks moved to enqueued asset files (`assets/css/connector-admin.css`, `assets/js/connector-admin.js`, `assets/js/admin-groupings.js`), gated to their own admin pages. `esc_url_raw` → `esc_url` in one JS output context. Plugin URI, contributors username, and dev-internal markdown file exclusions corrected for the WP.org build. No data migration. No behavior change for end users.
 
 = 0.3.3 =
 * New: Admin meta-box icon picker rebuilt as a compact `<select>` dropdown grouped by icon category — replaces the 53-button visual quickpick grid that was burning ~330px of vertical space per item. The Iconify text input above the dropdown is unchanged, so any of the 200,000+ Iconify codes can still be typed directly when the curated 53 don't have what you need.
@@ -82,6 +93,9 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.4.1 =
+WP.org compliance pass. Main class renamed (back-compat alias preserved). Inline scripts/styles moved to enqueued assets. No data migration. No behavior change for end users.
 
 = 0.3.4 =
 Connector admin page UI cleanup. Status card now shows connection state at a glance with the kill-switch toggle inline. Setup steps are cleaner. App password check works correctly on local dev environments. No data changes.

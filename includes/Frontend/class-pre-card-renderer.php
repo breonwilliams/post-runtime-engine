@@ -1,6 +1,6 @@
 <?php
 /**
- * Post field renderer for Post Runtime Engine (v1.1).
+ * Post field renderer for Promptless CPT Pages (v1.1).
  *
  * Single entry point `render( $post_id, $context )` where $context is
  * `card` or `single_hero`. Consumed by:
@@ -498,7 +498,7 @@ class PRE_Card_Renderer {
 
 		$sr_label = sprintf(
 			/* translators: %1$s: rating value, %2$d: max */
-			__( 'Rated %1$s out of %2$d', 'post-runtime-engine' ),
+			__( 'Rated %1$s out of %2$d', 'promptless-cpt-pages' ),
 			$formatted_value,
 			$max
 		);
@@ -540,7 +540,7 @@ class PRE_Card_Renderer {
 		if ( ! empty( $field_def['currency_code'] ) && $goal !== null ) {
 			$label = sprintf(
 				/* translators: %1$s: current amount, %2$s: goal amount */
-				__( '%1$s of %2$s', 'post-runtime-engine' ),
+				__( '%1$s of %2$s', 'promptless-cpt-pages' ),
 				$this->format_currency( $current, $field_def ),
 				$this->format_currency( $goal, $field_def )
 			);
@@ -554,7 +554,7 @@ class PRE_Card_Renderer {
 
 		$sr_label = sprintf(
 			/* translators: %d: percentage */
-			__( '%d percent complete', 'post-runtime-engine' ),
+			__( '%d percent complete', 'promptless-cpt-pages' ),
 			(int) round( $pct )
 		);
 
@@ -779,13 +779,13 @@ class PRE_Card_Renderer {
 				if ( $diff >= 0 ) {
 					return sprintf(
 						/* translators: %s: human-readable time difference */
-						__( '%s ago', 'post-runtime-engine' ),
+						__( '%s ago', 'promptless-cpt-pages' ),
 						human_time_diff( $timestamp, $now )
 					);
 				}
 				return sprintf(
 					/* translators: %s: human-readable time difference */
-					__( 'in %s', 'post-runtime-engine' ),
+					__( 'in %s', 'promptless-cpt-pages' ),
 					human_time_diff( $now, $timestamp )
 				);
 

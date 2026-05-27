@@ -1,6 +1,6 @@
 <?php
 /**
- * Base single-post template for Post Runtime Engine.
+ * Base single-post template for Promptless CPT Pages.
  *
  * Selected by PRE_Template_Router for any registered CPT single page that
  * isn't being handled by Promptless WP and isn't overridden by a theme

@@ -1,6 +1,6 @@
 <?php
 /**
- * Per-post grouping value accessor for Post Runtime Engine.
+ * Per-post grouping value accessor for Promptless CPT Pages.
  *
  * Reads and writes the `_pre_groupings` post meta array. Validates writes
  * through PRE_Validator (which cross-references the per-CPT grouping
@@ -182,7 +182,7 @@ class PRE_Post_Data {
 		if ( $post_id === 0 ) {
 			return new WP_Error(
 				'pre_invalid_post_id',
-				__( 'Post ID is invalid.', 'post-runtime-engine' )
+				__( 'Post ID is invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -191,7 +191,7 @@ class PRE_Post_Data {
 			return new WP_Error(
 				'pre_post_not_found',
 				/* translators: %d: post ID */
-				sprintf( __( 'Post %d does not exist.', 'post-runtime-engine' ), $post_id )
+				sprintf( __( 'Post %d does not exist.', 'promptless-cpt-pages' ), $post_id )
 			);
 		}
 
@@ -200,7 +200,7 @@ class PRE_Post_Data {
 			return new WP_Error(
 				'pre_post_type_not_managed',
 				/* translators: %s: post type */
-				sprintf( __( 'Post type %s is not managed by Post Runtime Engine.', 'post-runtime-engine' ), $post->post_type )
+				sprintf( __( 'Post type %s is not managed by Promptless CPT Pages.', 'promptless-cpt-pages' ), $post->post_type )
 			);
 		}
 
@@ -228,7 +228,7 @@ class PRE_Post_Data {
 		if ( $current !== $normalized ) {
 			return new WP_Error(
 				'pre_post_data_save_failed',
-				__( 'Failed to persist post groupings.', 'post-runtime-engine' )
+				__( 'Failed to persist post groupings.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -267,7 +267,7 @@ class PRE_Post_Data {
 		if ( $grouping_key === '' ) {
 			return new WP_Error(
 				'pre_invalid_grouping_key',
-				__( 'Grouping key is empty or invalid.', 'post-runtime-engine' )
+				__( 'Grouping key is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -317,7 +317,7 @@ class PRE_Post_Data {
 			return new WP_Error(
 				'pre_grouping_not_present',
 				/* translators: %s: grouping key */
-				sprintf( __( 'Grouping %s is not present on this post.', 'post-runtime-engine' ), $grouping_key )
+				sprintf( __( 'Grouping %s is not present on this post.', 'promptless-cpt-pages' ), $grouping_key )
 			);
 		}
 
@@ -343,7 +343,7 @@ class PRE_Post_Data {
 		if ( $post_id === 0 ) {
 			return new WP_Error(
 				'pre_invalid_post_id',
-				__( 'Post ID is invalid.', 'post-runtime-engine' )
+				__( 'Post ID is invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -351,7 +351,7 @@ class PRE_Post_Data {
 		if ( ! is_array( $backup ) ) {
 			return new WP_Error(
 				'pre_no_backup',
-				__( 'No backup available to restore.', 'post-runtime-engine' )
+				__( 'No backup available to restore.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -577,7 +577,7 @@ class PRE_Post_Data {
 		if ( $post_id === 0 ) {
 			return new WP_Error(
 				'pre_invalid_post_id',
-				__( 'Post ID is invalid.', 'post-runtime-engine' )
+				__( 'Post ID is invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -586,7 +586,7 @@ class PRE_Post_Data {
 			return new WP_Error(
 				'pre_post_not_found',
 				/* translators: %d: post ID */
-				sprintf( __( 'Post %d does not exist.', 'post-runtime-engine' ), $post_id )
+				sprintf( __( 'Post %d does not exist.', 'promptless-cpt-pages' ), $post_id )
 			);
 		}
 
@@ -595,7 +595,7 @@ class PRE_Post_Data {
 			return new WP_Error(
 				'pre_post_type_not_managed',
 				/* translators: %s: post type */
-				sprintf( __( 'Post type %s is not managed by Post Runtime Engine.', 'post-runtime-engine' ), $cpt_slug )
+				sprintf( __( 'Post type %s is not managed by Promptless CPT Pages.', 'promptless-cpt-pages' ), $cpt_slug )
 			);
 		}
 
@@ -612,7 +612,7 @@ class PRE_Post_Data {
 					'pre_unknown_field_key',
 					sprintf(
 						/* translators: %1$s: field key, %2$s: CPT slug */
-						__( 'Field %1$s is not registered on CPT %2$s.', 'post-runtime-engine' ),
+						__( 'Field %1$s is not registered on CPT %2$s.', 'promptless-cpt-pages' ),
 						$field_key,
 						$cpt_slug
 					)
@@ -707,7 +707,7 @@ class PRE_Post_Data {
 		if ( $post_id === 0 ) {
 			return new WP_Error(
 				'pre_invalid_post_id',
-				__( 'Post ID is invalid.', 'post-runtime-engine' )
+				__( 'Post ID is invalid.', 'promptless-cpt-pages' )
 			);
 		}
 

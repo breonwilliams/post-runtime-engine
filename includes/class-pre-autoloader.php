@@ -1,6 +1,6 @@
 <?php
 /**
- * Autoloader for Post Runtime Engine classes.
+ * Autoloader for Promptless CPT Pages classes.
  *
  * Static class-map autoloader. Mirrors the FRE_Autoloader pattern used in
  * Form Runtime Engine — each PRE_* class name is mapped explicitly to its

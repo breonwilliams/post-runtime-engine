@@ -1,6 +1,6 @@
 <?php
 /**
- * Frontend asset enqueue for Post Runtime Engine.
+ * Frontend asset enqueue for Promptless CPT Pages.
  *
  * Loads the plugin's frontend.css only on registered CPT singles. The
  * stylesheet uses the `--aisb-*` design tokens (with documented fallbacks

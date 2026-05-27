@@ -1,22 +1,22 @@
 #!/bin/bash
 #
-# Build a production-ready release ZIP for Post Runtime Engine.
+# Build a production-ready release ZIP for Promptless CPT Pages.
 #
 # Produces one of two build flavors from the same source tree:
 #
 #   GitHub build (default):
 #     - Includes the GitHub auto-updater (includes/Updates/).
-#     - Output: build/post-runtime-engine.zip  +  versioned archive copy.
+#     - Output: build/promptless-cpt-pages.zip  +  versioned archive copy.
 #     - Distributed via GitHub Releases.
 #
 #   WP.org build (--wporg):
 #     - Excludes the GitHub auto-updater (WP.org guideline #8 prohibits
 #       plugins from overriding the WordPress update mechanism).
 #     - Excludes additional dev-only markdown files (README.md, RELEASE.md).
-#     - Output: build/post-runtime-engine-wporg.zip
+#     - Output: build/promptless-cpt-pages-wporg.zip
 #     - Distributed via the WordPress.org plugin directory SVN.
 #
-# Both flavors contain a root folder named "post-runtime-engine/" so
+# Both flavors contain a root folder named "promptless-cpt-pages/" so
 # WordPress recognizes them as the same plugin when uploaded/updated.
 # Only the file contents inside that folder differ between flavors.
 #
@@ -50,13 +50,13 @@ Usage:
 
 GitHub build:
   - Includes the GitHub auto-updater (includes/Updates/).
-  - Output: build/post-runtime-engine.zip
+  - Output: build/promptless-cpt-pages.zip
   - Distributed via GitHub Releases.
 
 WP.org build:
   - Excludes the GitHub auto-updater (WP.org guideline #8).
   - Excludes dev-only markdown (README.md, RELEASE.md).
-  - Output: build/post-runtime-engine-wporg.zip
+  - Output: build/promptless-cpt-pages-wporg.zip
   - Distributed via the WordPress.org plugin directory SVN.
 USAGE
             exit 0
@@ -69,7 +69,7 @@ USAGE
     esac
 done
 
-PLUGIN_SLUG="post-runtime-engine"
+PLUGIN_SLUG="promptless-cpt-pages"
 BUILD_DIR="build"
 TEMP_DIR="${BUILD_DIR}/${PLUGIN_SLUG}"
 
@@ -118,6 +118,7 @@ cat > "${EXCLUDE_FILE}" <<'BASE_EXCLUDES'
 *.swp
 *.swo
 *~
+*.bak
 *.log
 Thumbs.db
 node_modules
@@ -141,12 +142,21 @@ BASE_EXCLUDES
 # WP.org-only exclusions. The GitHub updater is forbidden by guideline #8
 # (plugins must use WordPress's update mechanism); README.md / RELEASE.md
 # trigger "unexpected markdown file" warnings — WP.org reads metadata
-# from readme.txt instead.
+# from readme.txt instead. Engineering planning / roadmap / pressure-test
+# documents are flagged by WP.org reviewers as "AI-generated output" and
+# don't belong in the shipped plugin — keep them in the GitHub build for
+# contributors and exclude them from the WP.org distribution.
 if [ "$BUILD_TARGET" = "wporg" ]; then
     cat >> "${EXCLUDE_FILE}" <<'WPORG_EXCLUDES'
 includes/Updates
 README.md
 RELEASE.md
+docs/ARCHITECTURE.md
+docs/HOSTED_VALIDATION.md
+docs/INTEGRATION_PROMPTLESS.md
+docs/POST_FIELDS_V1_1_DESIGN.md
+docs/PRESSURE_TESTS.md
+docs/ROADMAP.md
 WPORG_EXCLUDES
 fi
 

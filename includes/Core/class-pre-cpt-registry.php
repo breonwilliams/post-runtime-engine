@@ -1,6 +1,6 @@
 <?php
 /**
- * CPT registry for Post Runtime Engine.
+ * CPT registry for Promptless CPT Pages.
  *
  * Persists CPT definitions in the `pre_cpts` option and registers them with
  * WordPress on `init` (priority 5, set up by the main plugin class). This
@@ -129,7 +129,7 @@ class PRE_CPT_Registry {
 		if ( ! is_string( $slug ) || $slug === '' ) {
 			return new WP_Error(
 				'pre_invalid_slug',
-				__( 'CPT slug is empty or invalid.', 'post-runtime-engine' )
+				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -172,7 +172,7 @@ class PRE_CPT_Registry {
 		if ( ! $saved && get_option( self::OPTION_KEY ) !== $all ) {
 			return new WP_Error(
 				'pre_cpt_save_failed',
-				__( 'Failed to persist CPT definition to the database.', 'post-runtime-engine' )
+				__( 'Failed to persist CPT definition to the database.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -209,7 +209,7 @@ class PRE_CPT_Registry {
 		if ( $slug === '' ) {
 			return new WP_Error(
 				'pre_invalid_slug',
-				__( 'CPT slug is empty or invalid.', 'post-runtime-engine' )
+				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -218,7 +218,7 @@ class PRE_CPT_Registry {
 			return new WP_Error(
 				'pre_cpt_not_found',
 				/* translators: %s: CPT slug */
-				sprintf( __( 'CPT %s is not registered.', 'post-runtime-engine' ), $slug )
+				sprintf( __( 'CPT %s is not registered.', 'promptless-cpt-pages' ), $slug )
 			);
 		}
 
@@ -301,23 +301,23 @@ class PRE_CPT_Registry {
 			'singular_name'         => $singular,
 			'menu_name'             => $plural,
 			'name_admin_bar'        => $singular,
-			'add_new'               => __( 'Add New', 'post-runtime-engine' ),
+			'add_new'               => __( 'Add New', 'promptless-cpt-pages' ),
 			/* translators: %s: singular post type label */
-			'add_new_item'          => sprintf( __( 'Add New %s', 'post-runtime-engine' ), $singular ),
+			'add_new_item'          => sprintf( __( 'Add New %s', 'promptless-cpt-pages' ), $singular ),
 			/* translators: %s: singular label */
-			'new_item'              => sprintf( __( 'New %s', 'post-runtime-engine' ), $singular ),
+			'new_item'              => sprintf( __( 'New %s', 'promptless-cpt-pages' ), $singular ),
 			/* translators: %s: singular label */
-			'edit_item'             => sprintf( __( 'Edit %s', 'post-runtime-engine' ), $singular ),
+			'edit_item'             => sprintf( __( 'Edit %s', 'promptless-cpt-pages' ), $singular ),
 			/* translators: %s: singular label */
-			'view_item'             => sprintf( __( 'View %s', 'post-runtime-engine' ), $singular ),
+			'view_item'             => sprintf( __( 'View %s', 'promptless-cpt-pages' ), $singular ),
 			/* translators: %s: plural label */
-			'all_items'             => sprintf( __( 'All %s', 'post-runtime-engine' ), $plural ),
+			'all_items'             => sprintf( __( 'All %s', 'promptless-cpt-pages' ), $plural ),
 			/* translators: %s: plural label */
-			'search_items'          => sprintf( __( 'Search %s', 'post-runtime-engine' ), $plural ),
+			'search_items'          => sprintf( __( 'Search %s', 'promptless-cpt-pages' ), $plural ),
 			/* translators: %s: plural label */
-			'not_found'             => sprintf( __( 'No %s found.', 'post-runtime-engine' ), strtolower( $plural ) ),
+			'not_found'             => sprintf( __( 'No %s found.', 'promptless-cpt-pages' ), strtolower( $plural ) ),
 			/* translators: %s: plural label */
-			'not_found_in_trash'    => sprintf( __( 'No %s found in Trash.', 'post-runtime-engine' ), strtolower( $plural ) ),
+			'not_found_in_trash'    => sprintf( __( 'No %s found in Trash.', 'promptless-cpt-pages' ), strtolower( $plural ) ),
 		);
 
 		$args = array(

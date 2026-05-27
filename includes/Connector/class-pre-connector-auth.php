@@ -175,7 +175,7 @@ class PRE_Connector_Auth {
 		if ( ! PRE_Connector_Settings::is_enabled() ) {
 			return new WP_Error(
 				'connector_disabled',
-				__( 'The Post Runtime Engine connector is not enabled on this site. A site administrator can enable it in Post Runtime → Connector settings.', 'post-runtime-engine' ),
+				__( 'The Promptless CPT Pages connector is not enabled on this site. A site administrator can enable it in Post Runtime → Connector settings.', 'promptless-cpt-pages' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -185,7 +185,7 @@ class PRE_Connector_Auth {
 		if ( ! is_user_logged_in() ) {
 			return new WP_Error(
 				'rest_not_logged_in',
-				__( 'Authentication required. Use a WordPress Application Password generated through the Connector settings page.', 'post-runtime-engine' ),
+				__( 'Authentication required. Use a WordPress Application Password generated through the Connector settings page.', 'promptless-cpt-pages' ),
 				array( 'status' => 401 )
 			);
 		}
@@ -227,7 +227,7 @@ class PRE_Connector_Auth {
 			if ( $meta_id <= 0 || ! current_user_can( $cap, $meta_id ) ) {
 				return new WP_Error(
 					'rest_forbidden',
-					__( 'Your account does not have permission to perform this action on this post.', 'post-runtime-engine' ),
+					__( 'Your account does not have permission to perform this action on this post.', 'promptless-cpt-pages' ),
 					array(
 						'status'              => 403,
 						'required_capability' => $cap,
@@ -242,7 +242,7 @@ class PRE_Connector_Auth {
 			if ( ! current_user_can( $capability ) ) {
 				return new WP_Error(
 					'rest_forbidden',
-					__( 'Your account does not have permission to access the connector.', 'post-runtime-engine' ),
+					__( 'Your account does not have permission to access the connector.', 'promptless-cpt-pages' ),
 					array(
 						'status'              => 403,
 						'required_capability' => $capability,
@@ -255,7 +255,7 @@ class PRE_Connector_Auth {
 		// Malformed spec — fail safe.
 		return new WP_Error(
 			'rest_forbidden',
-			__( 'Connector permission misconfigured.', 'post-runtime-engine' ),
+			__( 'Connector permission misconfigured.', 'promptless-cpt-pages' ),
 			array( 'status' => 403 )
 		);
 	}
@@ -303,7 +303,7 @@ class PRE_Connector_Auth {
 				'rate_limit_exceeded',
 				sprintf(
 					/* translators: 1: limit per minute, 2: route identifier */
-					__( 'Rate limit exceeded for this connector endpoint (%1$d requests/minute on "%2$s"). Retry after a moment.', 'post-runtime-engine' ),
+					__( 'Rate limit exceeded for this connector endpoint (%1$d requests/minute on "%2$s"). Retry after a moment.', 'promptless-cpt-pages' ),
 					$limit,
 					$route_key
 				),

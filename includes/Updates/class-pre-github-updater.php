@@ -1,6 +1,6 @@
 <?php
 /**
- * GitHub Updater for Post Runtime Engine.
+ * GitHub Updater for Promptless CPT Pages.
  *
  * Checks GitHub releases for plugin updates and integrates with
  * WordPress's built-in update system.
@@ -36,7 +36,7 @@ class PRE_GitHub_Updater {
 	 *
 	 * @var string
 	 */
-	private $slug = 'post-runtime-engine';
+	private $slug = 'promptless-cpt-pages';
 
 	/**
 	 * Plugin file path relative to plugins directory.
@@ -201,7 +201,7 @@ class PRE_GitHub_Updater {
 
 		// Build plugin info object.
 		$plugin_info = (object) array(
-			'name'           => 'Post Runtime Engine',
+			'name'           => 'Promptless CPT Pages',
 			'slug'           => $this->slug,
 			'version'        => $latest_version,
 			'author'         => '<a href="https://github.com/breonwilliams">Breon Williams</a>',
@@ -391,7 +391,7 @@ class PRE_GitHub_Updater {
 	 * @return string HTML description.
 	 */
 	private function get_plugin_description() {
-		return '<p>Post Runtime Engine renders WordPress custom-post-type single pages with structured data display through Promptless WP\'s design system. Companion plugin to Form Runtime Engine and Promptless WP.</p>'
+		return '<p>Promptless CPT Pages renders WordPress custom-post-type single pages with structured data display through Promptless WP\'s design system. Companion plugin to Form Runtime Engine and Promptless WP.</p>'
 			. '<h4>Features</h4>'
 			. '<ul>'
 			. '<li>Register CPTs through a constrained-primitive system (groupings + post fields) without writing PHP</li>'
@@ -417,7 +417,7 @@ class PRE_GitHub_Updater {
 			. '<li>Go to WordPress Admin → Plugins → Add New</li>'
 			. '<li>Click "Upload Plugin" and select the ZIP file</li>'
 			. '<li>Activate the plugin</li>'
-			. '<li>Register a CPT via Post Runtime Engine → Post Types → Add New, then define groupings and post fields for it</li>'
+			. '<li>Register a CPT via Promptless CPT Pages → Post Types → Add New, then define groupings and post fields for it</li>'
 			. '<li>Or wire Claude Cowork into your site via the Connector page to author CPTs + fields through MCP tools</li>'
 			. '</ol>';
 	}
@@ -429,7 +429,7 @@ class PRE_GitHub_Updater {
 	 * @param object $response    Update response data.
 	 */
 	public function update_message( $plugin_data, $response ) {
-		echo ' <em>' . esc_html__( 'Update available from GitHub.', 'post-runtime-engine' ) . '</em>';
+		echo ' <em>' . esc_html__( 'Update available from GitHub.', 'promptless-cpt-pages' ) . '</em>';
 	}
 
 	/**
@@ -482,7 +482,7 @@ class PRE_GitHub_Updater {
 
 		return new WP_Error(
 			'rename_failed',
-			__( 'Unable to rename the plugin directory for Post Runtime Engine.', 'post-runtime-engine' )
+			__( 'Unable to rename the plugin directory for Promptless CPT Pages.', 'promptless-cpt-pages' )
 		);
 	}
 

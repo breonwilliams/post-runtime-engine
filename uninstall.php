@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall handler for Post Runtime Engine.
+ * Uninstall handler for Promptless CPT Pages.
  *
  * Runs ONCE when an administrator deletes the plugin via the WordPress
  * Plugins screen (NOT on deactivation). At this point the plugin's PHP

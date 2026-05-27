@@ -1,6 +1,6 @@
 <?php
 /**
- * Template router for Post Runtime Engine.
+ * Template router for Promptless CPT Pages.
  *
  * Hooks `template_include` to take over single-post rendering for any CPT
  * registered with this plugin. Honors theme overrides via locate_template,

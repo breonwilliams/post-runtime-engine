@@ -1,6 +1,6 @@
 <?php
 /**
- * Post field definition registry for Post Runtime Engine (v1.1).
+ * Post field definition registry for Promptless CPT Pages (v1.1).
  *
  * Each CPT can have one or more named "post fields" — scalar (non-repeatable)
  * fields with a closed enum of display types and positions. Definitions live
@@ -145,7 +145,7 @@ class PRE_Post_Field_Registry {
 		if ( $cpt_slug === '' ) {
 			return new WP_Error(
 				'pre_invalid_cpt_slug',
-				__( 'CPT slug is empty or invalid.', 'post-runtime-engine' )
+				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -176,7 +176,7 @@ class PRE_Post_Field_Registry {
 					'pre_max_field_count_exceeded',
 					sprintf(
 						/* translators: %d: the field count limit */
-						__( 'Cannot add another post field. The hard limit of %d post fields per CPT has been reached. Remove an unused field to add a new one.', 'post-runtime-engine' ),
+						__( 'Cannot add another post field. The hard limit of %d post fields per CPT has been reached. Remove an unused field to add a new one.', 'promptless-cpt-pages' ),
 						$limit
 					),
 					array(
@@ -206,7 +206,7 @@ class PRE_Post_Field_Registry {
 		if ( ! $saved && get_option( self::OPTION_PREFIX . $cpt_slug ) !== $all ) {
 			return new WP_Error(
 				'pre_post_field_save_failed',
-				__( 'Failed to persist post field definition to the database.', 'post-runtime-engine' )
+				__( 'Failed to persist post field definition to the database.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -243,7 +243,7 @@ class PRE_Post_Field_Registry {
 		if ( $cpt_slug === '' || $field_key === '' ) {
 			return new WP_Error(
 				'pre_invalid_args',
-				__( 'CPT slug and field key are required.', 'post-runtime-engine' )
+				__( 'CPT slug and field key are required.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -253,7 +253,7 @@ class PRE_Post_Field_Registry {
 				'pre_post_field_not_found',
 				sprintf(
 					/* translators: %1$s: field key, %2$s: CPT slug */
-					__( 'Post field %1$s is not defined for CPT %2$s.', 'post-runtime-engine' ),
+					__( 'Post field %1$s is not defined for CPT %2$s.', 'promptless-cpt-pages' ),
 					$field_key,
 					$cpt_slug
 				)
@@ -328,7 +328,7 @@ class PRE_Post_Field_Registry {
 		if ( $cpt_slug === '' ) {
 			return new WP_Error(
 				'pre_invalid_cpt_slug',
-				__( 'CPT slug is empty or invalid.', 'post-runtime-engine' )
+				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -342,7 +342,7 @@ class PRE_Post_Field_Registry {
 		if ( count( $ordered_keys ) !== count( array_unique( $ordered_keys ) ) ) {
 			return new WP_Error(
 				'pre_reorder_duplicate_keys',
-				__( 'Reorder list contains duplicate field keys.', 'post-runtime-engine' )
+				__( 'Reorder list contains duplicate field keys.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -356,7 +356,7 @@ class PRE_Post_Field_Registry {
 		if ( ! empty( $missing ) || ! empty( $extra ) ) {
 			return new WP_Error(
 				'pre_reorder_keys_mismatch',
-				__( 'Reorder list must contain exactly the existing field keys, no additions or removals.', 'post-runtime-engine' ),
+				__( 'Reorder list must contain exactly the existing field keys, no additions or removals.', 'promptless-cpt-pages' ),
 				array(
 					'missing_from_input' => array_values( $missing ),
 					'unknown_in_input'   => array_values( $extra ),

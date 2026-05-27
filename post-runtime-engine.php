@@ -1,15 +1,15 @@
 <?php
 /**
- * Plugin Name: Post Runtime Engine
+ * Plugin Name: Promptless CPT Pages
  * Plugin URI: https://promptlesswp.com
- * Description: Render custom-post-type single pages with structured data display through Promptless's design system. Companion plugin to Promptless WP and Form Runtime Engine.
- * Version: 0.4.0
+ * Description: Render CPT single pages with structured data display, layout variants, and admin or AI population. Works standalone or with Promptless WP.
+ * Version: 0.4.1
  * Requires at least: 5.0
  * Requires PHP: 7.4
- * Author: Breon Williams
+ * Author: Promptless WP
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: post-runtime-engine
+ * Text Domain: promptless-cpt-pages
  *
  * @package PostRuntimeEngine
  */
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin version. Bumped on every meaningful release.
-define( 'PRE_VERSION', '0.4.0' );
+define( 'PRE_VERSION', '0.4.1' );
 
 // Minimum data-storage schema version. Bumped when option / post-meta shapes
 // change in a way that requires migration, or when a new capability needs to
@@ -66,12 +66,12 @@ PRE_Autoloader::register();
  * actions and are not loaded here directly — the autoloader resolves them
  * lazily as classes are referenced.
  */
-final class Post_Runtime_Engine {
+final class Promptless_CPT_Pages {
 
 	/**
 	 * Singleton instance.
 	 *
-	 * @var Post_Runtime_Engine|null
+	 * @var Promptless_CPT_Pages|null
 	 */
 	private static $instance = null;
 
@@ -148,7 +148,7 @@ final class Post_Runtime_Engine {
 	/**
 	 * Get the singleton instance.
 	 *
-	 * @return Post_Runtime_Engine
+	 * @return Promptless_CPT_Pages
 	 */
 	public static function instance() {
 		if ( self::$instance === null ) {
@@ -211,7 +211,7 @@ final class Post_Runtime_Engine {
 	 * @throws Exception When unserialize is attempted.
 	 */
 	public function __wakeup() {
-		throw new Exception( 'Cannot unserialize Post_Runtime_Engine singleton.' );
+		throw new Exception( 'Cannot unserialize Promptless_CPT_Pages singleton.' );
 	}
 
 	/**
@@ -245,7 +245,16 @@ final class Post_Runtime_Engine {
 			// see includes/Updates/class-pre-github-updater.php for the
 			// repo it targets and the optional PRE_GITHUB_TOKEN constant
 			// for private-repo support.
-			new PRE_GitHub_Updater();
+			//
+			// The class_exists() guard makes this conditional: the WP.org
+			// distribution build excludes includes/Updates/ entirely (per
+			// WP.org guideline 8 — plugins must use WordPress's update
+			// mechanism, not override it), so the GitHub build still
+			// auto-updates from this repo while the WP.org build is
+			// auto-updated by WordPress core through the directory.
+			if ( class_exists( 'PRE_GitHub_Updater' ) ) {
+				new PRE_GitHub_Updater();
+			}
 		}
 
 		// Frontend rendering — instantiated regardless of context because
@@ -276,13 +285,13 @@ final class Post_Runtime_Engine {
 		$this->connector_api->init();
 
 		/**
-		 * Fires after Post Runtime Engine has finished initializing its core
+		 * Fires after Promptless CPT Pages has finished initializing its core
 		 * registries.
 		 *
 		 * Other plugins can hook here to extend behavior. The plugin instance
 		 * is passed so consumers can access the registries.
 		 *
-		 * @param Post_Runtime_Engine $plugin The plugin instance.
+		 * @param Promptless_CPT_Pages $plugin The plugin instance.
 		 */
 		do_action( 'pre_init', $this );
 	}
@@ -422,7 +431,7 @@ final class Post_Runtime_Engine {
 						'show_in_rest'  => true,
 						'description'   => sprintf(
 							/* translators: %s: meta key */
-							__( 'Auto-registered by Post Runtime Engine for meta_match grouping: %s', 'post-runtime-engine' ),
+							__( 'Auto-registered by Promptless CPT Pages for meta_match grouping: %s', 'promptless-cpt-pages' ),
 							$meta_key
 						),
 						'auth_callback' => static function ( $allowed, $meta_key, $object_id ) {
@@ -538,15 +547,23 @@ final class Post_Runtime_Engine {
 	}
 }
 
+// Backward-compatibility alias. The main class was renamed from
+// `Post_Runtime_Engine` to `Promptless_CPT_Pages` in 0.4.1 to comply
+// with WordPress.org plugin guideline 11 (avoid common-word prefixes
+// like "post"). Third-party code that referenced `Post_Runtime_Engine`
+// directly — theme functions.php, smoke tests, integration test
+// scaffolding — keeps working via this alias.
+class_alias( 'Promptless_CPT_Pages', 'Post_Runtime_Engine' );
+
 /**
  * Global accessor for the plugin instance.
  *
  * Mirrors the fre() / pw_fs() pattern used across the FlowMint stack.
  *
- * @return Post_Runtime_Engine
+ * @return Promptless_CPT_Pages
  */
 function pre() {
-	return Post_Runtime_Engine::instance();
+	return Promptless_CPT_Pages::instance();
 }
 
 // Boot the plugin.

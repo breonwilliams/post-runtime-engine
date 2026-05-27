@@ -1,6 +1,6 @@
 <?php
 /**
- * Strict validator for Post Runtime Engine data structures.
+ * Strict validator for Promptless CPT Pages data structures.
  *
  * Every write path through PRE_CPT_Registry, PRE_Grouping_Registry, and
  * PRE_Post_Data goes through this validator before persisting. Returns
@@ -288,7 +288,7 @@ class PRE_Validator {
 		if ( ! is_array( $definition ) ) {
 			return new WP_Error(
 				'pre_invalid_cpt',
-				__( 'CPT definition must be an array.', 'post-runtime-engine' )
+				__( 'CPT definition must be an array.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -296,7 +296,7 @@ class PRE_Validator {
 		if ( empty( $definition['slug'] ) || ! is_string( $definition['slug'] ) ) {
 			return new WP_Error(
 				'pre_missing_slug',
-				__( 'CPT definition must include a non-empty slug string.', 'post-runtime-engine' )
+				__( 'CPT definition must include a non-empty slug string.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -305,7 +305,7 @@ class PRE_Validator {
 			return new WP_Error(
 				'pre_invalid_slug',
 				/* translators: %s: the rejected slug */
-				sprintf( __( 'CPT slug %s contains invalid characters. Use lowercase letters, numbers, and underscores only.', 'post-runtime-engine' ), $definition['slug'] )
+				sprintf( __( 'CPT slug %s contains invalid characters. Use lowercase letters, numbers, and underscores only.', 'promptless-cpt-pages' ), $definition['slug'] )
 			);
 		}
 
@@ -313,7 +313,7 @@ class PRE_Validator {
 		if ( strlen( $slug ) > 20 ) {
 			return new WP_Error(
 				'pre_slug_too_long',
-				__( 'CPT slug must be 20 characters or fewer (WordPress limitation).', 'post-runtime-engine' )
+				__( 'CPT slug must be 20 characters or fewer (WordPress limitation).', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -321,7 +321,7 @@ class PRE_Validator {
 			return new WP_Error(
 				'pre_reserved_slug',
 				/* translators: %s: the reserved slug */
-				sprintf( __( 'CPT slug %s is reserved by WordPress core or another plugin.', 'post-runtime-engine' ), $slug )
+				sprintf( __( 'CPT slug %s is reserved by WordPress core or another plugin.', 'promptless-cpt-pages' ), $slug )
 			);
 		}
 
@@ -329,14 +329,14 @@ class PRE_Validator {
 		if ( empty( $definition['label_singular'] ) || ! is_string( $definition['label_singular'] ) ) {
 			return new WP_Error(
 				'pre_missing_label_singular',
-				__( 'CPT definition must include a non-empty label_singular string.', 'post-runtime-engine' )
+				__( 'CPT definition must include a non-empty label_singular string.', 'promptless-cpt-pages' )
 			);
 		}
 
 		if ( empty( $definition['label_plural'] ) || ! is_string( $definition['label_plural'] ) ) {
 			return new WP_Error(
 				'pre_missing_label_plural',
-				__( 'CPT definition must include a non-empty label_plural string.', 'post-runtime-engine' )
+				__( 'CPT definition must include a non-empty label_plural string.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -345,7 +345,7 @@ class PRE_Validator {
 			return new WP_Error(
 				'pre_label_too_long',
 				/* translators: %d: the maximum allowed label length */
-				sprintf( __( 'CPT labels must be %d characters or fewer.', 'post-runtime-engine' ), self::MAX_LABEL_LEN )
+				sprintf( __( 'CPT labels must be %d characters or fewer.', 'promptless-cpt-pages' ), self::MAX_LABEL_LEN )
 			);
 		}
 
@@ -354,7 +354,7 @@ class PRE_Validator {
 			if ( ! is_array( $definition['supports'] ) ) {
 				return new WP_Error(
 					'pre_invalid_supports',
-					__( 'CPT supports must be an array.', 'post-runtime-engine' )
+					__( 'CPT supports must be an array.', 'promptless-cpt-pages' )
 				);
 			}
 
@@ -377,7 +377,7 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_invalid_support',
 						/* translators: %s: the invalid support string */
-						sprintf( __( 'Unknown CPT support feature: %s', 'post-runtime-engine' ), is_string( $support ) ? $support : 'non-string' )
+						sprintf( __( 'Unknown CPT support feature: %s', 'promptless-cpt-pages' ), is_string( $support ) ? $support : 'non-string' )
 					);
 				}
 			}
@@ -388,7 +388,7 @@ class PRE_Validator {
 			if ( ! is_array( $definition['taxonomies'] ) ) {
 				return new WP_Error(
 					'pre_invalid_taxonomies',
-					__( 'CPT taxonomies must be an array of taxonomy slugs.', 'post-runtime-engine' )
+					__( 'CPT taxonomies must be an array of taxonomy slugs.', 'promptless-cpt-pages' )
 				);
 			}
 
@@ -397,7 +397,7 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_invalid_taxonomy',
 						/* translators: %s: the invalid taxonomy slug */
-						sprintf( __( 'Invalid taxonomy slug: %s', 'post-runtime-engine' ), is_string( $taxonomy ) ? $taxonomy : 'non-string' )
+						sprintf( __( 'Invalid taxonomy slug: %s', 'promptless-cpt-pages' ), is_string( $taxonomy ) ? $taxonomy : 'non-string' )
 					);
 				}
 			}
@@ -409,7 +409,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_invalid_boolean',
 					/* translators: %s: the boolean field key */
-					sprintf( __( 'CPT field %s must be true or false.', 'post-runtime-engine' ), $bool_key )
+					sprintf( __( 'CPT field %s must be true or false.', 'promptless-cpt-pages' ), $bool_key )
 				);
 			}
 		}
@@ -419,7 +419,7 @@ class PRE_Validator {
 			if ( ! is_string( $definition['rest_base'] ) || sanitize_key( $definition['rest_base'] ) !== $definition['rest_base'] ) {
 				return new WP_Error(
 					'pre_invalid_rest_base',
-					__( 'CPT rest_base must be a lowercase slug.', 'post-runtime-engine' )
+					__( 'CPT rest_base must be a lowercase slug.', 'promptless-cpt-pages' )
 				);
 			}
 		}
@@ -436,7 +436,7 @@ class PRE_Validator {
 					'pre_invalid_hero_layout',
 					sprintf(
 						/* translators: %1$s: the invalid layout; %2$s: list of allowed layouts */
-						__( 'CPT hero_layout %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						__( 'CPT hero_layout %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 						is_string( $definition['hero_layout'] ) ? $definition['hero_layout'] : 'non-string',
 						implode( ', ', $valid_layouts )
 					)
@@ -455,7 +455,7 @@ class PRE_Validator {
 					'pre_invalid_hero_image_position',
 					sprintf(
 						/* translators: %1$s: the invalid position; %2$s: list of allowed positions */
-						__( 'CPT hero_image_position %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						__( 'CPT hero_image_position %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 						is_string( $definition['hero_image_position'] ) ? $definition['hero_image_position'] : 'non-string',
 						implode( ', ', $valid_positions )
 					)
@@ -475,7 +475,7 @@ class PRE_Validator {
 					'pre_invalid_hero_image_aspect',
 					sprintf(
 						/* translators: %1$s: the invalid aspect; %2$s: list of allowed aspects */
-						__( 'CPT hero_image_aspect %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						__( 'CPT hero_image_aspect %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 						is_string( $definition['hero_image_aspect'] ) ? $definition['hero_image_aspect'] : 'non-string',
 						implode( ', ', $valid_aspects )
 					)
@@ -494,7 +494,7 @@ class PRE_Validator {
 			if ( ! is_string( $definition['default_icon'] ) ) {
 				return new WP_Error(
 					'pre_invalid_default_icon',
-					__( 'CPT default_icon must be a string icon ID.', 'post-runtime-engine' )
+					__( 'CPT default_icon must be a string icon ID.', 'promptless-cpt-pages' )
 				);
 			}
 			if ( ! PRE_Icon_Library::is_valid_id( $definition['default_icon'] ) ) {
@@ -502,7 +502,7 @@ class PRE_Validator {
 					'pre_invalid_default_icon',
 					sprintf(
 						/* translators: %s: the unknown icon ID */
-						__( 'CPT default_icon "%s" is not a valid icon identifier. Accepts either a legacy curated ID (e.g. "home", "user", "shield" — call postruntime_list_icons to discover all 53) OR an Iconify code in `collection:name` form (e.g. "mdi:home", "logos:wordpress", "material-symbols:business" — browse 200,000+ icons at icon-sets.iconify.design).', 'post-runtime-engine' ),
+						__( 'CPT default_icon "%s" is not a valid icon identifier. Accepts either a legacy curated ID (e.g. "home", "user", "shield" — call postruntime_list_icons to discover all 53) OR an Iconify code in `collection:name` form (e.g. "mdi:home", "logos:wordpress", "material-symbols:business" — browse 200,000+ icons at icon-sets.iconify.design).', 'promptless-cpt-pages' ),
 						$definition['default_icon']
 					)
 				);
@@ -518,7 +518,7 @@ class PRE_Validator {
 					'pre_invalid_archive_meta_flag',
 					sprintf(
 						/* translators: %s: the offending key */
-						__( 'CPT %s must be a boolean.', 'post-runtime-engine' ),
+						__( 'CPT %s must be a boolean.', 'promptless-cpt-pages' ),
 						$bool_key
 					)
 				);
@@ -547,7 +547,7 @@ class PRE_Validator {
 		if ( ! is_array( $definition ) ) {
 			return new WP_Error(
 				'pre_invalid_grouping',
-				__( 'Grouping definition must be an array.', 'post-runtime-engine' )
+				__( 'Grouping definition must be an array.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -555,7 +555,7 @@ class PRE_Validator {
 		if ( empty( $definition['key'] ) || ! is_string( $definition['key'] ) ) {
 			return new WP_Error(
 				'pre_missing_grouping_key',
-				__( 'Grouping definition must include a non-empty key.', 'post-runtime-engine' )
+				__( 'Grouping definition must include a non-empty key.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -563,7 +563,7 @@ class PRE_Validator {
 			return new WP_Error(
 				'pre_invalid_grouping_key',
 				/* translators: %s: the rejected key */
-				sprintf( __( 'Grouping key %s contains invalid characters. Use lowercase letters, numbers, and underscores only.', 'post-runtime-engine' ), $definition['key'] )
+				sprintf( __( 'Grouping key %s contains invalid characters. Use lowercase letters, numbers, and underscores only.', 'promptless-cpt-pages' ), $definition['key'] )
 			);
 		}
 
@@ -571,7 +571,7 @@ class PRE_Validator {
 		if ( empty( $definition['label'] ) || ! is_string( $definition['label'] ) ) {
 			return new WP_Error(
 				'pre_missing_grouping_label',
-				__( 'Grouping definition must include a label.', 'post-runtime-engine' )
+				__( 'Grouping definition must include a label.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -579,7 +579,7 @@ class PRE_Validator {
 			return new WP_Error(
 				'pre_grouping_label_too_long',
 				/* translators: %d: maximum label length */
-				sprintf( __( 'Grouping label must be %d characters or fewer.', 'post-runtime-engine' ), self::MAX_LABEL_LEN )
+				sprintf( __( 'Grouping label must be %d characters or fewer.', 'promptless-cpt-pages' ), self::MAX_LABEL_LEN )
 			);
 		}
 
@@ -590,7 +590,7 @@ class PRE_Validator {
 				'pre_invalid_default_variant',
 				sprintf(
 					/* translators: %1$s: the invalid variant; %2$s: list of allowed variants */
-					__( 'Grouping default_variant %1$s is not one of: %2$s', 'post-runtime-engine' ),
+					__( 'Grouping default_variant %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 					isset( $definition['default_variant'] ) ? (string) $definition['default_variant'] : 'null',
 					implode( ', ', self::VARIANTS )
 				)
@@ -604,7 +604,7 @@ class PRE_Validator {
 				'pre_invalid_default_position',
 				sprintf(
 					/* translators: %1$s: the invalid position; %2$s: list of allowed positions */
-					__( 'Grouping default_position %1$s is not one of: %2$s', 'post-runtime-engine' ),
+					__( 'Grouping default_position %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 					isset( $definition['default_position'] ) ? (string) $definition['default_position'] : 'null',
 					implode( ', ', self::POSITIONS )
 				)
@@ -624,7 +624,7 @@ class PRE_Validator {
 			if ( ! is_int( $definition['max_items'] ) || $definition['max_items'] < 1 ) {
 				return new WP_Error(
 					'pre_invalid_max_items',
-					__( 'Grouping max_items must be a positive integer.', 'post-runtime-engine' )
+					__( 'Grouping max_items must be a positive integer.', 'promptless-cpt-pages' )
 				);
 			}
 
@@ -632,7 +632,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_max_items_too_large',
 					/* translators: %d: hard upper bound on items per grouping */
-					sprintf( __( 'Grouping max_items cannot exceed %d.', 'post-runtime-engine' ), self::MAX_ITEMS_PER_GROUPING )
+					sprintf( __( 'Grouping max_items cannot exceed %d.', 'promptless-cpt-pages' ), self::MAX_ITEMS_PER_GROUPING )
 				);
 			}
 		}
@@ -643,7 +643,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_invalid_grouping_flag',
 					/* translators: %s: the flag key */
-					sprintf( __( 'Grouping field %s must be true or false.', 'post-runtime-engine' ), $flag )
+					sprintf( __( 'Grouping field %s must be true or false.', 'promptless-cpt-pages' ), $flag )
 				);
 			}
 		}
@@ -656,7 +656,7 @@ class PRE_Validator {
 			&& $definition['max_items'] !== 1 ) {
 			return new WP_Error(
 				'pre_featured_card_max_items',
-				__( 'featured-card variant requires max_items=1 (or unset).', 'post-runtime-engine' )
+				__( 'featured-card variant requires max_items=1 (or unset).', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -684,7 +684,7 @@ class PRE_Validator {
 		if ( ! is_array( $groupings ) ) {
 			return new WP_Error(
 				'pre_invalid_post_groupings',
-				__( 'Post groupings must be an array.', 'post-runtime-engine' )
+				__( 'Post groupings must be an array.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -692,7 +692,7 @@ class PRE_Validator {
 			return new WP_Error(
 				'pre_too_many_groupings',
 				/* translators: %d: max groupings per post */
-				sprintf( __( 'Post cannot have more than %d groupings.', 'post-runtime-engine' ), self::MAX_GROUPINGS_PER_POST )
+				sprintf( __( 'Post cannot have more than %d groupings.', 'promptless-cpt-pages' ), self::MAX_GROUPINGS_PER_POST )
 			);
 		}
 
@@ -703,7 +703,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_invalid_grouping_entry',
 					/* translators: %d: the position in the array */
-					sprintf( __( 'Grouping entry at index %d is not an array.', 'post-runtime-engine' ), $index )
+					sprintf( __( 'Grouping entry at index %d is not an array.', 'promptless-cpt-pages' ), $index )
 				);
 			}
 
@@ -712,7 +712,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_missing_post_grouping_key',
 					/* translators: %d: array index */
-					sprintf( __( 'Grouping entry at index %d is missing grouping_key.', 'post-runtime-engine' ), $index )
+					sprintf( __( 'Grouping entry at index %d is missing grouping_key.', 'promptless-cpt-pages' ), $index )
 				);
 			}
 
@@ -722,7 +722,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_unknown_grouping_key',
 					/* translators: %1$s: grouping key; %2$s: CPT slug */
-					sprintf( __( 'Grouping %1$s is not defined for CPT %2$s.', 'post-runtime-engine' ), $grouping_key, $cpt_slug )
+					sprintf( __( 'Grouping %1$s is not defined for CPT %2$s.', 'promptless-cpt-pages' ), $grouping_key, $cpt_slug )
 				);
 			}
 
@@ -732,7 +732,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_duplicate_post_grouping',
 					/* translators: %s: grouping key */
-					sprintf( __( 'Grouping %s appears more than once on this post.', 'post-runtime-engine' ), $grouping_key )
+					sprintf( __( 'Grouping %s appears more than once on this post.', 'promptless-cpt-pages' ), $grouping_key )
 				);
 			}
 			$seen_keys[] = $grouping_key;
@@ -745,7 +745,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_invalid_post_position',
 					/* translators: %1$s: invalid position; %2$s: grouping key */
-					sprintf( __( 'Position %1$s is not valid for grouping %2$s.', 'post-runtime-engine' ), (string) $position, $grouping_key )
+					sprintf( __( 'Position %1$s is not valid for grouping %2$s.', 'promptless-cpt-pages' ), (string) $position, $grouping_key )
 				);
 			}
 
@@ -755,7 +755,7 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_invalid_variant_override',
 						/* translators: %1$s: invalid variant; %2$s: grouping key */
-						sprintf( __( 'variant_override %1$s is not valid for grouping %2$s.', 'post-runtime-engine' ), (string) $grouping['variant_override'], $grouping_key )
+						sprintf( __( 'variant_override %1$s is not valid for grouping %2$s.', 'promptless-cpt-pages' ), (string) $grouping['variant_override'], $grouping_key )
 					);
 				}
 			}
@@ -778,7 +778,7 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_auto_source_has_items',
 						/* translators: %s: grouping key */
-						sprintf( __( 'Grouping %s has source set to an auto mode but also has stored items. Auto sources must use an empty items array.', 'post-runtime-engine' ), $grouping_key )
+						sprintf( __( 'Grouping %s has source set to an auto mode but also has stored items. Auto sources must use an empty items array.', 'promptless-cpt-pages' ), $grouping_key )
 					);
 				}
 			} else {
@@ -789,7 +789,7 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_invalid_items',
 						/* translators: %s: grouping key */
-						sprintf( __( 'Grouping %s has a non-array items field.', 'post-runtime-engine' ), $grouping_key )
+						sprintf( __( 'Grouping %s has a non-array items field.', 'promptless-cpt-pages' ), $grouping_key )
 					);
 				}
 
@@ -797,7 +797,7 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_too_many_items',
 						/* translators: %1$s: grouping key; %2$d: max items */
-						sprintf( __( 'Grouping %1$s has more than %2$d items.', 'post-runtime-engine' ), $grouping_key, self::MAX_ITEMS_PER_GROUPING )
+						sprintf( __( 'Grouping %1$s has more than %2$d items.', 'promptless-cpt-pages' ), $grouping_key, self::MAX_ITEMS_PER_GROUPING )
 					);
 				}
 
@@ -806,7 +806,7 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_grouping_max_items_exceeded',
 						/* translators: %1$s: grouping key; %2$d: max items for this grouping */
-						sprintf( __( 'Grouping %1$s exceeds its max_items limit of %2$d.', 'post-runtime-engine' ), $grouping_key, $definition['max_items'] )
+						sprintf( __( 'Grouping %1$s exceeds its max_items limit of %2$d.', 'promptless-cpt-pages' ), $grouping_key, $definition['max_items'] )
 					);
 				}
 
@@ -852,7 +852,7 @@ class PRE_Validator {
 		if ( ! is_array( $item ) ) {
 			return new WP_Error(
 				'pre_invalid_item',
-				__( 'Grouping item must be an array.', 'post-runtime-engine' )
+				__( 'Grouping item must be an array.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -863,7 +863,7 @@ class PRE_Validator {
 		if ( $has_image && $has_icon ) {
 			return new WP_Error(
 				'pre_image_icon_conflict',
-				__( 'Grouping item cannot have both image_id and icon_id set; pick one.', 'post-runtime-engine' )
+				__( 'Grouping item cannot have both image_id and icon_id set; pick one.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -872,7 +872,7 @@ class PRE_Validator {
 			if ( ! is_int( $item['image_id'] ) || $item['image_id'] < 1 ) {
 				return new WP_Error(
 					'pre_invalid_image_id',
-					__( 'Grouping item image_id must be a positive integer.', 'post-runtime-engine' )
+					__( 'Grouping item image_id must be a positive integer.', 'promptless-cpt-pages' )
 				);
 			}
 
@@ -882,7 +882,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_image_not_found',
 					/* translators: %d: attachment ID */
-					sprintf( __( 'image_id %d does not reference a valid attachment.', 'post-runtime-engine' ), $item['image_id'] )
+					sprintf( __( 'image_id %d does not reference a valid attachment.', 'promptless-cpt-pages' ), $item['image_id'] )
 				);
 			}
 		}
@@ -897,7 +897,7 @@ class PRE_Validator {
 			if ( ! is_string( $item['icon_id'] ) ) {
 				return new WP_Error(
 					'pre_invalid_icon_id',
-					__( 'Grouping item icon_id must be a string.', 'post-runtime-engine' )
+					__( 'Grouping item icon_id must be a string.', 'promptless-cpt-pages' )
 				);
 			}
 
@@ -907,7 +907,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_unknown_icon',
 					/* translators: %s: the unknown icon ID */
-					sprintf( __( 'Grouping item icon_id "%s" is not a valid icon identifier. Accepts either a legacy curated ID (e.g. "home", "user", "calendar" — 53 built-in icons; call postruntime_list_icons to see them all) OR an Iconify code in `collection:name` form (e.g. "mdi:home", "logos:wordpress" — 200,000+ icons at icon-sets.iconify.design).', 'post-runtime-engine' ), $item['icon_id'] )
+					sprintf( __( 'Grouping item icon_id "%s" is not a valid icon identifier. Accepts either a legacy curated ID (e.g. "home", "user", "calendar" — 53 built-in icons; call postruntime_list_icons to see them all) OR an Iconify code in `collection:name` form (e.g. "mdi:home", "logos:wordpress" — 200,000+ icons at icon-sets.iconify.design).', 'promptless-cpt-pages' ), $item['icon_id'] )
 				);
 			}
 		}
@@ -917,7 +917,7 @@ class PRE_Validator {
 			return new WP_Error(
 				'pre_missing_image_or_icon',
 				/* translators: %s: grouping key (filled in by caller via add_data) */
-				__( 'Grouping requires an image or icon on every item.', 'post-runtime-engine' )
+				__( 'Grouping requires an image or icon on every item.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -928,14 +928,14 @@ class PRE_Validator {
 		if ( ! is_string( $heading ) ) {
 			return new WP_Error(
 				'pre_invalid_heading',
-				__( 'Grouping item heading must be a string.', 'post-runtime-engine' )
+				__( 'Grouping item heading must be a string.', 'promptless-cpt-pages' )
 			);
 		}
 
 		if ( $heading_required && trim( $heading ) === '' ) {
 			return new WP_Error(
 				'pre_missing_heading',
-				__( 'Grouping item heading is required.', 'post-runtime-engine' )
+				__( 'Grouping item heading is required.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -943,7 +943,7 @@ class PRE_Validator {
 			return new WP_Error(
 				'pre_heading_too_long',
 				/* translators: %d: max heading length */
-				sprintf( __( 'Grouping item heading exceeds the %d character limit.', 'post-runtime-engine' ), self::MAX_HEADING_LEN )
+				sprintf( __( 'Grouping item heading exceeds the %d character limit.', 'promptless-cpt-pages' ), self::MAX_HEADING_LEN )
 			);
 		}
 
@@ -953,7 +953,7 @@ class PRE_Validator {
 			if ( ! is_string( $supporting_text ) ) {
 				return new WP_Error(
 					'pre_invalid_supporting_text',
-					__( 'Grouping item supporting_text must be a string or null.', 'post-runtime-engine' )
+					__( 'Grouping item supporting_text must be a string or null.', 'promptless-cpt-pages' )
 				);
 			}
 
@@ -961,7 +961,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_supporting_text_too_long',
 					/* translators: %d: max length */
-					sprintf( __( 'Grouping item supporting_text exceeds the %d character limit.', 'post-runtime-engine' ), self::MAX_SUPPORTING_TEXT_LEN )
+					sprintf( __( 'Grouping item supporting_text exceeds the %d character limit.', 'promptless-cpt-pages' ), self::MAX_SUPPORTING_TEXT_LEN )
 				);
 			}
 		}
@@ -970,7 +970,7 @@ class PRE_Validator {
 			&& ( $supporting_text === null || trim( $supporting_text ) === '' ) ) {
 			return new WP_Error(
 				'pre_missing_supporting_text',
-				__( 'Grouping item supporting_text is required.', 'post-runtime-engine' )
+				__( 'Grouping item supporting_text is required.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -980,7 +980,7 @@ class PRE_Validator {
 			if ( ! is_string( $link ) ) {
 				return new WP_Error(
 					'pre_invalid_link',
-					__( 'Grouping item link must be a string, null, or empty.', 'post-runtime-engine' )
+					__( 'Grouping item link must be a string, null, or empty.', 'promptless-cpt-pages' )
 				);
 			}
 
@@ -988,7 +988,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_link_too_long',
 					/* translators: %d: max link length */
-					sprintf( __( 'Grouping item link exceeds the %d character limit.', 'post-runtime-engine' ), self::MAX_LINK_LEN )
+					sprintf( __( 'Grouping item link exceeds the %d character limit.', 'promptless-cpt-pages' ), self::MAX_LINK_LEN )
 				);
 			}
 
@@ -1001,7 +1001,7 @@ class PRE_Validator {
 		if ( ! empty( $definition['link_required'] ) && ( $link === null || trim( (string) $link ) === '' ) ) {
 			return new WP_Error(
 				'pre_missing_link',
-				__( 'Grouping item link is required.', 'post-runtime-engine' )
+				__( 'Grouping item link is required.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1016,7 +1016,7 @@ class PRE_Validator {
 			if ( ! is_int( $link_post_id ) || $link_post_id < 1 ) {
 				return new WP_Error(
 					'pre_invalid_link_post_id',
-					__( 'Grouping item link_post_id must be a positive integer or null.', 'post-runtime-engine' )
+					__( 'Grouping item link_post_id must be a positive integer or null.', 'promptless-cpt-pages' )
 				);
 			}
 		}
@@ -1043,7 +1043,7 @@ class PRE_Validator {
 					'pre_invalid_source_string',
 					sprintf(
 						/* translators: %1$s: invalid source; %2$s: list of allowed sources */
-						__( 'Source %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						__( 'Source %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 						$source,
 						implode( ', ', self::SOURCE_MODES )
 					)
@@ -1055,7 +1055,7 @@ class PRE_Validator {
 			if ( $source === 'taxonomy_match' ) {
 				return new WP_Error(
 					'pre_taxonomy_match_needs_object',
-					__( 'taxonomy_match source must be expressed as an object with a taxonomy slug.', 'post-runtime-engine' )
+					__( 'taxonomy_match source must be expressed as an object with a taxonomy slug.', 'promptless-cpt-pages' )
 				);
 			}
 
@@ -1064,7 +1064,7 @@ class PRE_Validator {
 			if ( $source === 'meta_match' ) {
 				return new WP_Error(
 					'pre_meta_match_needs_object',
-					__( 'meta_match source must be expressed as an object with a meta_key.', 'post-runtime-engine' )
+					__( 'meta_match source must be expressed as an object with a meta_key.', 'promptless-cpt-pages' )
 				);
 			}
 
@@ -1077,7 +1077,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_invalid_source_type',
 					/* translators: %s: list of allowed source types */
-					sprintf( __( 'Source object must have a type field set to one of: %s', 'post-runtime-engine' ), implode( ', ', self::SOURCE_MODES ) )
+					sprintf( __( 'Source object must have a type field set to one of: %s', 'promptless-cpt-pages' ), implode( ', ', self::SOURCE_MODES ) )
 				);
 			}
 
@@ -1086,7 +1086,7 @@ class PRE_Validator {
 					|| sanitize_key( $source['taxonomy'] ) !== $source['taxonomy'] ) {
 					return new WP_Error(
 						'pre_invalid_source_taxonomy',
-						__( 'taxonomy_match source requires a valid taxonomy slug.', 'post-runtime-engine' )
+						__( 'taxonomy_match source requires a valid taxonomy slug.', 'promptless-cpt-pages' )
 					);
 				}
 
@@ -1094,14 +1094,14 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_invalid_source_limit',
 						/* translators: %d: max allowed limit */
-						sprintf( __( 'taxonomy_match source limit must be between 1 and %d.', 'post-runtime-engine' ), self::MAX_ITEMS_PER_GROUPING )
+						sprintf( __( 'taxonomy_match source limit must be between 1 and %d.', 'promptless-cpt-pages' ), self::MAX_ITEMS_PER_GROUPING )
 					);
 				}
 
 				if ( isset( $source['exclude_self'] ) && ! is_bool( $source['exclude_self'] ) ) {
 					return new WP_Error(
 						'pre_invalid_source_exclude_self',
-						__( 'taxonomy_match source exclude_self must be true or false.', 'post-runtime-engine' )
+						__( 'taxonomy_match source exclude_self must be true or false.', 'promptless-cpt-pages' )
 					);
 				}
 			}
@@ -1114,7 +1114,7 @@ class PRE_Validator {
 				if ( empty( $source['meta_key'] ) || ! is_string( $source['meta_key'] ) ) {
 					return new WP_Error(
 						'pre_invalid_source_meta_key',
-						__( 'meta_match source requires a meta_key (non-empty string).', 'post-runtime-engine' )
+						__( 'meta_match source requires a meta_key (non-empty string).', 'promptless-cpt-pages' )
 					);
 				}
 
@@ -1125,7 +1125,7 @@ class PRE_Validator {
 				if ( $meta_key_normalized === '' || sanitize_key( $meta_key_normalized ) !== $meta_key_normalized ) {
 					return new WP_Error(
 						'pre_invalid_source_meta_key',
-						__( 'meta_match meta_key must be a valid post-meta key (lowercase alphanumeric + underscores, optionally prefixed with _).', 'post-runtime-engine' )
+						__( 'meta_match meta_key must be a valid post-meta key (lowercase alphanumeric + underscores, optionally prefixed with _).', 'promptless-cpt-pages' )
 					);
 				}
 
@@ -1133,7 +1133,7 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_invalid_source_meta_key_length',
 						/* translators: %d: max allowed meta key length */
-						sprintf( __( 'meta_match meta_key must be %d characters or fewer.', 'post-runtime-engine' ), self::MAX_META_KEY_LENGTH )
+						sprintf( __( 'meta_match meta_key must be %d characters or fewer.', 'promptless-cpt-pages' ), self::MAX_META_KEY_LENGTH )
 					);
 				}
 
@@ -1141,14 +1141,14 @@ class PRE_Validator {
 					return new WP_Error(
 						'pre_invalid_source_limit',
 						/* translators: %d: max allowed limit */
-						sprintf( __( 'meta_match source limit must be between 1 and %d.', 'post-runtime-engine' ), self::MAX_ITEMS_PER_GROUPING )
+						sprintf( __( 'meta_match source limit must be between 1 and %d.', 'promptless-cpt-pages' ), self::MAX_ITEMS_PER_GROUPING )
 					);
 				}
 
 				if ( isset( $source['exclude_self'] ) && ! is_bool( $source['exclude_self'] ) ) {
 					return new WP_Error(
 						'pre_invalid_source_exclude_self',
-						__( 'meta_match source exclude_self must be true or false.', 'post-runtime-engine' )
+						__( 'meta_match source exclude_self must be true or false.', 'promptless-cpt-pages' )
 					);
 				}
 			}
@@ -1158,7 +1158,7 @@ class PRE_Validator {
 
 		return new WP_Error(
 			'pre_invalid_source',
-			__( 'Source must be a string or an object.', 'post-runtime-engine' )
+			__( 'Source must be a string or an object.', 'promptless-cpt-pages' )
 		);
 	}
 
@@ -1180,7 +1180,7 @@ class PRE_Validator {
 				return new WP_Error(
 					'pre_invalid_anchor',
 					/* translators: %s: the anchor */
-					sprintf( __( 'Invalid anchor: %s', 'post-runtime-engine' ), $link )
+					sprintf( __( 'Invalid anchor: %s', 'promptless-cpt-pages' ), $link )
 				);
 			}
 			return true;
@@ -1202,7 +1202,7 @@ class PRE_Validator {
 			return new WP_Error(
 				'pre_invalid_url',
 				/* translators: %s: the URL */
-				sprintf( __( 'Invalid or unsafe URL: %s', 'post-runtime-engine' ), $link )
+				sprintf( __( 'Invalid or unsafe URL: %s', 'promptless-cpt-pages' ), $link )
 			);
 		}
 
@@ -1240,7 +1240,7 @@ class PRE_Validator {
 		if ( ! is_array( $definition ) ) {
 			return new WP_Error(
 				'pre_invalid_post_field',
-				__( 'Post field definition must be an array.', 'post-runtime-engine' )
+				__( 'Post field definition must be an array.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1248,7 +1248,7 @@ class PRE_Validator {
 		if ( empty( $definition['key'] ) || ! is_string( $definition['key'] ) ) {
 			return new WP_Error(
 				'pre_missing_field_key',
-				__( 'Post field definition must include a non-empty key string.', 'post-runtime-engine' )
+				__( 'Post field definition must include a non-empty key string.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1257,7 +1257,7 @@ class PRE_Validator {
 				'pre_invalid_field_key',
 				sprintf(
 					/* translators: %s: the rejected key */
-					__( 'Post field key %s contains invalid characters. Use lowercase letters, numbers, and underscores only.', 'post-runtime-engine' ),
+					__( 'Post field key %s contains invalid characters. Use lowercase letters, numbers, and underscores only.', 'promptless-cpt-pages' ),
 					$definition['key']
 				)
 			);
@@ -1268,7 +1268,7 @@ class PRE_Validator {
 				'pre_field_key_too_long',
 				sprintf(
 					/* translators: %d: max length */
-					__( 'Post field key must be %d characters or fewer.', 'post-runtime-engine' ),
+					__( 'Post field key must be %d characters or fewer.', 'promptless-cpt-pages' ),
 					self::MAX_FIELD_KEY_LEN
 				)
 			);
@@ -1278,7 +1278,7 @@ class PRE_Validator {
 		if ( empty( $definition['label'] ) || ! is_string( $definition['label'] ) ) {
 			return new WP_Error(
 				'pre_missing_field_label',
-				__( 'Post field definition must include a non-empty label string.', 'post-runtime-engine' )
+				__( 'Post field definition must include a non-empty label string.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1287,7 +1287,7 @@ class PRE_Validator {
 				'pre_field_label_too_long',
 				sprintf(
 					/* translators: %d: max length */
-					__( 'Post field label must be %d characters or fewer.', 'post-runtime-engine' ),
+					__( 'Post field label must be %d characters or fewer.', 'promptless-cpt-pages' ),
 					self::MAX_FIELD_LABEL_LEN
 				)
 			);
@@ -1299,7 +1299,7 @@ class PRE_Validator {
 				'pre_invalid_display_type',
 				sprintf(
 					/* translators: %1$s: invalid display type, %2$s: list of allowed types */
-					__( 'Post field display_type %1$s is not one of: %2$s', 'post-runtime-engine' ),
+					__( 'Post field display_type %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 					is_string( $definition['display_type'] ?? null ) ? $definition['display_type'] : 'missing-or-non-string',
 					implode( ', ', self::DISPLAY_TYPES )
 				)
@@ -1312,7 +1312,7 @@ class PRE_Validator {
 				'pre_invalid_card_position',
 				sprintf(
 					/* translators: %1$s: invalid position, %2$s: list of allowed positions */
-					__( 'Post field card_position %1$s is not one of: %2$s', 'post-runtime-engine' ),
+					__( 'Post field card_position %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 					is_string( $definition['card_position'] ?? null ) ? $definition['card_position'] : 'missing-or-non-string',
 					implode( ', ', self::FIELD_POSITIONS )
 				)
@@ -1325,7 +1325,7 @@ class PRE_Validator {
 				'pre_invalid_single_position',
 				sprintf(
 					/* translators: %1$s: invalid position, %2$s: list of allowed positions */
-					__( 'Post field single_position %1$s is not one of: %2$s', 'post-runtime-engine' ),
+					__( 'Post field single_position %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 					is_string( $definition['single_position'] ?? null ) ? $definition['single_position'] : 'missing-or-non-string',
 					implode( ', ', self::FIELD_POSITIONS )
 				)
@@ -1342,7 +1342,7 @@ class PRE_Validator {
 			if ( ! is_string( $definition['description'] ) ) {
 				return new WP_Error(
 					'pre_invalid_field_description',
-					__( 'Post field description must be a string.', 'post-runtime-engine' )
+					__( 'Post field description must be a string.', 'promptless-cpt-pages' )
 				);
 			}
 			if ( strlen( $definition['description'] ) > self::MAX_FIELD_DESCRIPTION_LEN ) {
@@ -1350,7 +1350,7 @@ class PRE_Validator {
 					'pre_field_description_too_long',
 					sprintf(
 						/* translators: %d: max length */
-						__( 'Post field description must be %d characters or fewer.', 'post-runtime-engine' ),
+						__( 'Post field description must be %d characters or fewer.', 'promptless-cpt-pages' ),
 						self::MAX_FIELD_DESCRIPTION_LEN
 					)
 				);
@@ -1362,7 +1362,7 @@ class PRE_Validator {
 		if ( isset( $definition['icon'] ) && ! is_string( $definition['icon'] ) ) {
 			return new WP_Error(
 				'pre_invalid_field_icon',
-				__( 'Post field icon must be a string (icon slug from PRE_Icon_Library) or empty.', 'post-runtime-engine' )
+				__( 'Post field icon must be a string (icon slug from PRE_Icon_Library) or empty.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1377,7 +1377,7 @@ class PRE_Validator {
 					'pre_invalid_color_intent',
 					sprintf(
 						/* translators: %1$s: invalid intent, %2$s: list of allowed intents */
-						__( 'Post field color_intent %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						__( 'Post field color_intent %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 						is_string( $definition['color_intent'] ) ? $definition['color_intent'] : 'non-string',
 						implode( ', ', self::COLOR_INTENTS )
 					)
@@ -1399,7 +1399,7 @@ class PRE_Validator {
 		if ( isset( $definition['required'] ) && ! is_bool( $definition['required'] ) ) {
 			return new WP_Error(
 				'pre_invalid_field_required',
-				__( 'Post field required attribute must be true or false.', 'post-runtime-engine' )
+				__( 'Post field required attribute must be true or false.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1411,7 +1411,7 @@ class PRE_Validator {
 					'pre_invalid_date_format',
 					sprintf(
 						/* translators: %1$s: invalid format, %2$s: list of allowed formats */
-						__( 'Post field date_format %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						__( 'Post field date_format %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 						is_string( $definition['date_format'] ) ? $definition['date_format'] : 'non-string',
 						implode( ', ', self::DATE_FORMATS )
 					)
@@ -1424,14 +1424,14 @@ class PRE_Validator {
 		if ( isset( $definition['date_format_string'] ) && ! is_string( $definition['date_format_string'] ) ) {
 			return new WP_Error(
 				'pre_invalid_date_format_string',
-				__( 'Post field date_format_string must be a string.', 'post-runtime-engine' )
+				__( 'Post field date_format_string must be a string.', 'promptless-cpt-pages' )
 			);
 		}
 
 		if ( ( $definition['date_format'] ?? '' ) === 'custom' && empty( $definition['date_format_string'] ) ) {
 			return new WP_Error(
 				'pre_missing_date_format_string',
-				__( 'Post field date_format is "custom" but date_format_string is empty.', 'post-runtime-engine' )
+				__( 'Post field date_format is "custom" but date_format_string is empty.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1445,7 +1445,7 @@ class PRE_Validator {
 					'pre_invalid_currency_code',
 					sprintf(
 						/* translators: %s: the unsupported code */
-						__( 'Currency code %s is not in the supported set. Use a standard ISO 4217 code or extend the list via the pre_supported_currencies filter.', 'post-runtime-engine' ),
+						__( 'Currency code %s is not in the supported set. Use a standard ISO 4217 code or extend the list via the pre_supported_currencies filter.', 'promptless-cpt-pages' ),
 						$definition['currency_code']
 					)
 				);
@@ -1457,7 +1457,7 @@ class PRE_Validator {
 		if ( isset( $definition['max'] ) && ! is_int( $definition['max'] ) && ! is_numeric( $definition['max'] ) ) {
 			return new WP_Error(
 				'pre_invalid_field_max',
-				__( 'Post field max must be a number.', 'post-runtime-engine' )
+				__( 'Post field max must be a number.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1470,7 +1470,7 @@ class PRE_Validator {
 			if ( ! is_string( $definition['value_suffix'] ) ) {
 				return new WP_Error(
 					'pre_invalid_value_suffix',
-					__( 'Post field value_suffix must be a string.', 'post-runtime-engine' )
+					__( 'Post field value_suffix must be a string.', 'promptless-cpt-pages' )
 				);
 			}
 			if ( strlen( $definition['value_suffix'] ) > self::MAX_VALUE_SUFFIX_LEN ) {
@@ -1478,7 +1478,7 @@ class PRE_Validator {
 					'pre_value_suffix_too_long',
 					sprintf(
 						/* translators: %d: max length */
-						__( 'Post field value_suffix must be %d characters or fewer.', 'post-runtime-engine' ),
+						__( 'Post field value_suffix must be %d characters or fewer.', 'promptless-cpt-pages' ),
 						self::MAX_VALUE_SUFFIX_LEN
 					)
 				);
@@ -1500,7 +1500,7 @@ class PRE_Validator {
 		if ( ! is_array( $options ) ) {
 			return new WP_Error(
 				'pre_invalid_field_options',
-				__( 'Post field options must be an array.', 'post-runtime-engine' )
+				__( 'Post field options must be an array.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1509,7 +1509,7 @@ class PRE_Validator {
 				'pre_too_many_field_options',
 				sprintf(
 					/* translators: %d: max options count */
-					__( 'Post field options must contain %d or fewer entries.', 'post-runtime-engine' ),
+					__( 'Post field options must contain %d or fewer entries.', 'promptless-cpt-pages' ),
 					self::MAX_FIELD_OPTIONS
 				)
 			);
@@ -1521,7 +1521,7 @@ class PRE_Validator {
 					'pre_invalid_option_key',
 					sprintf(
 						/* translators: %s: the invalid option key */
-						__( 'Post field option key %s must be a sanitize_key-safe string.', 'post-runtime-engine' ),
+						__( 'Post field option key %s must be a sanitize_key-safe string.', 'promptless-cpt-pages' ),
 						is_string( $value ) ? $value : 'non-string'
 					)
 				);
@@ -1532,7 +1532,7 @@ class PRE_Validator {
 					'pre_invalid_option_shape',
 					sprintf(
 						/* translators: %s: the option key */
-						__( 'Post field option %s must be an object with at least a label.', 'post-runtime-engine' ),
+						__( 'Post field option %s must be an object with at least a label.', 'promptless-cpt-pages' ),
 						$value
 					)
 				);
@@ -1543,7 +1543,7 @@ class PRE_Validator {
 					'pre_missing_option_label',
 					sprintf(
 						/* translators: %s: the option key */
-						__( 'Post field option %s is missing a label.', 'post-runtime-engine' ),
+						__( 'Post field option %s is missing a label.', 'promptless-cpt-pages' ),
 						$value
 					)
 				);
@@ -1556,7 +1556,7 @@ class PRE_Validator {
 						'pre_invalid_option_color_intent',
 						sprintf(
 							/* translators: %s: the option key */
-							__( 'Post field option %s has an invalid color_intent.', 'post-runtime-engine' ),
+							__( 'Post field option %s has an invalid color_intent.', 'promptless-cpt-pages' ),
 							$value
 						)
 					);
@@ -1583,7 +1583,7 @@ class PRE_Validator {
 		if ( empty( $field_def['display_type'] ) ) {
 			return new WP_Error(
 				'pre_invalid_field_def',
-				__( 'Field definition is missing a display_type.', 'post-runtime-engine' )
+				__( 'Field definition is missing a display_type.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1599,7 +1599,7 @@ class PRE_Validator {
 				if ( ! is_numeric( $value ) ) {
 					return new WP_Error(
 						'pre_invalid_currency_value',
-						__( 'Currency value must be numeric.', 'post-runtime-engine' )
+						__( 'Currency value must be numeric.', 'promptless-cpt-pages' )
 					);
 				}
 				return true;
@@ -1608,7 +1608,7 @@ class PRE_Validator {
 				if ( ! is_numeric( $value ) ) {
 					return new WP_Error(
 						'pre_invalid_number_value',
-						__( 'number_with_label value must be numeric.', 'post-runtime-engine' )
+						__( 'number_with_label value must be numeric.', 'promptless-cpt-pages' )
 					);
 				}
 				return true;
@@ -1620,7 +1620,7 @@ class PRE_Validator {
 				if ( ! is_string( $value ) ) {
 					return new WP_Error(
 						'pre_invalid_date_value',
-						__( 'Date value must be a string.', 'post-runtime-engine' )
+						__( 'Date value must be a string.', 'promptless-cpt-pages' )
 					);
 				}
 				if ( strtotime( $value ) === false ) {
@@ -1628,7 +1628,7 @@ class PRE_Validator {
 						'pre_unparseable_date',
 						sprintf(
 							/* translators: %s: the invalid date string */
-							__( 'Date value %s could not be parsed. Use YYYY-MM-DD or a date format strtotime() understands.', 'post-runtime-engine' ),
+							__( 'Date value %s could not be parsed. Use YYYY-MM-DD or a date format strtotime() understands.', 'promptless-cpt-pages' ),
 							$value
 						)
 					);
@@ -1639,7 +1639,7 @@ class PRE_Validator {
 				if ( ! is_string( $value ) ) {
 					return new WP_Error(
 						'pre_invalid_text_value',
-						__( 'Text value must be a string.', 'post-runtime-engine' )
+						__( 'Text value must be a string.', 'promptless-cpt-pages' )
 					);
 				}
 				if ( strlen( $value ) > self::MAX_TEXT_VALUE_LEN ) {
@@ -1647,7 +1647,7 @@ class PRE_Validator {
 						'pre_text_value_too_long',
 						sprintf(
 							/* translators: %d: max length */
-							__( 'Text value must be %d characters or fewer.', 'post-runtime-engine' ),
+							__( 'Text value must be %d characters or fewer.', 'promptless-cpt-pages' ),
 							self::MAX_TEXT_VALUE_LEN
 						)
 					);
@@ -1660,7 +1660,7 @@ class PRE_Validator {
 				if ( ! is_string( $value ) ) {
 					return new WP_Error(
 						'pre_invalid_badge_value',
-						__( 'Badge value must be a string.', 'post-runtime-engine' )
+						__( 'Badge value must be a string.', 'promptless-cpt-pages' )
 					);
 				}
 				if ( ! empty( $field_def['options'] ) && is_array( $field_def['options'] ) ) {
@@ -1669,7 +1669,7 @@ class PRE_Validator {
 							'pre_badge_value_not_in_options',
 							sprintf(
 								/* translators: %1$s: value, %2$s: comma-separated valid options */
-								__( 'Badge value %1$s is not one of the defined options: %2$s', 'post-runtime-engine' ),
+								__( 'Badge value %1$s is not one of the defined options: %2$s', 'promptless-cpt-pages' ),
 								$value,
 								implode( ', ', array_keys( $field_def['options'] ) )
 							)
@@ -1684,7 +1684,7 @@ class PRE_Validator {
 				if ( ! is_string( $value ) && ! is_numeric( $value ) ) {
 					return new WP_Error(
 						'pre_invalid_meta_pair_value',
-						__( 'meta_pair value must be a string or number.', 'post-runtime-engine' )
+						__( 'meta_pair value must be a string or number.', 'promptless-cpt-pages' )
 					);
 				}
 				return true;
@@ -1694,7 +1694,7 @@ class PRE_Validator {
 				if ( ! is_numeric( $value ) ) {
 					return new WP_Error(
 						'pre_invalid_rating_value',
-						__( 'Rating value must be numeric.', 'post-runtime-engine' )
+						__( 'Rating value must be numeric.', 'promptless-cpt-pages' )
 					);
 				}
 				$max = isset( $field_def['max'] ) && (int) $field_def['max'] > 0 ? (float) $field_def['max'] : 5.0;
@@ -1704,7 +1704,7 @@ class PRE_Validator {
 						'pre_rating_out_of_range',
 						sprintf(
 							/* translators: %1$f: rating value, %2$f: max */
-							__( 'Rating value %1$s is out of range. Must be between 0 and %2$s.', 'post-runtime-engine' ),
+							__( 'Rating value %1$s is out of range. Must be between 0 and %2$s.', 'promptless-cpt-pages' ),
 							(string) $num,
 							(string) $max
 						)
@@ -1719,13 +1719,13 @@ class PRE_Validator {
 				if ( ! is_numeric( $value ) ) {
 					return new WP_Error(
 						'pre_invalid_progress_value',
-						__( 'Progress value must be numeric.', 'post-runtime-engine' )
+						__( 'Progress value must be numeric.', 'promptless-cpt-pages' )
 					);
 				}
 				if ( (float) $value < 0 ) {
 					return new WP_Error(
 						'pre_progress_negative',
-						__( 'Progress value cannot be negative.', 'post-runtime-engine' )
+						__( 'Progress value cannot be negative.', 'promptless-cpt-pages' )
 					);
 				}
 				return true;
@@ -1740,7 +1740,7 @@ class PRE_Validator {
 				} else {
 					return new WP_Error(
 						'pre_invalid_multi_badge_value',
-						__( 'multi_badge value must be a comma-separated string or array.', 'post-runtime-engine' )
+						__( 'multi_badge value must be a comma-separated string or array.', 'promptless-cpt-pages' )
 					);
 				}
 
@@ -1750,7 +1750,7 @@ class PRE_Validator {
 						'pre_too_many_multi_badge_values',
 						sprintf(
 							/* translators: %d: max count */
-							__( 'multi_badge value contains too many segments. Maximum is %d.', 'post-runtime-engine' ),
+							__( 'multi_badge value contains too many segments. Maximum is %d.', 'promptless-cpt-pages' ),
 							self::MAX_MULTI_BADGE_VALUES
 						)
 					);
@@ -1764,7 +1764,7 @@ class PRE_Validator {
 			'pre_unknown_display_type',
 			sprintf(
 				/* translators: %s: the display type */
-				__( 'Unknown display type %s on field definition.', 'post-runtime-engine' ),
+				__( 'Unknown display type %s on field definition.', 'promptless-cpt-pages' ),
 				is_string( $field_def['display_type'] ) ? $field_def['display_type'] : 'non-string'
 			)
 		);
@@ -1789,7 +1789,7 @@ class PRE_Validator {
 		if ( ! is_array( $visibility ) ) {
 			return new WP_Error(
 				'pre_invalid_visibility_shape',
-				__( 'Field visibility must be an array (or JSON object).', 'post-runtime-engine' )
+				__( 'Field visibility must be an array (or JSON object).', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -1799,7 +1799,7 @@ class PRE_Validator {
 					'pre_invalid_visibility_key',
 					sprintf(
 						/* translators: %s: the invalid key */
-						__( 'Visibility key %s must be a sanitize_key-safe field key.', 'post-runtime-engine' ),
+						__( 'Visibility key %s must be a sanitize_key-safe field key.', 'promptless-cpt-pages' ),
 						is_string( $field_key ) ? $field_key : 'non-string'
 					)
 				);
@@ -1810,7 +1810,7 @@ class PRE_Validator {
 					'pre_invalid_visibility_entry',
 					sprintf(
 						/* translators: %s: the field key */
-						__( 'Visibility entry for %s must be an object with card_hidden and/or single_hidden booleans.', 'post-runtime-engine' ),
+						__( 'Visibility entry for %s must be an object with card_hidden and/or single_hidden booleans.', 'promptless-cpt-pages' ),
 						$field_key
 					)
 				);
@@ -1822,7 +1822,7 @@ class PRE_Validator {
 						'pre_invalid_visibility_flag',
 						sprintf(
 							/* translators: %1$s: field key, %2$s: flag name */
-							__( 'Visibility flag %2$s for field %1$s must be true or false.', 'post-runtime-engine' ),
+							__( 'Visibility flag %2$s for field %1$s must be true or false.', 'promptless-cpt-pages' ),
 							$field_key,
 							$flag_key
 						)

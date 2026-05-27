@@ -4,6 +4,60 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.4.1] — 2026-05-27
+
+Preemptive WordPress.org plugin directory compliance pass, applying the
+patterns FRE 1.7.x went through during its review. No new features, no
+breaking changes — the plugin works identically for end users. Backward
+compatibility for any third-party code that referenced the old class
+name is preserved via `class_alias`.
+
+### Changed
+
+- **Main class renamed.** `Post_Runtime_Engine` → `Promptless_CPT_Pages`.
+  WordPress.org plugin guideline 11 (avoid common-word prefixes) treats
+  "post" as too generic. A `class_alias( 'Promptless_CPT_Pages', 'Post_Runtime_Engine' )`
+  preserves backward compatibility for any external code that referenced
+  the old name — the global `pre()` accessor, smoke tests, integration
+  test scaffolding, and other plugins all continue to work.
+- **GitHub auto-updater instantiation is `class_exists`-gated.** Mirrors
+  the FRE 1.7.0 fix — the WP.org distribution build excludes
+  `includes/Updates/` per guideline 8 (plugins must use WordPress's
+  update mechanism). The class_exists guard means the same bootstrap
+  code runs cleanly in both distributions without a fatal in the WP.org
+  build.
+- **All inline `<script>` and `<style>` blocks moved to enqueued asset
+  files.** The connector admin page's styles + JS were extracted to
+  `assets/css/connector-admin.css` and `assets/js/connector-admin.js`,
+  loaded via a page-hook-gated `wp_enqueue_*` call with
+  `wp_localize_script` for dynamic data (ajax URL, nonce, connector
+  script URL, site URL, translated strings). The Groupings edit form's
+  source-type row toggle was extracted to `assets/js/admin-groupings.js`
+  and enqueued conditionally on the groupings page.
+
+### Fixed
+
+- **Plugin header `Plugin URI` set to a working URL.** The previous
+  value pointed at a 404 (`/cpt-pages` subpath that doesn't exist).
+  Replaced with the bare `https://promptlesswp.com`.
+- **Plugin header `Author URI` removed.** Was identical to `Plugin URI`
+  after the fix above; WP.org's upload-form validator rejects header
+  sets where Plugin URI and Author URI carry the same value.
+- **`Contributors` updated** from `flowmint` to `promptlesswp` to match
+  the WP.org username that owns the submission.
+- **`esc_url_raw` → `esc_url`** in one JS-output context in the
+  connector admin page (output escaping vs database sanitization).
+
+### Internal
+
+- Build script (`bin/build-release.sh`) excludes additional engineering
+  planning documents from the WP.org build, per WP.org reviewers
+  flagging similar files as "AI-generated output" on the FRE
+  submission: `docs/ARCHITECTURE.md`, `docs/HOSTED_VALIDATION.md`,
+  `docs/INTEGRATION_PROMPTLESS.md`, `docs/POST_FIELDS_V1_1_DESIGN.md`,
+  `docs/PRESSURE_TESTS.md`, `docs/ROADMAP.md`. The GitHub build keeps
+  all docs.
+
 ## [0.4.0] — 2026-05-22
 
 First release of the v1.1 post-fields feature surface (data layer + frontend rendering + admin UI + connector REST + MCP bridge), plus the post-staging-deploy fix cluster, the per-CPT archive-card meta toggles, the modern 2026 design refinement pass, AND the GitHub auto-updater so sites that install this plugin can pick up future releases automatically. Backward-compatible — existing v0.3.x CPTs continue to render identically until they opt in to post fields.

@@ -1,6 +1,6 @@
 <?php
 /**
- * Grouping definition registry for Post Runtime Engine.
+ * Grouping definition registry for Promptless CPT Pages.
  *
  * Each CPT can have one or more named "groupings" — repeating field
  * collections that conform to the standard primitive shape (image-or-icon,
@@ -121,7 +121,7 @@ class PRE_Grouping_Registry {
 		if ( $cpt_slug === '' ) {
 			return new WP_Error(
 				'pre_invalid_cpt_slug',
-				__( 'CPT slug is empty or invalid.', 'post-runtime-engine' )
+				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -159,7 +159,7 @@ class PRE_Grouping_Registry {
 		if ( ! $saved && get_option( self::OPTION_PREFIX . $cpt_slug ) !== $all ) {
 			return new WP_Error(
 				'pre_grouping_save_failed',
-				__( 'Failed to persist grouping definition to the database.', 'post-runtime-engine' )
+				__( 'Failed to persist grouping definition to the database.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -195,7 +195,7 @@ class PRE_Grouping_Registry {
 		if ( $cpt_slug === '' || $grouping_key === '' ) {
 			return new WP_Error(
 				'pre_invalid_args',
-				__( 'CPT slug and grouping key are required.', 'post-runtime-engine' )
+				__( 'CPT slug and grouping key are required.', 'promptless-cpt-pages' )
 			);
 		}
 
@@ -204,7 +204,7 @@ class PRE_Grouping_Registry {
 			return new WP_Error(
 				'pre_grouping_not_found',
 				/* translators: %1$s: grouping key, %2$s: CPT slug */
-				sprintf( __( 'Grouping %1$s is not defined for CPT %2$s.', 'post-runtime-engine' ), $grouping_key, $cpt_slug )
+				sprintf( __( 'Grouping %1$s is not defined for CPT %2$s.', 'promptless-cpt-pages' ), $grouping_key, $cpt_slug )
 			);
 		}
 

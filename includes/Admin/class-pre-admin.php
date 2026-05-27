@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin coordinator for Post Runtime Engine.
+ * Admin coordinator for Promptless CPT Pages.
  *
  * Owns the top-level admin menu, sub-page registration, asset enqueuing,
  * and dispatches to the focused admin classes (PRE_Admin_CPTs, etc.) for
@@ -37,12 +37,12 @@ class PRE_Admin {
 	/**
 	 * Top-level menu slug. Used as the parent for all sub-pages.
 	 */
-	const MENU_SLUG = 'post-runtime-engine';
+	const MENU_SLUG = 'promptless-cpt-pages';
 
 	/**
 	 * Sub-page slugs.
 	 */
-	const PAGE_CPTS        = 'post-runtime-engine';
+	const PAGE_CPTS        = 'promptless-cpt-pages';
 	const PAGE_GROUPINGS   = 'pre-groupings';
 	const PAGE_POST_FIELDS = 'pre-post-fields';
 	const PAGE_SETTINGS    = 'pre-settings';
@@ -107,8 +107,8 @@ class PRE_Admin {
 		$cap = apply_filters( 'pre_manage_capability', PRE_Capabilities::MANAGE_CAP );
 
 		add_menu_page(
-			__( 'Post Runtime Engine', 'post-runtime-engine' ),
-			__( 'Post Runtime', 'post-runtime-engine' ),
+			__( 'Promptless CPT Pages', 'promptless-cpt-pages' ),
+			__( 'Post Runtime', 'promptless-cpt-pages' ),
 			$cap,
 			self::MENU_SLUG,
 			array( $this, 'render_cpts_page' ),
@@ -120,8 +120,8 @@ class PRE_Admin {
 		// for matching the parent's content with a friendlier sub-label).
 		add_submenu_page(
 			self::MENU_SLUG,
-			__( 'Post Types', 'post-runtime-engine' ),
-			__( 'Post Types', 'post-runtime-engine' ),
+			__( 'Post Types', 'promptless-cpt-pages' ),
+			__( 'Post Types', 'promptless-cpt-pages' ),
 			$cap,
 			self::PAGE_CPTS,
 			array( $this, 'render_cpts_page' )
@@ -133,8 +133,8 @@ class PRE_Admin {
 		// would be confusing.
 		add_submenu_page(
 			null, // hidden.
-			__( 'Manage Groupings', 'post-runtime-engine' ),
-			__( 'Manage Groupings', 'post-runtime-engine' ),
+			__( 'Manage Groupings', 'promptless-cpt-pages' ),
+			__( 'Manage Groupings', 'promptless-cpt-pages' ),
 			$cap,
 			self::PAGE_GROUPINGS,
 			array( $this, 'render_groupings_page' )
@@ -145,8 +145,8 @@ class PRE_Admin {
 		// because both pages require a CPT context to be meaningful.
 		add_submenu_page(
 			null, // hidden.
-			__( 'Manage Post Fields', 'post-runtime-engine' ),
-			__( 'Manage Post Fields', 'post-runtime-engine' ),
+			__( 'Manage Post Fields', 'promptless-cpt-pages' ),
+			__( 'Manage Post Fields', 'promptless-cpt-pages' ),
 			$cap,
 			self::PAGE_POST_FIELDS,
 			array( $this, 'render_post_fields_page' )
@@ -178,10 +178,25 @@ class PRE_Admin {
 			PRE_VERSION
 		);
 
+		$current_page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+		// Groupings edit form: source-type row visibility toggle. Was an
+		// inline <script> at the bottom of the page until 0.4.1; moved
+		// to a real JS file to satisfy WordPress.org Plugin Check's
+		// no-inline-scripts guideline.
+		if ( $current_page === self::PAGE_GROUPINGS ) {
+			wp_enqueue_script(
+				'pre-admin-groupings',
+				PRE_PLUGIN_URL . 'assets/js/admin-groupings.js',
+				array(),
+				PRE_VERSION,
+				true
+			);
+		}
+
 		// v1.1: conditional field display + drag reorder on the Post
 		// Fields admin page. Loaded only on that page to keep the rest
 		// of the admin lean.
-		$current_page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 		if ( $current_page === self::PAGE_POST_FIELDS ) {
 			wp_enqueue_script(
 				'pre-post-fields-editor',
@@ -220,7 +235,7 @@ class PRE_Admin {
 	 */
 	public function render_cpts_page() {
 		if ( ! PRE_Capabilities::current_user_can_manage() ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'post-runtime-engine' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'promptless-cpt-pages' ) );
 		}
 
 		$this->get_cpts_page()->render();
@@ -231,7 +246,7 @@ class PRE_Admin {
 	 */
 	public function render_groupings_page() {
 		if ( ! PRE_Capabilities::current_user_can_manage() ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'post-runtime-engine' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'promptless-cpt-pages' ) );
 		}
 
 		$page = $this->get_groupings_page();
@@ -251,7 +266,7 @@ class PRE_Admin {
 	 */
 	public function render_post_fields_page() {
 		if ( ! PRE_Capabilities::current_user_can_manage() ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'post-runtime-engine' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'promptless-cpt-pages' ) );
 		}
 
 		$page = $this->get_post_fields_page();

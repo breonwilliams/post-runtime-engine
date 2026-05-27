@@ -69,7 +69,7 @@ class PRE_Meta_Box_Post_Fields {
 
 			add_meta_box(
 				self::META_BOX_ID,
-				__( 'Post Fields', 'post-runtime-engine' ),
+				__( 'Post Fields', 'promptless-cpt-pages' ),
 				array( $this, 'render' ),
 				$slug,
 				'normal',
@@ -86,7 +86,7 @@ class PRE_Meta_Box_Post_Fields {
 	public function render( $post ) {
 		$plugin = pre();
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
-			echo '<p>' . esc_html__( 'This post type is not managed by Post Runtime Engine.', 'post-runtime-engine' ) . '</p>';
+			echo '<p>' . esc_html__( 'This post type is not managed by Promptless CPT Pages.', 'promptless-cpt-pages' ) . '</p>';
 			return;
 		}
 
@@ -98,10 +98,10 @@ class PRE_Meta_Box_Post_Fields {
 			);
 			?>
 			<div class="pre-meta-empty">
-				<p><?php esc_html_e( 'No post fields are defined for this post type yet.', 'post-runtime-engine' ); ?></p>
+				<p><?php esc_html_e( 'No post fields are defined for this post type yet.', 'promptless-cpt-pages' ); ?></p>
 				<p>
 					<a href="<?php echo esc_url( $url ); ?>" class="button">
-						<?php esc_html_e( 'Define post fields →', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'Define post fields →', 'promptless-cpt-pages' ); ?>
 					</a>
 				</p>
 			</div>
@@ -133,17 +133,17 @@ class PRE_Meta_Box_Post_Fields {
 		?>
 		<div class="pre-meta-box pre-meta-box--post-fields">
 			<p class="description">
-				<?php esc_html_e( 'These values render on this post\'s single page (in the hero) and on any cards listing posts of this type. Leave a field empty to skip it in both contexts.', 'post-runtime-engine' ); ?>
+				<?php esc_html_e( 'These values render on this post\'s single page (in the hero) and on any cards listing posts of this type. Leave a field empty to skip it in both contexts.', 'promptless-cpt-pages' ); ?>
 			</p>
 
 			<?php if ( ! empty( $overlay_field_labels ) ) : ?>
 				<div class="notice notice-warning inline pre-meta-box__overlay-warning">
 					<p>
-						<strong><?php esc_html_e( 'Image-overlay badges need a featured image.', 'post-runtime-engine' ); ?></strong><br />
+						<strong><?php esc_html_e( 'Image-overlay badges need a featured image.', 'promptless-cpt-pages' ); ?></strong><br />
 						<?php
 						printf(
 							/* translators: %s: comma-separated list of field labels */
-							esc_html__( 'The following field(s) are configured to render as badges over the featured image, but this post has no featured image set: %s. They will be skipped in both card and single-page rendering until you add a featured image (see the Featured image meta box).', 'post-runtime-engine' ),
+							esc_html__( 'The following field(s) are configured to render as badges over the featured image, but this post has no featured image set: %s. They will be skipped in both card and single-page rendering until you add a featured image (see the Featured image meta box).', 'promptless-cpt-pages' ),
 							esc_html( implode( ', ', $overlay_field_labels ) )
 						);
 						?>
@@ -182,7 +182,7 @@ class PRE_Meta_Box_Post_Fields {
 				<label for="<?php echo esc_attr( $base_id ); ?>">
 					<?php echo esc_html( $label ); ?>
 					<?php if ( $required ) : ?>
-						<span class="pre-field-row__required" aria-label="<?php esc_attr_e( 'Required', 'post-runtime-engine' ); ?>">*</span>
+						<span class="pre-field-row__required" aria-label="<?php esc_attr_e( 'Required', 'promptless-cpt-pages' ); ?>">*</span>
 					<?php endif; ?>
 				</label>
 				<span class="pre-field-row__type-badge"><?php echo esc_html( $display_type ); ?></span>
@@ -203,7 +203,7 @@ class PRE_Meta_Box_Post_Fields {
 						name="pre_field_visibility[<?php echo esc_attr( $key ); ?>][card_hidden]"
 						value="1"
 						<?php checked( $card_hidden ); ?>>
-					<?php esc_html_e( 'Hide on cards', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'Hide on cards', 'promptless-cpt-pages' ); ?>
 				</label>
 				<label class="pre-field-row__visibility-toggle">
 					<input
@@ -211,7 +211,7 @@ class PRE_Meta_Box_Post_Fields {
 						name="pre_field_visibility[<?php echo esc_attr( $key ); ?>][single_hidden]"
 						value="1"
 						<?php checked( $single_hidden ); ?>>
-					<?php esc_html_e( 'Hide in single-page hero', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'Hide in single-page hero', 'promptless-cpt-pages' ); ?>
 				</label>
 			</div>
 		</div>
@@ -283,7 +283,7 @@ class PRE_Meta_Box_Post_Fields {
 					<select
 						id="<?php echo esc_attr( $base_id ); ?>"
 						name="<?php echo esc_attr( $name_primary ); ?>">
-						<option value=""><?php esc_html_e( '— Not set —', 'post-runtime-engine' ); ?></option>
+						<option value=""><?php esc_html_e( '— Not set —', 'promptless-cpt-pages' ); ?></option>
 						<?php foreach ( $options as $opt_key => $opt ) : ?>
 							<option value="<?php echo esc_attr( $opt_key ); ?>" <?php selected( $primary, $opt_key ); ?>>
 								<?php echo esc_html( $opt['label'] ?? $opt_key ); ?>
@@ -337,7 +337,7 @@ class PRE_Meta_Box_Post_Fields {
 				?>
 				<div class="pre-input-rating">
 					<label class="pre-input-rating__label">
-						<?php esc_html_e( 'Value', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'Value', 'promptless-cpt-pages' ); ?>
 						<input
 							type="number"
 							step="0.1"
@@ -349,12 +349,12 @@ class PRE_Meta_Box_Post_Fields {
 						<span class="pre-input-rating__max">
 							<?php
 							/* translators: %s: max rating */
-							printf( esc_html__( '/ %s', 'post-runtime-engine' ), esc_html( (string) $max ) );
+							printf( esc_html__( '/ %s', 'promptless-cpt-pages' ), esc_html( (string) $max ) );
 							?>
 						</span>
 					</label>
 					<label class="pre-input-rating__label">
-						<?php esc_html_e( 'Review count', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'Review count', 'promptless-cpt-pages' ); ?>
 						<input
 							type="number"
 							step="1"
@@ -372,7 +372,7 @@ class PRE_Meta_Box_Post_Fields {
 				?>
 				<div class="pre-input-progress">
 					<label class="pre-input-progress__label">
-						<?php esc_html_e( 'Current', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'Current', 'promptless-cpt-pages' ); ?>
 						<input
 							type="number"
 							step="0.01"
@@ -382,7 +382,7 @@ class PRE_Meta_Box_Post_Fields {
 							value="<?php echo esc_attr( (string) $primary ); ?>">
 					</label>
 					<label class="pre-input-progress__label">
-						<?php esc_html_e( 'Goal', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'Goal', 'promptless-cpt-pages' ); ?>
 						<input
 							type="number"
 							step="0.01"
@@ -406,7 +406,7 @@ class PRE_Meta_Box_Post_Fields {
 					class="regular-text"
 					placeholder="Vegan, GF, Quick">
 				<p class="description">
-					<?php esc_html_e( 'Comma-separated list. Each segment renders as its own pill.', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'Comma-separated list. Each segment renders as its own pill.', 'promptless-cpt-pages' ); ?>
 				</p>
 				<?php
 				break;

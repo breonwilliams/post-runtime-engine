@@ -2,7 +2,7 @@
 /**
  * Post-edit-screen meta box for grouping values.
  *
- * For every CPT registered through Post Runtime Engine, adds a meta box
+ * For every CPT registered through Promptless CPT Pages, adds a meta box
  * to its post-edit screen. Each grouping defined for the CPT renders as
  * its own editor section — manual sources get an items editor with
  * add/remove/reorder + icon/image picker + heading/supporting text/link
@@ -66,7 +66,7 @@ class PRE_Meta_Box {
 		foreach ( $plugin->cpts->get_all() as $slug => $cpt ) {
 			add_meta_box(
 				self::META_BOX_ID,
-				__( 'Post Runtime Groupings', 'post-runtime-engine' ),
+				__( 'Post Runtime Groupings', 'promptless-cpt-pages' ),
 				array( $this, 'render' ),
 				$slug,
 				'normal',
@@ -145,8 +145,8 @@ class PRE_Meta_Box {
 			'preMetaBox',
 			array(
 				'icons'       => $this->icon_data_for_js(),
-				'mediaTitle'  => __( 'Choose Image', 'post-runtime-engine' ),
-				'mediaButton' => __( 'Use this image', 'post-runtime-engine' ),
+				'mediaTitle'  => __( 'Choose Image', 'promptless-cpt-pages' ),
+				'mediaButton' => __( 'Use this image', 'promptless-cpt-pages' ),
 				// /wp/v2/search returns matches from any post type whose
 				// show_in_rest=true. The X-WP-Nonce header authenticates the
 				// request as the current user so private/draft posts the user
@@ -154,10 +154,10 @@ class PRE_Meta_Box {
 				'searchUrl'   => esc_url_raw( rest_url( 'wp/v2/search' ) ),
 				'nonce'       => wp_create_nonce( 'wp_rest' ),
 				'i18n'        => array(
-					'remove'  => __( 'Remove', 'post-runtime-engine' ),
-					'pickImg' => __( 'Add image', 'post-runtime-engine' ),
-					'change'  => __( 'Replace image', 'post-runtime-engine' ),
-					'clear'   => __( 'Clear', 'post-runtime-engine' ),
+					'remove'  => __( 'Remove', 'promptless-cpt-pages' ),
+					'pickImg' => __( 'Add image', 'promptless-cpt-pages' ),
+					'change'  => __( 'Replace image', 'promptless-cpt-pages' ),
+					'clear'   => __( 'Clear', 'promptless-cpt-pages' ),
 				),
 			)
 		);
@@ -173,7 +173,7 @@ class PRE_Meta_Box {
 
 		// Defensive: confirm the post type is one we manage.
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
-			echo '<p>' . esc_html__( 'This post type is not managed by Post Runtime Engine.', 'post-runtime-engine' ) . '</p>';
+			echo '<p>' . esc_html__( 'This post type is not managed by Promptless CPT Pages.', 'promptless-cpt-pages' ) . '</p>';
 			return;
 		}
 
@@ -201,11 +201,11 @@ class PRE_Meta_Box {
 			?>
 			<div class="pre-meta-empty">
 				<p>
-					<?php esc_html_e( 'No groupings are defined for this post type yet.', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'No groupings are defined for this post type yet.', 'promptless-cpt-pages' ); ?>
 				</p>
 				<p>
 					<a href="<?php echo esc_url( $groupings_url ); ?>" class="button">
-						<?php esc_html_e( 'Define groupings →', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'Define groupings →', 'promptless-cpt-pages' ); ?>
 					</a>
 				</p>
 			</div>
@@ -275,7 +275,7 @@ class PRE_Meta_Box {
 					<code class="pre-meta-grouping__key"><?php echo esc_html( $key ); ?></code>
 				</h3>
 				<a class="pre-meta-grouping__edit-link" href="<?php echo esc_url( $edit_def_url ); ?>">
-					<?php esc_html_e( 'Edit definition →', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'Edit definition →', 'promptless-cpt-pages' ); ?>
 				</a>
 			</header>
 
@@ -285,35 +285,35 @@ class PRE_Meta_Box {
 
 			<div class="pre-meta-grouping__overrides">
 				<label>
-					<?php esc_html_e( 'Position', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'Position', 'promptless-cpt-pages' ); ?>
 					<select name="pre_groupings[<?php echo esc_attr( $key ); ?>][position]">
 						<option value=""><?php
 							/* translators: %s: default position from grouping definition */
-							printf( esc_html__( 'Default (%s)', 'post-runtime-engine' ), esc_html( $def['default_position'] ?? '—' ) );
+							printf( esc_html__( 'Default (%s)', 'promptless-cpt-pages' ), esc_html( $def['default_position'] ?? '—' ) );
 						?></option>
-						<option value="above_main" <?php selected( $position, 'above_main' ); ?>><?php esc_html_e( 'Above main', 'post-runtime-engine' ); ?></option>
-						<option value="below_main" <?php selected( $position, 'below_main' ); ?>><?php esc_html_e( 'Below main', 'post-runtime-engine' ); ?></option>
-						<option value="sidebar" <?php selected( $position, 'sidebar' ); ?>><?php esc_html_e( 'Sidebar', 'post-runtime-engine' ); ?></option>
+						<option value="above_main" <?php selected( $position, 'above_main' ); ?>><?php esc_html_e( 'Above main', 'promptless-cpt-pages' ); ?></option>
+						<option value="below_main" <?php selected( $position, 'below_main' ); ?>><?php esc_html_e( 'Below main', 'promptless-cpt-pages' ); ?></option>
+						<option value="sidebar" <?php selected( $position, 'sidebar' ); ?>><?php esc_html_e( 'Sidebar', 'promptless-cpt-pages' ); ?></option>
 					</select>
 				</label>
 				<label>
-					<?php esc_html_e( 'Variant', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'Variant', 'promptless-cpt-pages' ); ?>
 					<select name="pre_groupings[<?php echo esc_attr( $key ); ?>][variant_override]">
 						<option value=""><?php
 							/* translators: %s: default variant from grouping definition */
-							printf( esc_html__( 'Default (%s)', 'post-runtime-engine' ), esc_html( $def['default_variant'] ?? '—' ) );
+							printf( esc_html__( 'Default (%s)', 'promptless-cpt-pages' ), esc_html( $def['default_variant'] ?? '—' ) );
 						?></option>
-						<option value="compact-grid" <?php selected( $variant_override, 'compact-grid' ); ?>><?php esc_html_e( 'Compact grid', 'post-runtime-engine' ); ?></option>
-						<option value="card-grid" <?php selected( $variant_override, 'card-grid' ); ?>><?php esc_html_e( 'Card grid', 'post-runtime-engine' ); ?></option>
-						<option value="featured-card" <?php selected( $variant_override, 'featured-card' ); ?>><?php esc_html_e( 'Featured card', 'post-runtime-engine' ); ?></option>
-						<option value="horizontal-row" <?php selected( $variant_override, 'horizontal-row' ); ?>><?php esc_html_e( 'Horizontal row', 'post-runtime-engine' ); ?></option>
+						<option value="compact-grid" <?php selected( $variant_override, 'compact-grid' ); ?>><?php esc_html_e( 'Compact grid', 'promptless-cpt-pages' ); ?></option>
+						<option value="card-grid" <?php selected( $variant_override, 'card-grid' ); ?>><?php esc_html_e( 'Card grid', 'promptless-cpt-pages' ); ?></option>
+						<option value="featured-card" <?php selected( $variant_override, 'featured-card' ); ?>><?php esc_html_e( 'Featured card', 'promptless-cpt-pages' ); ?></option>
+						<option value="horizontal-row" <?php selected( $variant_override, 'horizontal-row' ); ?>><?php esc_html_e( 'Horizontal row', 'promptless-cpt-pages' ); ?></option>
 					</select>
 				</label>
 			</div>
 
 			<?php if ( $is_manual ) : ?>
 				<div class="pre-meta-items">
-					<h4><?php esc_html_e( 'Items', 'post-runtime-engine' ); ?></h4>
+					<h4><?php esc_html_e( 'Items', 'promptless-cpt-pages' ); ?></h4>
 
 					<?php
 					// Grouping-level icon-only note. Shown ONCE per grouping when
@@ -328,7 +328,7 @@ class PRE_Meta_Box {
 					// decision, the message belongs at grouping scope.
 					?>
 					<p class="pre-meta-grouping__icon-only-note" hidden>
-						<?php esc_html_e( 'This layout uses icons only — uploaded images are not displayed. Change the Variant above to "Card grid" or "Featured card" to use images.', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'This layout uses icons only — uploaded images are not displayed. Change the Variant above to "Card grid" or "Featured card" to use images.', 'promptless-cpt-pages' ); ?>
 					</p>
 
 					<ol class="pre-items-list" data-grouping-key="<?php echo esc_attr( $key ); ?>">
@@ -338,7 +338,7 @@ class PRE_Meta_Box {
 					</ol>
 
 					<button type="button" class="button pre-add-item" data-grouping-key="<?php echo esc_attr( $key ); ?>">
-						+ <?php esc_html_e( 'Add item', 'post-runtime-engine' ); ?>
+						+ <?php esc_html_e( 'Add item', 'promptless-cpt-pages' ); ?>
 					</button>
 
 					<template class="pre-item-template" data-grouping-key="<?php echo esc_attr( $key ); ?>">
@@ -350,15 +350,15 @@ class PRE_Meta_Box {
 					<p>
 						<?php
 						if ( is_string( $source ) && $source === 'child_posts' ) {
-							esc_html_e( 'This grouping is auto-populated from this post\'s child posts. Items will be resolved at render time.', 'post-runtime-engine' );
+							esc_html_e( 'This grouping is auto-populated from this post\'s child posts. Items will be resolved at render time.', 'promptless-cpt-pages' );
 						} elseif ( is_array( $source ) && ( $source['type'] ?? '' ) === 'taxonomy_match' ) {
 							/* translators: %s: taxonomy slug */
-							printf( esc_html__( 'This grouping is auto-populated from posts sharing the "%s" taxonomy. Items will be resolved at render time.', 'post-runtime-engine' ), esc_html( $source['taxonomy'] ?? '?' ) );
+							printf( esc_html__( 'This grouping is auto-populated from posts sharing the "%s" taxonomy. Items will be resolved at render time.', 'promptless-cpt-pages' ), esc_html( $source['taxonomy'] ?? '?' ) );
 						} elseif ( is_array( $source ) && ( $source['type'] ?? '' ) === 'meta_match' ) {
 							/* translators: %s: post-meta key */
-							printf( esc_html__( 'This grouping is auto-populated from posts whose "%s" post-meta value matches this post. Items will be resolved at render time.', 'post-runtime-engine' ), esc_html( $source['meta_key'] ?? '?' ) );
+							printf( esc_html__( 'This grouping is auto-populated from posts whose "%s" post-meta value matches this post. Items will be resolved at render time.', 'promptless-cpt-pages' ), esc_html( $source['meta_key'] ?? '?' ) );
 						} else {
-							esc_html_e( 'This grouping uses an auto source. Items will be resolved at render time.', 'post-runtime-engine' );
+							esc_html_e( 'This grouping uses an auto source. Items will be resolved at render time.', 'promptless-cpt-pages' );
 						}
 						?>
 					</p>
@@ -402,7 +402,7 @@ class PRE_Meta_Box {
 
 		?>
 		<li class="pre-item">
-			<span class="pre-item__handle" aria-label="<?php esc_attr_e( 'Drag to reorder', 'post-runtime-engine' ); ?>">
+			<span class="pre-item__handle" aria-label="<?php esc_attr_e( 'Drag to reorder', 'promptless-cpt-pages' ); ?>">
 				<span class="dashicons dashicons-menu" aria-hidden="true"></span>
 			</span>
 
@@ -442,9 +442,9 @@ class PRE_Meta_Box {
 						class="pre-item__icon-input"
 						name="<?php echo esc_attr( $base ); ?>[icon_id]"
 						value="<?php echo esc_attr( $icon_id ); ?>"
-						placeholder="<?php esc_attr_e( 'mdi:home or "home"', 'post-runtime-engine' ); ?>"
+						placeholder="<?php esc_attr_e( 'mdi:home or "home"', 'promptless-cpt-pages' ); ?>"
 						maxlength="100"
-						aria-label="<?php esc_attr_e( 'Icon — Iconify code or curated ID', 'post-runtime-engine' ); ?>"
+						aria-label="<?php esc_attr_e( 'Icon — Iconify code or curated ID', 'promptless-cpt-pages' ); ?>"
 						spellcheck="false"
 						autocomplete="off">
 
@@ -453,7 +453,7 @@ class PRE_Meta_Box {
 						printf(
 							wp_kses(
 								/* translators: %s: Iconify icon-sets URL */
-								__( 'Any <a href="%s" target="_blank" rel="noopener">Iconify code</a> or pick one below.', 'post-runtime-engine' ),
+								__( 'Any <a href="%s" target="_blank" rel="noopener">Iconify code</a> or pick one below.', 'promptless-cpt-pages' ),
 								array(
 									'a' => array(
 										'href'   => array(),
@@ -481,8 +481,8 @@ class PRE_Meta_Box {
 					?>
 					<select
 						class="pre-item__icon-select"
-						aria-label="<?php esc_attr_e( 'Pick a common icon', 'post-runtime-engine' ); ?>">
-						<option value=""><?php esc_html_e( '— Pick a common icon —', 'post-runtime-engine' ); ?></option>
+						aria-label="<?php esc_attr_e( 'Pick a common icon', 'promptless-cpt-pages' ); ?>">
+						<option value=""><?php esc_html_e( '— Pick a common icon —', 'promptless-cpt-pages' ); ?></option>
 						<?php foreach ( $grouped_icons as $category => $icons_in_category ) : ?>
 							<optgroup label="<?php echo esc_attr( $category ); ?>">
 								<?php foreach ( $icons_in_category as $icon_key => $icon ) : ?>
@@ -496,10 +496,10 @@ class PRE_Meta_Box {
 
 					<div class="pre-item__media-buttons">
 						<button type="button" class="button-link pre-pick-image">
-							<?php echo $image_id > 0 ? esc_html__( 'Replace image', 'post-runtime-engine' ) : esc_html__( 'Add image', 'post-runtime-engine' ); ?>
+							<?php echo $image_id > 0 ? esc_html__( 'Replace image', 'promptless-cpt-pages' ) : esc_html__( 'Add image', 'promptless-cpt-pages' ); ?>
 						</button>
 						<button type="button" class="button-link pre-clear-media">
-							<?php esc_html_e( 'Clear', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Clear', 'promptless-cpt-pages' ); ?>
 						</button>
 					</div>
 				</div>
@@ -513,23 +513,23 @@ class PRE_Meta_Box {
 					class="pre-item__heading"
 					name="<?php echo esc_attr( $base ); ?>[heading]"
 					value="<?php echo esc_attr( $heading ); ?>"
-					placeholder="<?php esc_attr_e( 'Heading', 'post-runtime-engine' ); ?>"
-					aria-label="<?php esc_attr_e( 'Heading', 'post-runtime-engine' ); ?>"
+					placeholder="<?php esc_attr_e( 'Heading', 'promptless-cpt-pages' ); ?>"
+					aria-label="<?php esc_attr_e( 'Heading', 'promptless-cpt-pages' ); ?>"
 					maxlength="200">
 				<textarea
 					class="pre-item__supporting"
 					rows="2"
 					name="<?php echo esc_attr( $base ); ?>[supporting_text]"
-					placeholder="<?php esc_attr_e( 'Supporting text', 'post-runtime-engine' ); ?>"
-					aria-label="<?php esc_attr_e( 'Supporting text', 'post-runtime-engine' ); ?>"
+					placeholder="<?php esc_attr_e( 'Supporting text', 'promptless-cpt-pages' ); ?>"
+					aria-label="<?php esc_attr_e( 'Supporting text', 'promptless-cpt-pages' ); ?>"
 					maxlength="1000"><?php echo esc_textarea( $supporting_text ); ?></textarea>
 				<input
 					type="text"
 					class="pre-item__link"
 					name="<?php echo esc_attr( $base ); ?>[link]"
 					value="<?php echo esc_attr( $link ); ?>"
-					placeholder="<?php esc_attr_e( 'Search posts, or paste https://, /path, #anchor, tel:, mailto:', 'post-runtime-engine' ); ?>"
-					aria-label="<?php esc_attr_e( 'Link — type a post name to search, or paste a URL', 'post-runtime-engine' ); ?>"
+					placeholder="<?php esc_attr_e( 'Search posts, or paste https://, /path, #anchor, tel:, mailto:', 'promptless-cpt-pages' ); ?>"
+					aria-label="<?php esc_attr_e( 'Link — type a post name to search, or paste a URL', 'promptless-cpt-pages' ); ?>"
 					autocomplete="off">
 				<?php /*
 					Site-portable internal link: when the autocomplete picks a
@@ -548,7 +548,7 @@ class PRE_Meta_Box {
 					value="<?php echo esc_attr( $link_post_id > 0 ? (string) $link_post_id : '' ); ?>">
 			</div>
 
-			<button type="button" class="pre-item__remove pre-remove-item" aria-label="<?php esc_attr_e( 'Remove item', 'post-runtime-engine' ); ?>">
+			<button type="button" class="pre-item__remove pre-remove-item" aria-label="<?php esc_attr_e( 'Remove item', 'promptless-cpt-pages' ); ?>">
 				<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
 			</button>
 		</li>
@@ -702,7 +702,7 @@ class PRE_Meta_Box {
 					'type'    => 'error',
 					'message' => sprintf(
 						/* translators: %s: validation error message */
-						__( 'Post Runtime: groupings could not be saved — %s', 'post-runtime-engine' ),
+						__( 'Post Runtime: groupings could not be saved — %s', 'promptless-cpt-pages' ),
 						$result->get_error_message()
 					),
 				),

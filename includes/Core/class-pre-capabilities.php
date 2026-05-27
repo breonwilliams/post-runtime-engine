@@ -1,6 +1,6 @@
 <?php
 /**
- * Capability mapping for Post Runtime Engine.
+ * Capability mapping for Promptless CPT Pages.
  *
  * Centralizes the plugin's custom capability so callers never hard-code the
  * string. All site-config checkpoints (CPT registration, grouping definitions,
@@ -179,7 +179,7 @@ class PRE_Capabilities {
 	}
 
 	/**
-	 * Whether the current user can manage Post Runtime Engine site config
+	 * Whether the current user can manage Promptless CPT Pages site config
 	 * (CPT registrations, grouping definitions, plugin settings, connector
 	 * site-config endpoints).
 	 *
@@ -200,7 +200,7 @@ class PRE_Capabilities {
 	 */
 	public static function required_capability() {
 		/**
-		 * Filter the capability required to manage Post Runtime Engine
+		 * Filter the capability required to manage Promptless CPT Pages
 		 * configuration. Default is `pre_manage_cpts`. Override to map the
 		 * check to `manage_options` (legacy behavior) or to a custom
 		 * capability your role model already uses.

@@ -776,7 +776,7 @@ class PRE_Connector_API {
 	public function handle_list_cpts( WP_REST_Request $request ) {
 		$plugin = pre();
 		if ( ! $plugin->cpts ) {
-			return $this->error_response( 'pre_internal_error', __( 'CPT registry not initialized.', 'post-runtime-engine' ), 500 );
+			return $this->error_response( 'pre_internal_error', __( 'CPT registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$cpts = array();
@@ -790,7 +790,7 @@ class PRE_Connector_API {
 	public function handle_register_cpt( WP_REST_Request $request ) {
 		$plugin = pre();
 		if ( ! $plugin->cpts ) {
-			return $this->error_response( 'pre_internal_error', __( 'CPT registry not initialized.', 'post-runtime-engine' ), 500 );
+			return $this->error_response( 'pre_internal_error', __( 'CPT registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -800,7 +800,7 @@ class PRE_Connector_API {
 
 		$slug = isset( $body['slug'] ) ? sanitize_key( $body['slug'] ) : '';
 		if ( $slug === '' ) {
-			return $this->error_response( 'pre_invalid_slug', __( 'Missing or invalid slug.', 'post-runtime-engine' ), 422 );
+			return $this->error_response( 'pre_invalid_slug', __( 'Missing or invalid slug.', 'promptless-cpt-pages' ), 422 );
 		}
 
 		// Strip server-managed fields if the agent sent them.
@@ -820,7 +820,7 @@ class PRE_Connector_API {
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$def = $plugin->cpts->get( $slug );
@@ -832,7 +832,7 @@ class PRE_Connector_API {
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -844,7 +844,7 @@ class PRE_Connector_API {
 		if ( isset( $body['slug'] ) && sanitize_key( $body['slug'] ) !== $slug ) {
 			return $this->error_response(
 				'pre_immutable_field',
-				__( 'CPT slug is immutable. Delete and re-register to rename.', 'post-runtime-engine' ),
+				__( 'CPT slug is immutable. Delete and re-register to rename.', 'promptless-cpt-pages' ),
 				400
 			);
 		}
@@ -893,7 +893,7 @@ class PRE_Connector_API {
 		$purge_data = (bool) $request->get_param( 'purge_data' );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		// Always remove grouping definitions for the CPT.
@@ -930,7 +930,7 @@ class PRE_Connector_API {
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$groupings = array();
@@ -946,7 +946,7 @@ class PRE_Connector_API {
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -972,10 +972,10 @@ class PRE_Connector_API {
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->groupings->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_grouping_not_found', __( 'Grouping not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_grouping_not_found', __( 'Grouping not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$def = $plugin->groupings->get( $slug, $key );
@@ -988,10 +988,10 @@ class PRE_Connector_API {
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->groupings->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_grouping_not_found', __( 'Grouping not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_grouping_not_found', __( 'Grouping not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -1028,10 +1028,10 @@ class PRE_Connector_API {
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->groupings->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_grouping_not_found', __( 'Grouping not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_grouping_not_found', __( 'Grouping not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$plugin->groupings->remove( $slug, $key );
@@ -1112,7 +1112,7 @@ class PRE_Connector_API {
 		if ( $post_type === '' || ! $plugin->cpts || ! $plugin->cpts->exists( $post_type ) ) {
 			return $this->error_response(
 				'pre_unregistered_post_type',
-				__( 'post_type must be a CPT registered through Post Runtime Engine.', 'post-runtime-engine' ),
+				__( 'post_type must be a CPT registered through Promptless CPT Pages.', 'promptless-cpt-pages' ),
 				422
 			);
 		}
@@ -1122,14 +1122,14 @@ class PRE_Connector_API {
 		if ( ! current_user_can( PRE_Capabilities::publish_cap_for( $post_type ) ) ) {
 			return $this->error_response(
 				'rest_forbidden',
-				__( 'Your account cannot publish posts of this type.', 'post-runtime-engine' ),
+				__( 'Your account cannot publish posts of this type.', 'promptless-cpt-pages' ),
 				403
 			);
 		}
 
 		$title = isset( $body['post_title'] ) ? wp_strip_all_tags( (string) $body['post_title'] ) : '';
 		if ( $title === '' ) {
-			return $this->error_response( 'pre_missing_post_title', __( 'post_title is required.', 'post-runtime-engine' ), 422 );
+			return $this->error_response( 'pre_missing_post_title', __( 'post_title is required.', 'promptless-cpt-pages' ), 422 );
 		}
 
 		// Defensive sanitization: AI agents sometimes wrap post_content with
@@ -1233,7 +1233,7 @@ class PRE_Connector_API {
 		if ( array_key_exists( 'post_title', $body ) ) {
 			$title = wp_strip_all_tags( (string) $body['post_title'] );
 			if ( $title === '' ) {
-				return $this->error_response( 'pre_missing_post_title', __( 'post_title cannot be empty.', 'post-runtime-engine' ), 422 );
+				return $this->error_response( 'pre_missing_post_title', __( 'post_title cannot be empty.', 'promptless-cpt-pages' ), 422 );
 			}
 			$update_args['post_title'] = $title;
 		}
@@ -1261,7 +1261,7 @@ class PRE_Connector_API {
 					'pre_invalid_post_status',
 					sprintf(
 						/* translators: %1$s: invalid status; %2$s: list of valid statuses */
-						__( 'post_status %1$s is not one of: %2$s', 'post-runtime-engine' ),
+						__( 'post_status %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 						$status,
 						implode( ', ', $valid )
 					),
@@ -1705,7 +1705,7 @@ class PRE_Connector_API {
 			if ( ! is_array( $body ) || empty( $body ) ) {
 				return $this->error_response(
 					'pre_unsupported_media_type',
-					__( 'Content-Type must be application/json.', 'post-runtime-engine' ),
+					__( 'Content-Type must be application/json.', 'promptless-cpt-pages' ),
 					415
 				);
 			}
@@ -1716,7 +1716,7 @@ class PRE_Connector_API {
 		if ( ! is_array( $body ) ) {
 			return $this->error_response(
 				'pre_invalid_json',
-				__( 'Request body is not valid JSON.', 'post-runtime-engine' ),
+				__( 'Request body is not valid JSON.', 'promptless-cpt-pages' ),
 				400
 			);
 		}
@@ -1761,7 +1761,7 @@ class PRE_Connector_API {
 				'pre_version_conflict',
 				sprintf(
 					/* translators: 1: server version, 2: submitted version */
-					__( 'Version conflict — server has %1$d, you sent %2$d. Re-read the resource and retry.', 'post-runtime-engine' ),
+					__( 'Version conflict — server has %1$d, you sent %2$d. Re-read the resource and retry.', 'promptless-cpt-pages' ),
 					$current,
 					$submitted_version
 				),
@@ -1787,13 +1787,13 @@ class PRE_Connector_API {
 		$post   = get_post( $post_id );
 
 		if ( ! $post ) {
-			return $this->error_response( 'pre_post_not_found', __( 'Post not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_post_not_found', __( 'Post not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			return $this->error_response(
 				'pre_unregistered_post_type',
-				__( 'This post is not of a Post Runtime Engine CPT.', 'post-runtime-engine' ),
+				__( 'This post is not of a Promptless CPT Pages CPT.', 'promptless-cpt-pages' ),
 				404
 			);
 		}
@@ -1838,10 +1838,10 @@ class PRE_Connector_API {
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields ) {
-			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'post-runtime-engine' ), 500 );
+			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$out = array();
@@ -1860,10 +1860,10 @@ class PRE_Connector_API {
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields ) {
-			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'post-runtime-engine' ), 500 );
+			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -1895,10 +1895,10 @@ class PRE_Connector_API {
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields || ! $plugin->post_fields->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$def = $plugin->post_fields->get( $slug, $key );
@@ -1918,10 +1918,10 @@ class PRE_Connector_API {
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields || ! $plugin->post_fields->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -1967,10 +1967,10 @@ class PRE_Connector_API {
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields || ! $plugin->post_fields->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$plugin->post_fields->remove( $slug, $key );
@@ -1992,10 +1992,10 @@ class PRE_Connector_API {
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'post-runtime-engine' ), 404 );
+			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields ) {
-			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'post-runtime-engine' ), 500 );
+			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -2083,7 +2083,7 @@ class PRE_Connector_API {
 		if ( ! is_array( $values ) || empty( $values ) ) {
 			return $this->error_response(
 				'pre_empty_field_values',
-				__( 'Body must include a non-empty "values" object mapping field keys to values.', 'post-runtime-engine' ),
+				__( 'Body must include a non-empty "values" object mapping field keys to values.', 'promptless-cpt-pages' ),
 				400
 			);
 		}

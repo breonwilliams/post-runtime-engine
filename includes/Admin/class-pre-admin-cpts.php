@@ -3,7 +3,7 @@
  * CPT management admin page.
  *
  * Handles list view, new/edit form, and delete action for custom post
- * types registered through Post Runtime Engine. Uses standard WordPress
+ * types registered through Promptless CPT Pages. Uses standard WordPress
  * admin patterns (admin notices, nonces, the form-table CSS, submit_button
  * helper). All persistence goes through PRE_CPT_Registry; this class only
  * deals with the UI layer.
@@ -142,25 +142,25 @@ class PRE_Admin_CPTs {
 
 		?>
 		<h1 class="wp-heading-inline">
-			<?php esc_html_e( 'Post Types', 'post-runtime-engine' ); ?>
+			<?php esc_html_e( 'Post Types', 'promptless-cpt-pages' ); ?>
 		</h1>
 		<a href="<?php echo esc_url( $this->url( array( 'action' => 'new' ) ) ); ?>" class="page-title-action">
-			<?php esc_html_e( 'Add New', 'post-runtime-engine' ); ?>
+			<?php esc_html_e( 'Add New', 'promptless-cpt-pages' ); ?>
 		</a>
 		<hr class="wp-header-end">
 
 		<p class="description">
-			<?php esc_html_e( 'Custom post types registered by Post Runtime Engine. Each CPT can have its own grouping definitions and per-post structured data.', 'post-runtime-engine' ); ?>
+			<?php esc_html_e( 'Custom post types registered by Promptless CPT Pages. Each CPT can have its own grouping definitions and per-post structured data.', 'promptless-cpt-pages' ); ?>
 		</p>
 
 		<?php if ( empty( $cpts ) ) : ?>
 			<div class="pre-empty-state">
 				<p>
-					<?php esc_html_e( 'No post types registered yet.', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'No post types registered yet.', 'promptless-cpt-pages' ); ?>
 				</p>
 				<p>
 					<a href="<?php echo esc_url( $this->url( array( 'action' => 'new' ) ) ); ?>" class="button button-primary">
-						<?php esc_html_e( 'Register your first post type', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'Register your first post type', 'promptless-cpt-pages' ); ?>
 					</a>
 				</p>
 			</div>
@@ -168,13 +168,13 @@ class PRE_Admin_CPTs {
 			<table class="wp-list-table widefat fixed striped pre-cpts-table">
 				<thead>
 					<tr>
-						<th><?php esc_html_e( 'Slug', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Singular', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Plural', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Hierarchical', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Public', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Version', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Actions', 'post-runtime-engine' ); ?></th>
+						<th><?php esc_html_e( 'Slug', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Singular', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Plural', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Hierarchical', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Public', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Version', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Actions', 'promptless-cpt-pages' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -183,26 +183,26 @@ class PRE_Admin_CPTs {
 							<td><code><?php echo esc_html( $slug ); ?></code></td>
 							<td><?php echo esc_html( $def['label_singular'] ?? '' ); ?></td>
 							<td><?php echo esc_html( $def['label_plural'] ?? '' ); ?></td>
-							<td><?php echo ! empty( $def['hierarchical'] ) ? esc_html__( 'Yes', 'post-runtime-engine' ) : esc_html__( 'No', 'post-runtime-engine' ); ?></td>
-							<td><?php echo ! empty( $def['public'] ) ? esc_html__( 'Yes', 'post-runtime-engine' ) : esc_html__( 'No', 'post-runtime-engine' ); ?></td>
+							<td><?php echo ! empty( $def['hierarchical'] ) ? esc_html__( 'Yes', 'promptless-cpt-pages' ) : esc_html__( 'No', 'promptless-cpt-pages' ); ?></td>
+							<td><?php echo ! empty( $def['public'] ) ? esc_html__( 'Yes', 'promptless-cpt-pages' ) : esc_html__( 'No', 'promptless-cpt-pages' ); ?></td>
 							<td><?php echo esc_html( (string) ( $def['connector_version'] ?? 1 ) ); ?></td>
 							<td>
 								<a href="<?php echo esc_url( $this->url( array( 'action' => 'edit', 'cpt' => $slug ) ) ); ?>">
-									<?php esc_html_e( 'Edit', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'Edit', 'promptless-cpt-pages' ); ?>
 								</a>
 								&nbsp;|&nbsp;
 								<a href="<?php echo esc_url( admin_url( 'admin.php?page=pre-groupings&cpt=' . $slug ) ); ?>">
-									<?php esc_html_e( 'Groupings', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'Groupings', 'promptless-cpt-pages' ); ?>
 								</a>
 								&nbsp;|&nbsp;
 								<a href="<?php echo esc_url( admin_url( 'admin.php?page=pre-post-fields&cpt=' . $slug ) ); ?>">
-									<?php esc_html_e( 'Post Fields', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'Post Fields', 'promptless-cpt-pages' ); ?>
 								</a>
 								&nbsp;|&nbsp;
 								<a href="<?php echo esc_url( $this->delete_url( $slug ) ); ?>"
 									class="pre-delete-link"
-									onclick="return confirm('<?php echo esc_js( __( 'Remove this post type registration? Existing posts of this type will remain in the database, but the type will no longer be queryable.', 'post-runtime-engine' ) ); ?>');">
-									<?php esc_html_e( 'Remove', 'post-runtime-engine' ); ?>
+									onclick="return confirm('<?php echo esc_js( __( 'Remove this post type registration? Existing posts of this type will remain in the database, but the type will no longer be queryable.', 'promptless-cpt-pages' ) ); ?>');">
+									<?php esc_html_e( 'Remove', 'promptless-cpt-pages' ); ?>
 								</a>
 							</td>
 						</tr>
@@ -220,7 +220,7 @@ class PRE_Admin_CPTs {
 			?>
 			<div class="notice notice-warning">
 				<p>
-					<strong><?php esc_html_e( 'Some post types failed to register with WordPress this request:', 'post-runtime-engine' ); ?></strong>
+					<strong><?php esc_html_e( 'Some post types failed to register with WordPress this request:', 'promptless-cpt-pages' ); ?></strong>
 				</p>
 				<ul style="list-style: disc inside;">
 					<?php foreach ( $registration_failures as $slug => $message ) : ?>
@@ -275,9 +275,9 @@ class PRE_Admin_CPTs {
 		if ( $is_edit ) {
 			$existing = $plugin->cpts ? $plugin->cpts->get( $cpt_slug ) : null;
 			if ( ! $existing ) {
-				echo '<h1>' . esc_html__( 'Edit Post Type', 'post-runtime-engine' ) . '</h1>';
-				echo '<p>' . esc_html__( 'That post type does not exist.', 'post-runtime-engine' ) . '</p>';
-				echo '<p><a class="button" href="' . esc_url( $this->url() ) . '">' . esc_html__( '← Back to Post Types', 'post-runtime-engine' ) . '</a></p>';
+				echo '<h1>' . esc_html__( 'Edit Post Type', 'promptless-cpt-pages' ) . '</h1>';
+				echo '<p>' . esc_html__( 'That post type does not exist.', 'promptless-cpt-pages' ) . '</p>';
+				echo '<p><a class="button" href="' . esc_url( $this->url() ) . '">' . esc_html__( '← Back to Post Types', 'promptless-cpt-pages' ) . '</a></p>';
 				return;
 			}
 		}
@@ -293,10 +293,10 @@ class PRE_Admin_CPTs {
 			echo esc_html( $is_edit
 				? sprintf(
 					/* translators: %s: post type slug */
-					__( 'Edit Post Type: %s', 'post-runtime-engine' ),
+					__( 'Edit Post Type: %s', 'promptless-cpt-pages' ),
 					$cpt_slug
 				)
-				: __( 'Add New Post Type', 'post-runtime-engine' )
+				: __( 'Add New Post Type', 'promptless-cpt-pages' )
 			);
 		?></h1>
 
@@ -332,11 +332,11 @@ class PRE_Admin_CPTs {
 			<?php endif; ?>
 			<?php wp_nonce_field( self::ACTION_SAVE, 'pre_nonce' ); ?>
 
-			<h2 class="title"><?php esc_html_e( 'Basic info', 'post-runtime-engine' ); ?></h2>
+			<h2 class="title"><?php esc_html_e( 'Basic info', 'promptless-cpt-pages' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_slug"><?php esc_html_e( 'Slug', 'post-runtime-engine' ); ?></label>
+						<label for="pre_slug"><?php esc_html_e( 'Slug', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -349,13 +349,13 @@ class PRE_Admin_CPTs {
 							required
 							maxlength="20">
 						<p class="description">
-							<?php esc_html_e( 'Lowercase letters, numbers, and underscores only. Maximum 20 characters. This cannot be changed after creation.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Lowercase letters, numbers, and underscores only. Maximum 20 characters. This cannot be changed after creation.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_label_singular"><?php esc_html_e( 'Singular label', 'post-runtime-engine' ); ?></label>
+						<label for="pre_label_singular"><?php esc_html_e( 'Singular label', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -367,13 +367,13 @@ class PRE_Admin_CPTs {
 							required
 							maxlength="200">
 						<p class="description">
-							<?php esc_html_e( 'Singular name shown in admin (e.g., "Listing").', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Singular name shown in admin (e.g., "Listing").', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_label_plural"><?php esc_html_e( 'Plural label', 'post-runtime-engine' ); ?></label>
+						<label for="pre_label_plural"><?php esc_html_e( 'Plural label', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -385,13 +385,13 @@ class PRE_Admin_CPTs {
 							required
 							maxlength="200">
 						<p class="description">
-							<?php esc_html_e( 'Plural name shown in admin (e.g., "Listings").', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Plural name shown in admin (e.g., "Listings").', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_description"><?php esc_html_e( 'Description', 'post-runtime-engine' ); ?></label>
+						<label for="pre_description"><?php esc_html_e( 'Description', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<textarea
@@ -403,46 +403,46 @@ class PRE_Admin_CPTs {
 				</tr>
 			</table>
 
-			<h2 class="title"><?php esc_html_e( 'Behavior', 'post-runtime-engine' ); ?></h2>
+			<h2 class="title"><?php esc_html_e( 'Behavior', 'promptless-cpt-pages' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Visibility', 'post-runtime-engine' ); ?></th>
+					<th scope="row"><?php esc_html_e( 'Visibility', 'promptless-cpt-pages' ); ?></th>
 					<td>
 						<label>
 							<input type="checkbox" name="public" value="1" <?php checked( $values['public'], true ); ?>>
-							<?php esc_html_e( 'Public', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Public', 'promptless-cpt-pages' ); ?>
 						</label>
 						<p class="description">
-							<?php esc_html_e( 'When checked, posts of this type appear in front-end queries and have public URLs.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'When checked, posts of this type appear in front-end queries and have public URLs.', 'promptless-cpt-pages' ); ?>
 						</p>
 						<br>
 						<label>
 							<input type="checkbox" name="has_archive" value="1" <?php checked( $values['has_archive'], true ); ?>>
-							<?php esc_html_e( 'Has archive page', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Has archive page', 'promptless-cpt-pages' ); ?>
 						</label>
 						<br>
 						<label>
 							<input type="checkbox" name="hierarchical" value="1" <?php checked( $values['hierarchical'], true ); ?>>
-							<?php esc_html_e( 'Hierarchical (supports parent/child relationships)', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Hierarchical (supports parent/child relationships)', 'promptless-cpt-pages' ); ?>
 						</label>
 						<p class="description">
-							<?php esc_html_e( 'Required for the child_posts grouping source mode.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Required for the child_posts grouping source mode.', 'promptless-cpt-pages' ); ?>
 						</p>
 						<br>
 						<label>
 							<input type="checkbox" name="show_in_rest" value="1" <?php checked( $values['show_in_rest'], true ); ?>>
-							<?php esc_html_e( 'Available in REST API and block editor', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Available in REST API and block editor', 'promptless-cpt-pages' ); ?>
 						</label>
 						<br>
 						<label>
 							<input type="checkbox" name="show_in_menu" value="1" <?php checked( $values['show_in_menu'], true ); ?>>
-							<?php esc_html_e( 'Show in admin menu', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Show in admin menu', 'promptless-cpt-pages' ); ?>
 						</label>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_menu_position"><?php esc_html_e( 'Menu position', 'post-runtime-engine' ); ?></label>
+						<label for="pre_menu_position"><?php esc_html_e( 'Menu position', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -454,13 +454,13 @@ class PRE_Admin_CPTs {
 							min="1"
 							max="100">
 						<p class="description">
-							<?php esc_html_e( 'Where in the admin menu to place this CPT. WordPress defaults: 5 = Posts, 20 = Pages, 25 = Comments. Higher numbers go further down.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Where in the admin menu to place this CPT. WordPress defaults: 5 = Posts, 20 = Pages, 25 = Comments. Higher numbers go further down.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_menu_icon"><?php esc_html_e( 'Menu icon', 'post-runtime-engine' ); ?></label>
+						<label for="pre_menu_icon"><?php esc_html_e( 'Menu icon', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -474,7 +474,7 @@ class PRE_Admin_CPTs {
 							echo wp_kses(
 								sprintf(
 									/* translators: %s: link to the dashicons reference */
-									__( 'A %s name (e.g., "dashicons-admin-home"), an attachment URL, or a base64-encoded SVG.', 'post-runtime-engine' ),
+									__( 'A %s name (e.g., "dashicons-admin-home"), an attachment URL, or a base64-encoded SVG.', 'promptless-cpt-pages' ),
 									'<a href="https://developer.wordpress.org/resource/dashicons/" target="_blank" rel="noopener">Dashicon</a>'
 								),
 								array( 'a' => array( 'href' => array(), 'target' => array(), 'rel' => array() ) )
@@ -485,22 +485,22 @@ class PRE_Admin_CPTs {
 				</tr>
 			</table>
 
-			<h2 class="title"><?php esc_html_e( 'Editor features', 'post-runtime-engine' ); ?></h2>
+			<h2 class="title"><?php esc_html_e( 'Editor features', 'promptless-cpt-pages' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Supports', 'post-runtime-engine' ); ?></th>
+					<th scope="row"><?php esc_html_e( 'Supports', 'promptless-cpt-pages' ); ?></th>
 					<td>
 						<?php
 						$supports_options = array(
-							'title'           => __( 'Title', 'post-runtime-engine' ),
-							'editor'          => __( 'Editor (main content)', 'post-runtime-engine' ),
-							'thumbnail'       => __( 'Featured image', 'post-runtime-engine' ),
-							'excerpt'         => __( 'Excerpt', 'post-runtime-engine' ),
-							'author'          => __( 'Author', 'post-runtime-engine' ),
-							'comments'        => __( 'Comments', 'post-runtime-engine' ),
-							'revisions'       => __( 'Revisions', 'post-runtime-engine' ),
-							'page-attributes' => __( 'Page attributes (parent, order)', 'post-runtime-engine' ),
-							'custom-fields'   => __( 'Custom fields', 'post-runtime-engine' ),
+							'title'           => __( 'Title', 'promptless-cpt-pages' ),
+							'editor'          => __( 'Editor (main content)', 'promptless-cpt-pages' ),
+							'thumbnail'       => __( 'Featured image', 'promptless-cpt-pages' ),
+							'excerpt'         => __( 'Excerpt', 'promptless-cpt-pages' ),
+							'author'          => __( 'Author', 'promptless-cpt-pages' ),
+							'comments'        => __( 'Comments', 'promptless-cpt-pages' ),
+							'revisions'       => __( 'Revisions', 'promptless-cpt-pages' ),
+							'page-attributes' => __( 'Page attributes (parent, order)', 'promptless-cpt-pages' ),
+							'custom-fields'   => __( 'Custom fields', 'promptless-cpt-pages' ),
 						);
 						foreach ( $supports_options as $key => $label ) {
 							$checked = in_array( $key, $values['supports'], true );
@@ -513,13 +513,13 @@ class PRE_Admin_CPTs {
 						}
 						?>
 						<p class="description">
-							<?php esc_html_e( 'Most CPTs need at minimum: title, editor, thumbnail, excerpt.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Most CPTs need at minimum: title, editor, thumbnail, excerpt.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_taxonomies"><?php esc_html_e( 'Taxonomies', 'post-runtime-engine' ); ?></label>
+						<label for="pre_taxonomies"><?php esc_html_e( 'Taxonomies', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -529,13 +529,13 @@ class PRE_Admin_CPTs {
 							class="regular-text code"
 							value="<?php echo esc_attr( implode( ', ', $values['taxonomies'] ) ); ?>">
 						<p class="description">
-							<?php esc_html_e( 'Comma-separated list of taxonomy slugs to attach to this post type. Taxonomies must be registered separately (custom taxonomy registration is a v1.1 feature).', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Comma-separated list of taxonomy slugs to attach to this post type. Taxonomies must be registered separately (custom taxonomy registration is a v1.1 feature).', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_capability_type"><?php esc_html_e( 'Capability type', 'post-runtime-engine' ); ?></label>
+						<label for="pre_capability_type"><?php esc_html_e( 'Capability type', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -545,91 +545,91 @@ class PRE_Admin_CPTs {
 							class="regular-text code"
 							value="<?php echo esc_attr( $values['capability_type'] ); ?>">
 						<p class="description">
-							<?php esc_html_e( 'Defaults to "post" — posts of this type use the standard edit_posts / publish_posts / delete_posts capabilities. Change only if you understand WordPress capability mapping.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Defaults to "post" — posts of this type use the standard edit_posts / publish_posts / delete_posts capabilities. Change only if you understand WordPress capability mapping.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 			</table>
 
-			<h2 class="title"><?php esc_html_e( 'Hero', 'post-runtime-engine' ); ?></h2>
+			<h2 class="title"><?php esc_html_e( 'Hero', 'promptless-cpt-pages' ); ?></h2>
 			<p class="description" style="margin-top:0;">
-				<?php esc_html_e( 'Controls the layout of the post title, excerpt, and featured image at the top of every single page of this CPT. Pick the shape that matches the content: split for profile-style content (real estate, attorney bios, team pages), stacked for editorial content (events, courses, articles).', 'post-runtime-engine' ); ?>
+				<?php esc_html_e( 'Controls the layout of the post title, excerpt, and featured image at the top of every single page of this CPT. Pick the shape that matches the content: split for profile-style content (real estate, attorney bios, team pages), stacked for editorial content (events, courses, articles).', 'promptless-cpt-pages' ); ?>
 			</p>
 
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_hero_layout"><?php esc_html_e( 'Hero layout', 'post-runtime-engine' ); ?></label>
+						<label for="pre_hero_layout"><?php esc_html_e( 'Hero layout', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<select id="pre_hero_layout" name="hero_layout">
 							<option value="stacked" <?php selected( $values['hero_layout'], 'stacked' ); ?>>
-								<?php esc_html_e( 'Stacked — featured image as a banner above the title (16:9)', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Stacked — featured image as a banner above the title (16:9)', 'promptless-cpt-pages' ); ?>
 							</option>
 							<option value="split" <?php selected( $values['hero_layout'], 'split' ); ?>>
-								<?php esc_html_e( 'Split — featured image side-by-side with title + excerpt (1:1)', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Split — featured image side-by-side with title + excerpt (1:1)', 'promptless-cpt-pages' ); ?>
 							</option>
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'When the post has no featured image, both layouts collapse to a clean text-only hero — no empty image slot.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'When the post has no featured image, both layouts collapse to a clean text-only hero — no empty image slot.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_hero_image_position"><?php esc_html_e( 'Image position', 'post-runtime-engine' ); ?></label>
+						<label for="pre_hero_image_position"><?php esc_html_e( 'Image position', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<select id="pre_hero_image_position" name="hero_image_position">
 							<option value="left" <?php selected( $values['hero_image_position'], 'left' ); ?>>
-								<?php esc_html_e( 'Left', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Left', 'promptless-cpt-pages' ); ?>
 							</option>
 							<option value="right" <?php selected( $values['hero_image_position'], 'right' ); ?>>
-								<?php esc_html_e( 'Right', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Right', 'promptless-cpt-pages' ); ?>
 							</option>
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'Only applies when Hero layout is set to Split. Stacked layouts always place the image above the text.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Only applies when Hero layout is set to Split. Stacked layouts always place the image above the text.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_hero_image_aspect"><?php esc_html_e( 'Image aspect ratio', 'post-runtime-engine' ); ?></label>
+						<label for="pre_hero_image_aspect"><?php esc_html_e( 'Image aspect ratio', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<select id="pre_hero_image_aspect" name="hero_image_aspect">
 							<option value="square" <?php selected( $values['hero_image_aspect'], 'square' ); ?>>
-								<?php esc_html_e( 'Square (1:1) — headshots, profiles, team pages', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Square (1:1) — headshots, profiles, team pages', 'promptless-cpt-pages' ); ?>
 							</option>
 							<option value="landscape" <?php selected( $values['hero_image_aspect'], 'landscape' ); ?>>
-								<?php esc_html_e( 'Landscape (4:3) — property photos, product shots', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Landscape (4:3) — property photos, product shots', 'promptless-cpt-pages' ); ?>
 							</option>
 							<option value="wide" <?php selected( $values['hero_image_aspect'], 'wide' ); ?>>
-								<?php esc_html_e( 'Wide (16:9) — cinematic banner imagery', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Wide (16:9) — cinematic banner imagery', 'promptless-cpt-pages' ); ?>
 							</option>
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'Only applies when Hero layout is set to Split. Pick the shape that matches the natural aspect of your photos so they crop cleanly. Stacked layouts always use a 16:9 banner.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Only applies when Hero layout is set to Split. Pick the shape that matches the natural aspect of your photos so they crop cleanly. Stacked layouts always use a 16:9 banner.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 			</table>
 
-			<h2 class="title"><?php esc_html_e( 'Grouping defaults', 'post-runtime-engine' ); ?></h2>
+			<h2 class="title"><?php esc_html_e( 'Grouping defaults', 'promptless-cpt-pages' ); ?></h2>
 			<p class="description" style="margin-top:0;">
-				<?php esc_html_e( 'Defaults that apply across every grouping rendered for this CPT. Useful when the same visual treatment fits all related-content groupings (sidebars, footers).', 'post-runtime-engine' ); ?>
+				<?php esc_html_e( 'Defaults that apply across every grouping rendered for this CPT. Useful when the same visual treatment fits all related-content groupings (sidebars, footers).', 'promptless-cpt-pages' ); ?>
 			</p>
 
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_default_icon"><?php esc_html_e( 'Default icon', 'post-runtime-engine' ); ?></label>
+						<label for="pre_default_icon"><?php esc_html_e( 'Default icon', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<select id="pre_default_icon" name="default_icon">
 							<option value="" <?php selected( $values['default_icon'], '' ); ?>>
-								<?php esc_html_e( '— None —', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( '— None —', 'promptless-cpt-pages' ); ?>
 							</option>
 							<?php foreach ( PRE_Icon_Library::get_grouped_by_category() as $category => $icons_in_category ) : ?>
 								<optgroup label="<?php echo esc_attr( $category ); ?>">
@@ -642,49 +642,49 @@ class PRE_Admin_CPTs {
 							<?php endforeach; ?>
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'Used as a fallback visual cue when an item has no icon and no image — for example, when an auto-resolved related-listings sidebar pulls in items from posts that don\'t have a per-post icon set. Compact-grid and horizontal-row variants are icon-only by design and will use this when no per-item icon is set. Leave blank to render those items without media.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Used as a fallback visual cue when an item has no icon and no image — for example, when an auto-resolved related-listings sidebar pulls in items from posts that don\'t have a per-post icon set. Compact-grid and horizontal-row variants are icon-only by design and will use this when no per-item icon is set. Leave blank to render those items without media.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 			</table>
 
-			<h2><?php esc_html_e( 'Archive card meta', 'post-runtime-engine' ); ?></h2>
+			<h2><?php esc_html_e( 'Archive card meta', 'promptless-cpt-pages' ); ?></h2>
 			<p class="description" style="margin-top:0;">
-				<?php esc_html_e( 'Control which theme-rendered meta items appear under each card on the post-type archive page. Affects only the theme archive — the AISB PostGrid section has its own per-section toggles.', 'post-runtime-engine' ); ?>
+				<?php esc_html_e( 'Control which theme-rendered meta items appear under each card on the post-type archive page. Affects only the theme archive — the AISB PostGrid section has its own per-section toggles.', 'promptless-cpt-pages' ); ?>
 			</p>
 
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Post date', 'post-runtime-engine' ); ?></th>
+					<th scope="row"><?php esc_html_e( 'Post date', 'promptless-cpt-pages' ); ?></th>
 					<td>
 						<label>
 							<input type="checkbox" name="archive_show_post_date" value="1" <?php checked( ! empty( $values['archive_show_post_date'] ) ); ?>>
-							<?php esc_html_e( 'Show the post create-date on archive cards', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Show the post create-date on archive cards', 'promptless-cpt-pages' ); ?>
 						</label>
 						<p class="description">
-							<?php esc_html_e( 'Turn off when this CPT already exposes a meaningful date via a post-field (e.g. an event CPT whose event_date is the date that matters). Showing both the post create-date AND a custom event date on the same card is duplicative.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Turn off when this CPT already exposes a meaningful date via a post-field (e.g. an event CPT whose event_date is the date that matters). Showing both the post create-date AND a custom event date on the same card is duplicative.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Post author', 'post-runtime-engine' ); ?></th>
+					<th scope="row"><?php esc_html_e( 'Post author', 'promptless-cpt-pages' ); ?></th>
 					<td>
 						<label>
 							<input type="checkbox" name="archive_show_post_author" value="1" <?php checked( ! empty( $values['archive_show_post_author'] ) ); ?>>
-							<?php esc_html_e( 'Show the post author byline on archive cards', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Show the post author byline on archive cards', 'promptless-cpt-pages' ); ?>
 						</label>
 						<p class="description">
-							<?php esc_html_e( 'Turn off for CPTs where the author identity is irrelevant or noisy (directories, multi-author publications where every post is by the same admin user).', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Turn off for CPTs where the author identity is irrelevant or noisy (directories, multi-author publications where every post is by the same admin user).', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 			</table>
 
-			<?php submit_button( $is_edit ? __( 'Save changes', 'post-runtime-engine' ) : __( 'Register post type', 'post-runtime-engine' ) ); ?>
+			<?php submit_button( $is_edit ? __( 'Save changes', 'promptless-cpt-pages' ) : __( 'Register post type', 'promptless-cpt-pages' ) ); ?>
 
 			<p>
 				<a class="button" href="<?php echo esc_url( $this->url() ); ?>">
-					<?php esc_html_e( '← Cancel', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( '← Cancel', 'promptless-cpt-pages' ); ?>
 				</a>
 			</p>
 		</form>
@@ -705,7 +705,7 @@ class PRE_Admin_CPTs {
 
 		$plugin = pre();
 		if ( ! $plugin->cpts ) {
-			$this->queue_notice( 'error', __( 'Internal error: CPT registry not available.', 'post-runtime-engine' ) );
+			$this->queue_notice( 'error', __( 'Internal error: CPT registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
 		}
 
@@ -722,7 +722,7 @@ class PRE_Admin_CPTs {
 			'success',
 			sprintf(
 				/* translators: %s: CPT slug */
-				__( 'Post type "%s" saved.', 'post-runtime-engine' ),
+				__( 'Post type "%s" saved.', 'promptless-cpt-pages' ),
 				$values['slug']
 			)
 		);
@@ -740,7 +740,7 @@ class PRE_Admin_CPTs {
 
 		$plugin = pre();
 		if ( ! $plugin->cpts ) {
-			$this->queue_notice( 'error', __( 'Internal error: CPT registry not available.', 'post-runtime-engine' ) );
+			$this->queue_notice( 'error', __( 'Internal error: CPT registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
 		}
 
@@ -760,7 +760,7 @@ class PRE_Admin_CPTs {
 				'success',
 				sprintf(
 					/* translators: %s: CPT slug */
-					__( 'Post type "%s" removed. Existing posts of this type are preserved in the database.', 'post-runtime-engine' ),
+					__( 'Post type "%s" removed. Existing posts of this type are preserved in the database.', 'promptless-cpt-pages' ),
 					$cpt_slug
 				)
 			);

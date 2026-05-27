@@ -60,7 +60,7 @@ class PRE_Connector_Settings {
 	 *
 	 * @var string
 	 */
-	const APP_PASSWORD_NAME = 'Post Runtime Engine — Claude Cowork';
+	const APP_PASSWORD_NAME = 'Promptless CPT Pages — Claude Cowork';
 
 	/**
 	 * Is the connector enabled site-wide?

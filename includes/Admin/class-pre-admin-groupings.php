@@ -113,10 +113,10 @@ class PRE_Admin_Groupings {
 		$cpt    = $plugin->cpts ? $plugin->cpts->get( $this->cpt_slug ) : null;
 
 		if ( $this->cpt_slug === '' || ! $cpt ) {
-			echo '<h1>' . esc_html__( 'Manage Groupings', 'post-runtime-engine' ) . '</h1>';
-			echo '<p>' . esc_html__( 'No CPT specified, or that CPT is not registered. Open this page from the Post Types list.', 'post-runtime-engine' ) . '</p>';
+			echo '<h1>' . esc_html__( 'Manage Groupings', 'promptless-cpt-pages' ) . '</h1>';
+			echo '<p>' . esc_html__( 'No CPT specified, or that CPT is not registered. Open this page from the Post Types list.', 'promptless-cpt-pages' ) . '</p>';
 			echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_CPTS ) ) . '">';
-			echo esc_html__( '← Back to Post Types', 'post-runtime-engine' );
+			echo esc_html__( '← Back to Post Types', 'promptless-cpt-pages' );
 			echo '</a></p>';
 			echo '</div>';
 			return;
@@ -153,29 +153,29 @@ class PRE_Admin_Groupings {
 		<h1 class="wp-heading-inline">
 			<?php
 			/* translators: %s: CPT plural label */
-			printf( esc_html__( 'Groupings for "%s"', 'post-runtime-engine' ), esc_html( $cpt['label_plural'] ?? $this->cpt_slug ) );
+			printf( esc_html__( 'Groupings for "%s"', 'promptless-cpt-pages' ), esc_html( $cpt['label_plural'] ?? $this->cpt_slug ) );
 			?>
 		</h1>
 		<a href="<?php echo esc_url( $this->url( array( 'action' => 'new' ) ) ); ?>" class="page-title-action">
-			<?php esc_html_e( 'Add New', 'post-runtime-engine' ); ?>
+			<?php esc_html_e( 'Add New', 'promptless-cpt-pages' ); ?>
 		</a>
 		<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_CPTS ) ); ?>" class="page-title-action">
-			<?php esc_html_e( '← Post Types', 'post-runtime-engine' ); ?>
+			<?php esc_html_e( '← Post Types', 'promptless-cpt-pages' ); ?>
 		</a>
 		<hr class="wp-header-end">
 
 		<p class="description">
-			<?php esc_html_e( 'Groupings are the structured data fields each post in this CPT can include. Each grouping renders as an ordered list of icon/heading/text/link items via one of four layout variants.', 'post-runtime-engine' ); ?>
+			<?php esc_html_e( 'Groupings are the structured data fields each post in this CPT can include. Each grouping renders as an ordered list of icon/heading/text/link items via one of four layout variants.', 'promptless-cpt-pages' ); ?>
 		</p>
 
 		<?php if ( empty( $groupings ) ) : ?>
 			<div class="pre-empty-state">
 				<p>
-					<?php esc_html_e( 'No groupings defined for this CPT yet.', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'No groupings defined for this CPT yet.', 'promptless-cpt-pages' ); ?>
 				</p>
 				<p>
 					<a href="<?php echo esc_url( $this->url( array( 'action' => 'new' ) ) ); ?>" class="button button-primary">
-						<?php esc_html_e( 'Define your first grouping', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'Define your first grouping', 'promptless-cpt-pages' ); ?>
 					</a>
 				</p>
 			</div>
@@ -183,13 +183,13 @@ class PRE_Admin_Groupings {
 			<table class="wp-list-table widefat fixed striped pre-groupings-table">
 				<thead>
 					<tr>
-						<th><?php esc_html_e( 'Key', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Label', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Variant', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Position', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Source', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Max items', 'post-runtime-engine' ); ?></th>
-						<th><?php esc_html_e( 'Actions', 'post-runtime-engine' ); ?></th>
+						<th><?php esc_html_e( 'Key', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Label', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Variant', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Position', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Source', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Max items', 'promptless-cpt-pages' ); ?></th>
+						<th><?php esc_html_e( 'Actions', 'promptless-cpt-pages' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -203,13 +203,13 @@ class PRE_Admin_Groupings {
 							<td><?php echo esc_html( isset( $def['max_items'] ) && $def['max_items'] !== null ? (string) $def['max_items'] : '—' ); ?></td>
 							<td>
 								<a href="<?php echo esc_url( $this->url( array( 'action' => 'edit', 'grouping' => $key ) ) ); ?>">
-									<?php esc_html_e( 'Edit', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'Edit', 'promptless-cpt-pages' ); ?>
 								</a>
 								&nbsp;|&nbsp;
 								<a href="<?php echo esc_url( $this->delete_url( $key ) ); ?>"
 									class="pre-delete-link"
-									onclick="return confirm('<?php echo esc_js( __( 'Remove this grouping definition? Posts that already filled in items for this grouping will keep their data — the grouping just won\'t render until you redefine it.', 'post-runtime-engine' ) ); ?>');">
-									<?php esc_html_e( 'Remove', 'post-runtime-engine' ); ?>
+									onclick="return confirm('<?php echo esc_js( __( 'Remove this grouping definition? Posts that already filled in items for this grouping will keep their data — the grouping just won\'t render until you redefine it.', 'promptless-cpt-pages' ) ); ?>');">
+									<?php esc_html_e( 'Remove', 'promptless-cpt-pages' ); ?>
 								</a>
 							</td>
 						</tr>
@@ -263,9 +263,9 @@ class PRE_Admin_Groupings {
 		if ( $is_edit ) {
 			$existing = $plugin->groupings ? $plugin->groupings->get( $this->cpt_slug, $grouping_key ) : null;
 			if ( ! $existing ) {
-				echo '<h1>' . esc_html__( 'Edit Grouping', 'post-runtime-engine' ) . '</h1>';
-				echo '<p>' . esc_html__( 'That grouping does not exist for this CPT.', 'post-runtime-engine' ) . '</p>';
-				echo '<p><a class="button" href="' . esc_url( $this->url() ) . '">' . esc_html__( '← Back to Groupings', 'post-runtime-engine' ) . '</a></p>';
+				echo '<h1>' . esc_html__( 'Edit Grouping', 'promptless-cpt-pages' ) . '</h1>';
+				echo '<p>' . esc_html__( 'That grouping does not exist for this CPT.', 'promptless-cpt-pages' ) . '</p>';
+				echo '<p><a class="button" href="' . esc_url( $this->url() ) . '">' . esc_html__( '← Back to Groupings', 'promptless-cpt-pages' ) . '</a></p>';
 				return;
 			}
 		}
@@ -290,13 +290,13 @@ class PRE_Admin_Groupings {
 			echo esc_html( $is_edit
 				? sprintf(
 					/* translators: %1$s: grouping key, %2$s: CPT plural label */
-					__( 'Edit Grouping: %1$s (in %2$s)', 'post-runtime-engine' ),
+					__( 'Edit Grouping: %1$s (in %2$s)', 'promptless-cpt-pages' ),
 					$grouping_key,
 					$cpt['label_plural'] ?? $this->cpt_slug
 				)
 				: sprintf(
 					/* translators: %s: CPT plural label */
-					__( 'New Grouping for %s', 'post-runtime-engine' ),
+					__( 'New Grouping for %s', 'promptless-cpt-pages' ),
 					$cpt['label_plural'] ?? $this->cpt_slug
 				)
 			);
@@ -313,11 +313,11 @@ class PRE_Admin_Groupings {
 			<input type="hidden" name="mode" value="<?php echo esc_attr( $mode ); ?>">
 			<?php wp_nonce_field( self::ACTION_SAVE, 'pre_nonce' ); ?>
 
-			<h2 class="title"><?php esc_html_e( 'Identifier', 'post-runtime-engine' ); ?></h2>
+			<h2 class="title"><?php esc_html_e( 'Identifier', 'promptless-cpt-pages' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_grouping_key"><?php esc_html_e( 'Key', 'post-runtime-engine' ); ?></label>
+						<label for="pre_grouping_key"><?php esc_html_e( 'Key', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -329,13 +329,13 @@ class PRE_Admin_Groupings {
 							<?php echo $is_edit ? 'readonly' : ''; ?>
 							required>
 						<p class="description">
-							<?php esc_html_e( 'Lowercase letters, numbers, and underscores only. Used by Cowork and the connector to reference this grouping.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Lowercase letters, numbers, and underscores only. Used by Cowork and the connector to reference this grouping.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_grouping_label"><?php esc_html_e( 'Label', 'post-runtime-engine' ); ?></label>
+						<label for="pre_grouping_label"><?php esc_html_e( 'Label', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -347,13 +347,13 @@ class PRE_Admin_Groupings {
 							required
 							maxlength="200">
 						<p class="description">
-							<?php esc_html_e( 'Human-readable label shown above the grouping when rendered (e.g., "Quick Specs", "Amenities", "Practice Areas").', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Human-readable label shown above the grouping when rendered (e.g., "Quick Specs", "Amenities", "Practice Areas").', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_grouping_description"><?php esc_html_e( 'Description', 'post-runtime-engine' ); ?></label>
+						<label for="pre_grouping_description"><?php esc_html_e( 'Description', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<textarea
@@ -362,17 +362,17 @@ class PRE_Admin_Groupings {
 							class="large-text"
 							rows="2"><?php echo esc_textarea( $values['description'] ); ?></textarea>
 						<p class="description">
-							<?php esc_html_e( 'Optional. Helps editors remember what content belongs in this grouping. Not displayed on the frontend.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Optional. Helps editors remember what content belongs in this grouping. Not displayed on the frontend.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 			</table>
 
-			<h2 class="title"><?php esc_html_e( 'Default presentation', 'post-runtime-engine' ); ?></h2>
+			<h2 class="title"><?php esc_html_e( 'Default presentation', 'promptless-cpt-pages' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_default_variant"><?php esc_html_e( 'Default variant', 'post-runtime-engine' ); ?></label>
+						<label for="pre_default_variant"><?php esc_html_e( 'Default variant', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<select id="pre_default_variant" name="default_variant" required>
@@ -383,13 +383,13 @@ class PRE_Admin_Groupings {
 							<?php endforeach; ?>
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'How this grouping renders by default. Editors can override per-post on the post edit screen.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'How this grouping renders by default. Editors can override per-post on the post edit screen.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_default_position"><?php esc_html_e( 'Default position', 'post-runtime-engine' ); ?></label>
+						<label for="pre_default_position"><?php esc_html_e( 'Default position', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<select id="pre_default_position" name="default_position" required>
@@ -400,13 +400,13 @@ class PRE_Admin_Groupings {
 							<?php endforeach; ?>
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'Where this grouping renders relative to the post\'s main content.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Where this grouping renders relative to the post\'s main content.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_max_items"><?php esc_html_e( 'Max items', 'post-runtime-engine' ); ?></label>
+						<label for="pre_max_items"><?php esc_html_e( 'Max items', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -418,41 +418,41 @@ class PRE_Admin_Groupings {
 							min="1"
 							max="100">
 						<p class="description">
-							<?php esc_html_e( 'Optional cap on items per post. Leave blank for no cap (up to the global maximum of 100). Required = 1 when default variant is featured-card.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Optional cap on items per post. Leave blank for no cap (up to the global maximum of 100). Required = 1 when default variant is featured-card.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 			</table>
 
-			<h2 class="title"><?php esc_html_e( 'Default source', 'post-runtime-engine' ); ?></h2>
+			<h2 class="title"><?php esc_html_e( 'Default source', 'promptless-cpt-pages' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_source_type"><?php esc_html_e( 'Source mode', 'post-runtime-engine' ); ?></label>
+						<label for="pre_source_type"><?php esc_html_e( 'Source mode', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<select id="pre_source_type" name="source_type">
 							<option value="manual" <?php selected( $values['source_type'], 'manual' ); ?>>
-								<?php esc_html_e( 'Manual — items entered per post', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Manual — items entered per post', 'promptless-cpt-pages' ); ?>
 							</option>
 							<option value="child_posts" <?php selected( $values['source_type'], 'child_posts' ); ?>>
-								<?php esc_html_e( 'Child posts — auto-populated from this post\'s children (CPT must be hierarchical)', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Child posts — auto-populated from this post\'s children (CPT must be hierarchical)', 'promptless-cpt-pages' ); ?>
 							</option>
 							<option value="taxonomy_match" <?php selected( $values['source_type'], 'taxonomy_match' ); ?>>
-								<?php esc_html_e( 'Taxonomy match — auto-populated from posts sharing a taxonomy term', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Taxonomy match — auto-populated from posts sharing a taxonomy term', 'promptless-cpt-pages' ); ?>
 							</option>
 							<option value="meta_match" <?php selected( $values['source_type'], 'meta_match' ); ?>>
-								<?php esc_html_e( 'Meta match — auto-populated from posts whose meta field equals this post\'s value', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Meta match — auto-populated from posts whose meta field equals this post\'s value', 'promptless-cpt-pages' ); ?>
 							</option>
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'For "child_posts" the parent CPT must have hierarchical = true. For "taxonomy_match" specify a taxonomy slug below. For "meta_match" specify the post-meta key that identifies related posts (e.g., _agent_id, _employer_id).', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'For "child_posts" the parent CPT must have hierarchical = true. For "taxonomy_match" specify a taxonomy slug below. For "meta_match" specify the post-meta key that identifies related posts (e.g., _agent_id, _employer_id).', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr class="pre-source-row pre-source-row--taxonomy">
 					<th scope="row">
-						<label for="pre_source_taxonomy"><?php esc_html_e( 'Taxonomy slug', 'post-runtime-engine' ); ?></label>
+						<label for="pre_source_taxonomy"><?php esc_html_e( 'Taxonomy slug', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -462,13 +462,13 @@ class PRE_Admin_Groupings {
 							class="regular-text code"
 							value="<?php echo esc_attr( $values['source_taxonomy'] ); ?>">
 						<p class="description">
-							<?php esc_html_e( 'Only used when source mode is "taxonomy_match". Must be a taxonomy registered with WordPress.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Only used when source mode is "taxonomy_match". Must be a taxonomy registered with WordPress.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr class="pre-source-row pre-source-row--meta">
 					<th scope="row">
-						<label for="pre_source_meta_key"><?php esc_html_e( 'Post-meta key', 'post-runtime-engine' ); ?></label>
+						<label for="pre_source_meta_key"><?php esc_html_e( 'Post-meta key', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -479,13 +479,13 @@ class PRE_Admin_Groupings {
 							value="<?php echo esc_attr( $values['source_meta_key'] ); ?>"
 							maxlength="64">
 						<p class="description">
-							<?php esc_html_e( 'Only used when source mode is "meta_match". The resolver reads the current post\'s value for this meta key and returns other posts in the same CPT whose value matches. Underscore-prefixed keys (private meta) are allowed. Examples: _agent_id, _employer_id, _business_id.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Only used when source mode is "meta_match". The resolver reads the current post\'s value for this meta key and returns other posts in the same CPT whose value matches. Underscore-prefixed keys (private meta) are allowed. Examples: _agent_id, _employer_id, _business_id.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr class="pre-source-row pre-source-row--auto">
 					<th scope="row">
-						<label for="pre_source_limit"><?php esc_html_e( 'Item limit', 'post-runtime-engine' ); ?></label>
+						<label for="pre_source_limit"><?php esc_html_e( 'Item limit', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
@@ -497,97 +497,62 @@ class PRE_Admin_Groupings {
 							min="1"
 							max="100">
 						<p class="description">
-							<?php esc_html_e( 'Maximum items the auto-populated source returns. Defaults to 6.', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Maximum items the auto-populated source returns. Defaults to 6.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 				<tr class="pre-source-row pre-source-row--auto">
-					<th scope="row"><?php esc_html_e( 'Self-reference', 'post-runtime-engine' ); ?></th>
+					<th scope="row"><?php esc_html_e( 'Self-reference', 'promptless-cpt-pages' ); ?></th>
 					<td>
 						<label>
 							<input type="checkbox" name="source_exclude_self" value="1" <?php checked( $values['source_exclude_self'], true ); ?>>
-							<?php esc_html_e( 'Exclude the current post from results', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Exclude the current post from results', 'promptless-cpt-pages' ); ?>
 						</label>
 					</td>
 				</tr>
 			</table>
 
-			<h2 class="title"><?php esc_html_e( 'Field requirements', 'post-runtime-engine' ); ?></h2>
+			<h2 class="title"><?php esc_html_e( 'Field requirements', 'promptless-cpt-pages' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Per-item requirements', 'post-runtime-engine' ); ?></th>
+					<th scope="row"><?php esc_html_e( 'Per-item requirements', 'promptless-cpt-pages' ); ?></th>
 					<td>
 						<label style="display:block; margin-bottom:4px;">
 							<input type="checkbox" name="heading_required" value="1" <?php checked( $values['heading_required'], true ); ?>>
-							<?php esc_html_e( 'Heading is required', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Heading is required', 'promptless-cpt-pages' ); ?>
 						</label>
 						<label style="display:block; margin-bottom:4px;">
 							<input type="checkbox" name="supporting_text_required" value="1" <?php checked( $values['supporting_text_required'], true ); ?>>
-							<?php esc_html_e( 'Supporting text is required', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Supporting text is required', 'promptless-cpt-pages' ); ?>
 						</label>
 						<label style="display:block; margin-bottom:4px;">
 							<input type="checkbox" name="link_required" value="1" <?php checked( $values['link_required'], true ); ?>>
-							<?php esc_html_e( 'Link is required', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Link is required', 'promptless-cpt-pages' ); ?>
 						</label>
 						<label style="display:block; margin-bottom:4px;">
 							<input type="checkbox" name="icon_or_image_required" value="1" <?php checked( $values['icon_or_image_required'], true ); ?>>
-							<?php esc_html_e( 'Icon or image is required', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Icon or image is required', 'promptless-cpt-pages' ); ?>
 						</label>
 						<p class="description">
-							<?php esc_html_e( 'Heading defaults to required because most variants depend on it. Adjust the others to match the data shape this grouping needs (e.g., a featured-card agent grouping should require image and supporting text).', 'post-runtime-engine' ); ?>
+							<?php esc_html_e( 'Heading defaults to required because most variants depend on it. Adjust the others to match the data shape this grouping needs (e.g., a featured-card agent grouping should require image and supporting text).', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
 			</table>
 
-			<?php submit_button( $is_edit ? __( 'Save changes', 'post-runtime-engine' ) : __( 'Define grouping', 'post-runtime-engine' ) ); ?>
+			<?php submit_button( $is_edit ? __( 'Save changes', 'promptless-cpt-pages' ) : __( 'Define grouping', 'promptless-cpt-pages' ) ); ?>
 
 			<p>
 				<a class="button" href="<?php echo esc_url( $this->url() ); ?>">
-					<?php esc_html_e( '← Cancel', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( '← Cancel', 'promptless-cpt-pages' ); ?>
 				</a>
 			</p>
 		</form>
-
-		<script>
-			// Toggle source-specific row visibility based on source_type.
-			//
-			//   .pre-source-row--auto      → shown for taxonomy_match + meta_match
-			//                                (limit, exclude_self — common to both)
-			//   .pre-source-row--taxonomy  → shown for taxonomy_match only
-			//                                (taxonomy slug input)
-			//   .pre-source-row--meta      → shown for meta_match only
-			//                                (meta_key input)
-			//
-			// Manual + child_posts hide all source-config rows.
-			(function () {
-				var select = document.getElementById('pre_source_type');
-				if (!select) return;
-
-				var rowsAuto     = document.querySelectorAll('.pre-source-row--auto');
-				var rowsTaxonomy = document.querySelectorAll('.pre-source-row--taxonomy');
-				var rowsMeta     = document.querySelectorAll('.pre-source-row--meta');
-
-				function setVisible(rows, show) {
-					rows.forEach(function (r) {
-						r.style.display = show ? '' : 'none';
-					});
-				}
-
-				function sync() {
-					var v = select.value;
-					var isTaxonomy = (v === 'taxonomy_match');
-					var isMeta     = (v === 'meta_match');
-					setVisible(rowsTaxonomy, isTaxonomy);
-					setVisible(rowsMeta, isMeta);
-					setVisible(rowsAuto, isTaxonomy || isMeta);
-				}
-
-				select.addEventListener('change', sync);
-				sync();
-			})();
-		</script>
 		<?php
+		// The source-type row visibility toggle script lives in
+		// assets/js/admin-groupings.js, enqueued by PRE_Admin::enqueue_assets()
+		// when $current_page === PAGE_GROUPINGS. No inline <script> here per
+		// WordPress.org Plugin Check guidelines.
 	}
 
 	// -----------------------------------------------------------------------
@@ -602,7 +567,7 @@ class PRE_Admin_Groupings {
 
 		$plugin = pre();
 		if ( ! $plugin->groupings ) {
-			$this->queue_notice( 'error', __( 'Internal error: grouping registry not available.', 'post-runtime-engine' ) );
+			$this->queue_notice( 'error', __( 'Internal error: grouping registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
 		}
 
@@ -623,7 +588,7 @@ class PRE_Admin_Groupings {
 			'success',
 			sprintf(
 				/* translators: %s: grouping key */
-				__( 'Grouping "%s" saved.', 'post-runtime-engine' ),
+				__( 'Grouping "%s" saved.', 'promptless-cpt-pages' ),
 				$values['key']
 			)
 		);
@@ -641,7 +606,7 @@ class PRE_Admin_Groupings {
 
 		$plugin = pre();
 		if ( ! $plugin->groupings ) {
-			$this->queue_notice( 'error', __( 'Internal error: grouping registry not available.', 'post-runtime-engine' ) );
+			$this->queue_notice( 'error', __( 'Internal error: grouping registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
 		}
 
@@ -654,7 +619,7 @@ class PRE_Admin_Groupings {
 				'success',
 				sprintf(
 					/* translators: %s: grouping key */
-					__( 'Grouping "%s" removed.', 'post-runtime-engine' ),
+					__( 'Grouping "%s" removed.', 'promptless-cpt-pages' ),
 					$grouping_key
 				)
 			);
@@ -824,10 +789,10 @@ class PRE_Admin_Groupings {
 	 */
 	private function variants_with_labels() {
 		return array(
-			'compact-grid'   => __( 'Compact grid (icon + heading, multi-column)', 'post-runtime-engine' ),
-			'card-grid'      => __( 'Card grid (icon + heading + supporting text, multi-column)', 'post-runtime-engine' ),
-			'featured-card'  => __( 'Featured card (image + heading + text + CTA, single item)', 'post-runtime-engine' ),
-			'horizontal-row' => __( 'Horizontal row (inline chips for at-a-glance specs)', 'post-runtime-engine' ),
+			'compact-grid'   => __( 'Compact grid (icon + heading, multi-column)', 'promptless-cpt-pages' ),
+			'card-grid'      => __( 'Card grid (icon + heading + supporting text, multi-column)', 'promptless-cpt-pages' ),
+			'featured-card'  => __( 'Featured card (image + heading + text + CTA, single item)', 'promptless-cpt-pages' ),
+			'horizontal-row' => __( 'Horizontal row (inline chips for at-a-glance specs)', 'promptless-cpt-pages' ),
 		);
 	}
 
@@ -838,9 +803,9 @@ class PRE_Admin_Groupings {
 	 */
 	private function positions_with_labels() {
 		return array(
-			'above_main' => __( 'Above main content', 'post-runtime-engine' ),
-			'below_main' => __( 'Below main content', 'post-runtime-engine' ),
-			'sidebar'    => __( 'Sidebar (sticky on desktop, stacked on mobile)', 'post-runtime-engine' ),
+			'above_main' => __( 'Above main content', 'promptless-cpt-pages' ),
+			'below_main' => __( 'Below main content', 'promptless-cpt-pages' ),
+			'sidebar'    => __( 'Sidebar (sticky on desktop, stacked on mobile)', 'promptless-cpt-pages' ),
 		);
 	}
 

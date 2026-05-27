@@ -1,6 +1,6 @@
 <?php
 /**
- * Post Fields admin page for Post Runtime Engine (v1.1).
+ * Post Fields admin page for Promptless CPT Pages (v1.1).
  *
  * Per-CPT management UI for the second field type — scalar post fields.
  * Mirrors PRE_Admin_Groupings exactly: list view + new/edit form, server-
@@ -118,10 +118,10 @@ class PRE_Admin_Post_Fields {
 		$cpt    = $plugin->cpts ? $plugin->cpts->get( $this->cpt_slug ) : null;
 
 		if ( $this->cpt_slug === '' || ! $cpt ) {
-			echo '<h1>' . esc_html__( 'Manage Post Fields', 'post-runtime-engine' ) . '</h1>';
-			echo '<p>' . esc_html__( 'No CPT specified, or that CPT is not registered. Open this page from the Post Types list.', 'post-runtime-engine' ) . '</p>';
+			echo '<h1>' . esc_html__( 'Manage Post Fields', 'promptless-cpt-pages' ) . '</h1>';
+			echo '<p>' . esc_html__( 'No CPT specified, or that CPT is not registered. Open this page from the Post Types list.', 'promptless-cpt-pages' ) . '</p>';
 			echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_CPTS ) ) . '">';
-			echo esc_html__( '← Back to Post Types', 'post-runtime-engine' );
+			echo esc_html__( '← Back to Post Types', 'promptless-cpt-pages' );
 			echo '</a></p>';
 			echo '</div>';
 			return;
@@ -161,24 +161,24 @@ class PRE_Admin_Post_Fields {
 		<h1 class="wp-heading-inline">
 			<?php
 			/* translators: %s: CPT plural label */
-			printf( esc_html__( 'Post Fields for "%s"', 'post-runtime-engine' ), esc_html( $cpt['label_plural'] ?? $this->cpt_slug ) );
+			printf( esc_html__( 'Post Fields for "%s"', 'promptless-cpt-pages' ), esc_html( $cpt['label_plural'] ?? $this->cpt_slug ) );
 			?>
 		</h1>
 		<?php if ( $count < $hard ) : ?>
 			<a href="<?php echo esc_url( $this->url( array( 'action' => 'new' ) ) ); ?>" class="page-title-action">
-				<?php esc_html_e( 'Add New', 'post-runtime-engine' ); ?>
+				<?php esc_html_e( 'Add New', 'promptless-cpt-pages' ); ?>
 			</a>
 		<?php endif; ?>
 		<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_CPTS ) ); ?>" class="page-title-action">
-			<?php esc_html_e( '← Post Types', 'post-runtime-engine' ); ?>
+			<?php esc_html_e( '← Post Types', 'promptless-cpt-pages' ); ?>
 		</a>
 		<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_GROUPINGS . '&cpt=' . $this->cpt_slug ) ); ?>" class="page-title-action">
-			<?php esc_html_e( 'Groupings', 'post-runtime-engine' ); ?>
+			<?php esc_html_e( 'Groupings', 'promptless-cpt-pages' ); ?>
 		</a>
 		<hr class="wp-header-end">
 
 		<p class="description">
-			<?php esc_html_e( 'Post fields are scalar (single-value) data points that decorate the single-post hero AND any cards listing posts of this type. Each field picks a display type (currency, badge, date, etc.) and a position in both contexts. See the design contract in docs/POST_FIELDS_V1_1_DESIGN.md for the full enum.', 'post-runtime-engine' ); ?>
+			<?php esc_html_e( 'Post fields are scalar (single-value) data points that decorate the single-post hero AND any cards listing posts of this type. Each field picks a display type (currency, badge, date, etc.) and a position in both contexts. See the design contract in docs/POST_FIELDS_V1_1_DESIGN.md for the full enum.', 'promptless-cpt-pages' ); ?>
 		</p>
 
 		<?php if ( $count >= $soft ) : ?>
@@ -188,13 +188,13 @@ class PRE_Admin_Post_Fields {
 					if ( $count >= $hard ) {
 						printf(
 							/* translators: %d: hard limit */
-							esc_html__( 'This CPT has reached the maximum of %d post fields. Remove an unused field to add a new one.', 'post-runtime-engine' ),
+							esc_html__( 'This CPT has reached the maximum of %d post fields. Remove an unused field to add a new one.', 'promptless-cpt-pages' ),
 							(int) $hard
 						);
 					} else {
 						printf(
 							/* translators: %1$d: current count, %2$d: soft warning threshold */
-							esc_html__( 'This CPT has %1$d post fields. Cards display best with %2$d or fewer; beyond that the meta strip may wrap or truncate on smaller viewports.', 'post-runtime-engine' ),
+							esc_html__( 'This CPT has %1$d post fields. Cards display best with %2$d or fewer; beyond that the meta strip may wrap or truncate on smaller viewports.', 'promptless-cpt-pages' ),
 							(int) $count,
 							(int) $soft
 						);
@@ -206,10 +206,10 @@ class PRE_Admin_Post_Fields {
 
 		<?php if ( empty( $fields ) ) : ?>
 			<div class="pre-empty-state">
-				<p><?php esc_html_e( 'No post fields defined for this CPT yet.', 'post-runtime-engine' ); ?></p>
+				<p><?php esc_html_e( 'No post fields defined for this CPT yet.', 'promptless-cpt-pages' ); ?></p>
 				<p>
 					<a href="<?php echo esc_url( $this->url( array( 'action' => 'new' ) ) ); ?>" class="button button-primary">
-						<?php esc_html_e( 'Define your first post field', 'post-runtime-engine' ); ?>
+						<?php esc_html_e( 'Define your first post field', 'promptless-cpt-pages' ); ?>
 					</a>
 				</p>
 			</div>
@@ -221,20 +221,20 @@ class PRE_Admin_Post_Fields {
 				<table class="wp-list-table widefat fixed striped pre-post-fields-table">
 					<thead>
 						<tr>
-							<th class="pre-col-handle" scope="col"><span class="screen-reader-text"><?php esc_html_e( 'Order', 'post-runtime-engine' ); ?></span></th>
-							<th scope="col"><?php esc_html_e( 'Key', 'post-runtime-engine' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Label', 'post-runtime-engine' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Display type', 'post-runtime-engine' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Card position', 'post-runtime-engine' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Hero position', 'post-runtime-engine' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Actions', 'post-runtime-engine' ); ?></th>
+							<th class="pre-col-handle" scope="col"><span class="screen-reader-text"><?php esc_html_e( 'Order', 'promptless-cpt-pages' ); ?></span></th>
+							<th scope="col"><?php esc_html_e( 'Key', 'promptless-cpt-pages' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Label', 'promptless-cpt-pages' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Display type', 'promptless-cpt-pages' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Card position', 'promptless-cpt-pages' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Hero position', 'promptless-cpt-pages' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Actions', 'promptless-cpt-pages' ); ?></th>
 						</tr>
 					</thead>
 					<tbody class="pre-post-fields-sortable">
 						<?php foreach ( $fields as $key => $def ) : ?>
 							<tr data-field-key="<?php echo esc_attr( $key ); ?>">
 								<td class="pre-col-handle" aria-hidden="true">
-									<span class="pre-drag-handle dashicons dashicons-menu" title="<?php esc_attr_e( 'Drag to reorder', 'post-runtime-engine' ); ?>"></span>
+									<span class="pre-drag-handle dashicons dashicons-menu" title="<?php esc_attr_e( 'Drag to reorder', 'promptless-cpt-pages' ); ?>"></span>
 									<input type="hidden" name="ordered_keys[]" value="<?php echo esc_attr( $key ); ?>">
 								</td>
 								<td><code><?php echo esc_html( $key ); ?></code></td>
@@ -244,13 +244,13 @@ class PRE_Admin_Post_Fields {
 								<td><?php echo esc_html( $this->position_label( $def['single_position'] ?? 'hidden' ) ); ?></td>
 								<td>
 									<a href="<?php echo esc_url( $this->url( array( 'action' => 'edit', 'field' => $key ) ) ); ?>">
-										<?php esc_html_e( 'Edit', 'post-runtime-engine' ); ?>
+										<?php esc_html_e( 'Edit', 'promptless-cpt-pages' ); ?>
 									</a>
 									&nbsp;|&nbsp;
 									<a href="<?php echo esc_url( $this->delete_url( $key ) ); ?>"
 										class="pre-delete-link"
-										onclick="return confirm('<?php echo esc_js( __( 'Remove this post field definition? Per-post values already saved on existing posts are preserved in the database — the field just won\'t render until you redefine it.', 'post-runtime-engine' ) ); ?>');">
-										<?php esc_html_e( 'Remove', 'post-runtime-engine' ); ?>
+										onclick="return confirm('<?php echo esc_js( __( 'Remove this post field definition? Per-post values already saved on existing posts are preserved in the database — the field just won\'t render until you redefine it.', 'promptless-cpt-pages' ) ); ?>');">
+										<?php esc_html_e( 'Remove', 'promptless-cpt-pages' ); ?>
 									</a>
 								</td>
 							</tr>
@@ -259,10 +259,10 @@ class PRE_Admin_Post_Fields {
 				</table>
 
 				<p class="pre-reorder-hint description">
-					<?php esc_html_e( 'Drag rows to reorder. Click "Save order" when you\'re done. Order determines render order within each position (especially important for meta_strip).', 'post-runtime-engine' ); ?>
+					<?php esc_html_e( 'Drag rows to reorder. Click "Save order" when you\'re done. Order determines render order within each position (especially important for meta_strip).', 'promptless-cpt-pages' ); ?>
 				</p>
 
-				<?php submit_button( __( 'Save order', 'post-runtime-engine' ), 'secondary', 'save_order', false ); ?>
+				<?php submit_button( __( 'Save order', 'promptless-cpt-pages' ), 'secondary', 'save_order', false ); ?>
 			</form>
 		<?php endif; ?>
 		<?php
@@ -288,9 +288,9 @@ class PRE_Admin_Post_Fields {
 		} elseif ( $mode === 'edit' ) {
 			$existing = $plugin->post_fields ? $plugin->post_fields->get( $this->cpt_slug, $field_key ) : null;
 			if ( ! $existing ) {
-				echo '<h1>' . esc_html__( 'Edit Post Field', 'post-runtime-engine' ) . '</h1>';
-				echo '<p>' . esc_html__( 'Post field not found.', 'post-runtime-engine' ) . '</p>';
-				echo '<p><a class="button" href="' . esc_url( $this->url() ) . '">' . esc_html__( '← Back to Post Fields', 'post-runtime-engine' ) . '</a></p>';
+				echo '<h1>' . esc_html__( 'Edit Post Field', 'promptless-cpt-pages' ) . '</h1>';
+				echo '<p>' . esc_html__( 'Post field not found.', 'promptless-cpt-pages' ) . '</p>';
+				echo '<p><a class="button" href="' . esc_url( $this->url() ) . '">' . esc_html__( '← Back to Post Fields', 'promptless-cpt-pages' ) . '</a></p>';
 				return;
 			}
 			$values = $this->definition_to_form_values( $existing );
@@ -308,15 +308,15 @@ class PRE_Admin_Post_Fields {
 		<h1>
 			<?php
 			echo $is_edit
-				? esc_html__( 'Edit Post Field', 'post-runtime-engine' )
-				: esc_html__( 'Add Post Field', 'post-runtime-engine' );
+				? esc_html__( 'Edit Post Field', 'promptless-cpt-pages' )
+				: esc_html__( 'Add Post Field', 'promptless-cpt-pages' );
 			?>
 		</h1>
 
 		<p class="description">
 			<?php
 			/* translators: %s: CPT plural label */
-			printf( esc_html__( 'For posts of type "%s".', 'post-runtime-engine' ), esc_html( $cpt['label_plural'] ?? $this->cpt_slug ) );
+			printf( esc_html__( 'For posts of type "%s".', 'promptless-cpt-pages' ), esc_html( $cpt['label_plural'] ?? $this->cpt_slug ) );
 			?>
 		</p>
 
@@ -337,7 +337,7 @@ class PRE_Admin_Post_Fields {
 				<tbody>
 					<tr>
 						<th scope="row">
-							<label for="pre-field-key"><?php esc_html_e( 'Key', 'post-runtime-engine' ); ?> <span class="required">*</span></label>
+							<label for="pre-field-key"><?php esc_html_e( 'Key', 'promptless-cpt-pages' ); ?> <span class="required">*</span></label>
 						</th>
 						<td>
 							<input
@@ -349,14 +349,14 @@ class PRE_Admin_Post_Fields {
 								<?php echo $is_edit ? 'readonly' : ''; ?>
 								required>
 							<p class="description">
-								<?php esc_html_e( 'Lowercase letters, numbers, and underscores. Used as the meta key (_pre_field_{key}). Cannot be changed after creation.', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Lowercase letters, numbers, and underscores. Used as the meta key (_pre_field_{key}). Cannot be changed after creation.', 'promptless-cpt-pages' ); ?>
 							</p>
 						</td>
 					</tr>
 
 					<tr>
 						<th scope="row">
-							<label for="pre-field-label"><?php esc_html_e( 'Label', 'post-runtime-engine' ); ?> <span class="required">*</span></label>
+							<label for="pre-field-label"><?php esc_html_e( 'Label', 'promptless-cpt-pages' ); ?> <span class="required">*</span></label>
 						</th>
 						<td>
 							<input
@@ -367,14 +367,14 @@ class PRE_Admin_Post_Fields {
 								value="<?php echo esc_attr( $values['label'] ); ?>"
 								required>
 							<p class="description">
-								<?php esc_html_e( 'Human-readable label, shown in the admin meta box.', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Human-readable label, shown in the admin meta box.', 'promptless-cpt-pages' ); ?>
 							</p>
 						</td>
 					</tr>
 
 					<tr>
 						<th scope="row">
-							<label for="pre-field-display-type"><?php esc_html_e( 'Display type', 'post-runtime-engine' ); ?> <span class="required">*</span></label>
+							<label for="pre-field-display-type"><?php esc_html_e( 'Display type', 'promptless-cpt-pages' ); ?> <span class="required">*</span></label>
 						</th>
 						<td>
 							<select id="pre-field-display-type" name="display_type" class="pre-field-display-type-select">
@@ -385,14 +385,14 @@ class PRE_Admin_Post_Fields {
 								<?php endforeach; ?>
 							</select>
 							<p class="description">
-								<?php esc_html_e( 'Determines the visual treatment. Some attributes below only apply to specific types.', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Determines the visual treatment. Some attributes below only apply to specific types.', 'promptless-cpt-pages' ); ?>
 							</p>
 						</td>
 					</tr>
 
 					<tr>
 						<th scope="row">
-							<label for="pre-field-card-position"><?php esc_html_e( 'Card position', 'post-runtime-engine' ); ?></label>
+							<label for="pre-field-card-position"><?php esc_html_e( 'Card position', 'promptless-cpt-pages' ); ?></label>
 						</th>
 						<td>
 							<select id="pre-field-card-position" name="card_position">
@@ -403,14 +403,14 @@ class PRE_Admin_Post_Fields {
 								<?php endforeach; ?>
 							</select>
 							<p class="description">
-								<?php esc_html_e( 'Where this field renders inside a card (PostGrid sections, archive pages, related-posts widgets).', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Where this field renders inside a card (PostGrid sections, archive pages, related-posts widgets).', 'promptless-cpt-pages' ); ?>
 							</p>
 						</td>
 					</tr>
 
 					<tr>
 						<th scope="row">
-							<label for="pre-field-single-position"><?php esc_html_e( 'Single-post hero position', 'post-runtime-engine' ); ?></label>
+							<label for="pre-field-single-position"><?php esc_html_e( 'Single-post hero position', 'promptless-cpt-pages' ); ?></label>
 						</th>
 						<td>
 							<select id="pre-field-single-position" name="single_position">
@@ -421,14 +421,14 @@ class PRE_Admin_Post_Fields {
 								<?php endforeach; ?>
 							</select>
 							<p class="description">
-								<?php esc_html_e( 'Where this field renders inside the single-post hero, alongside the post title and featured image.', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Where this field renders inside the single-post hero, alongside the post title and featured image.', 'promptless-cpt-pages' ); ?>
 							</p>
 						</td>
 					</tr>
 
 					<tr>
 						<th scope="row">
-							<label for="pre-field-description"><?php esc_html_e( 'Description', 'post-runtime-engine' ); ?></label>
+							<label for="pre-field-description"><?php esc_html_e( 'Description', 'promptless-cpt-pages' ); ?></label>
 						</th>
 						<td>
 							<textarea
@@ -438,20 +438,20 @@ class PRE_Admin_Post_Fields {
 								rows="2"
 								maxlength="<?php echo (int) PRE_Validator::MAX_FIELD_DESCRIPTION_LEN; ?>"><?php echo esc_textarea( $values['description'] ); ?></textarea>
 							<p class="description">
-								<?php esc_html_e( 'Optional admin help text. Shown above the field in the post-edit meta box.', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Optional admin help text. Shown above the field in the post-edit meta box.', 'promptless-cpt-pages' ); ?>
 							</p>
 						</td>
 					</tr>
 
 					<tr class="pre-field-cond pre-field-cond-required">
-						<th scope="row"><?php esc_html_e( 'Required', 'post-runtime-engine' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Required', 'promptless-cpt-pages' ); ?></th>
 						<td>
 							<label>
 								<input type="checkbox" name="required" value="1" <?php checked( ! empty( $values['required'] ) ); ?>>
-								<?php esc_html_e( 'Mark this field as required in the post-edit meta box.', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Mark this field as required in the post-edit meta box.', 'promptless-cpt-pages' ); ?>
 							</label>
 							<p class="description">
-								<?php esc_html_e( 'Affects admin UX only — the validator does not reject post saves with empty required fields.', 'post-runtime-engine' ); ?>
+								<?php esc_html_e( 'Affects admin UX only — the validator does not reject post saves with empty required fields.', 'promptless-cpt-pages' ); ?>
 							</p>
 						</td>
 					</tr>
@@ -462,12 +462,12 @@ class PRE_Admin_Post_Fields {
 
 			<!-- Conditional: badge / multi_badge — color intent + options map -->
 			<div class="pre-field-cond pre-field-cond-badge" data-shown-when="badge,multi_badge">
-				<h2><?php esc_html_e( 'Badge attributes', 'post-runtime-engine' ); ?></h2>
+				<h2><?php esc_html_e( 'Badge attributes', 'promptless-cpt-pages' ); ?></h2>
 				<table class="form-table" role="presentation">
 					<tbody>
 						<tr>
 							<th scope="row">
-								<label for="pre-field-color-intent"><?php esc_html_e( 'Default color intent', 'post-runtime-engine' ); ?></label>
+								<label for="pre-field-color-intent"><?php esc_html_e( 'Default color intent', 'promptless-cpt-pages' ); ?></label>
 							</th>
 							<td>
 								<select id="pre-field-color-intent" name="color_intent">
@@ -478,14 +478,14 @@ class PRE_Admin_Post_Fields {
 									<?php endforeach; ?>
 								</select>
 								<p class="description">
-									<?php esc_html_e( 'Maps to the --aisb-color-{intent} token. Individual option values can override this in the Options map below.', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'Maps to the --aisb-color-{intent} token. Individual option values can override this in the Options map below.', 'promptless-cpt-pages' ); ?>
 								</p>
 							</td>
 						</tr>
 
 						<tr>
 							<th scope="row">
-								<label for="pre-field-options-json"><?php esc_html_e( 'Options (JSON)', 'post-runtime-engine' ); ?></label>
+								<label for="pre-field-options-json"><?php esc_html_e( 'Options (JSON)', 'promptless-cpt-pages' ); ?></label>
 							</th>
 							<td>
 								<textarea
@@ -495,7 +495,7 @@ class PRE_Admin_Post_Fields {
 									rows="6"
 									placeholder='{ "open": { "label": "Open now", "color_intent": "success" }, "closed": { "label": "Closed", "color_intent": "danger" } }'><?php echo esc_textarea( $values['options_json'] ); ?></textarea>
 								<p class="description">
-									<?php esc_html_e( 'Optional. A JSON object mapping option keys to { label, color_intent? }. When defined, the post-edit meta box renders a select dropdown limited to these options. For multi_badge, lookups against this map per segment.', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'Optional. A JSON object mapping option keys to { label, color_intent? }. When defined, the post-edit meta box renders a select dropdown limited to these options. For multi_badge, lookups against this map per segment.', 'promptless-cpt-pages' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -505,16 +505,16 @@ class PRE_Admin_Post_Fields {
 
 			<!-- Conditional: meta_pair — icon picker -->
 			<div class="pre-field-cond pre-field-cond-icon" data-shown-when="meta_pair">
-				<h2><?php esc_html_e( 'Meta pair attributes', 'post-runtime-engine' ); ?></h2>
+				<h2><?php esc_html_e( 'Meta pair attributes', 'promptless-cpt-pages' ); ?></h2>
 				<table class="form-table" role="presentation">
 					<tbody>
 						<tr>
 							<th scope="row">
-								<label for="pre-field-icon"><?php esc_html_e( 'Icon', 'post-runtime-engine' ); ?></label>
+								<label for="pre-field-icon"><?php esc_html_e( 'Icon', 'promptless-cpt-pages' ); ?></label>
 							</th>
 							<td>
 								<select id="pre-field-icon" name="icon">
-									<option value=""><?php esc_html_e( '— No icon —', 'post-runtime-engine' ); ?></option>
+									<option value=""><?php esc_html_e( '— No icon —', 'promptless-cpt-pages' ); ?></option>
 									<?php
 									if ( class_exists( 'PRE_Icon_Library' ) ) {
 										$grouped = PRE_Icon_Library::get_grouped_by_category();
@@ -534,7 +534,7 @@ class PRE_Admin_Post_Fields {
 									?>
 								</select>
 								<p class="description">
-									<?php esc_html_e( 'Curated icon shown to the left of the value (e.g. 🛏 3 BR). Reuses the existing 53-icon library; extensible via the pre_icon_library filter.', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'Curated icon shown to the left of the value (e.g. 🛏 3 BR). Reuses the existing 53-icon library; extensible via the pre_icon_library filter.', 'promptless-cpt-pages' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -544,12 +544,12 @@ class PRE_Admin_Post_Fields {
 
 			<!-- Conditional: date — format mode -->
 			<div class="pre-field-cond pre-field-cond-date" data-shown-when="date">
-				<h2><?php esc_html_e( 'Date format', 'post-runtime-engine' ); ?></h2>
+				<h2><?php esc_html_e( 'Date format', 'promptless-cpt-pages' ); ?></h2>
 				<table class="form-table" role="presentation">
 					<tbody>
 						<tr>
 							<th scope="row">
-								<label for="pre-field-date-format"><?php esc_html_e( 'Format mode', 'post-runtime-engine' ); ?></label>
+								<label for="pre-field-date-format"><?php esc_html_e( 'Format mode', 'promptless-cpt-pages' ); ?></label>
 							</th>
 							<td>
 								<select id="pre-field-date-format" name="date_format">
@@ -564,7 +564,7 @@ class PRE_Admin_Post_Fields {
 
 						<tr>
 							<th scope="row">
-								<label for="pre-field-date-format-string"><?php esc_html_e( 'Custom format string', 'post-runtime-engine' ); ?></label>
+								<label for="pre-field-date-format-string"><?php esc_html_e( 'Custom format string', 'promptless-cpt-pages' ); ?></label>
 							</th>
 							<td>
 								<input
@@ -578,7 +578,7 @@ class PRE_Admin_Post_Fields {
 									<?php
 									printf(
 										/* translators: %s: link to date format docs */
-										esc_html__( 'PHP date format. See %s for the syntax. Only used when Format mode is "Custom".', 'post-runtime-engine' ),
+										esc_html__( 'PHP date format. See %s for the syntax. Only used when Format mode is "Custom".', 'promptless-cpt-pages' ),
 										'<a href="https://www.php.net/manual/en/datetime.format.php" target="_blank" rel="noopener noreferrer">php.net</a>'
 									);
 									?>
@@ -591,16 +591,16 @@ class PRE_Admin_Post_Fields {
 
 			<!-- Conditional: currency — currency code -->
 			<div class="pre-field-cond pre-field-cond-currency" data-shown-when="currency,progress">
-				<h2><?php esc_html_e( 'Currency', 'post-runtime-engine' ); ?></h2>
+				<h2><?php esc_html_e( 'Currency', 'promptless-cpt-pages' ); ?></h2>
 				<table class="form-table" role="presentation">
 					<tbody>
 						<tr>
 							<th scope="row">
-								<label for="pre-field-currency-code"><?php esc_html_e( 'Currency code', 'post-runtime-engine' ); ?></label>
+								<label for="pre-field-currency-code"><?php esc_html_e( 'Currency code', 'promptless-cpt-pages' ); ?></label>
 							</th>
 							<td>
 								<select id="pre-field-currency-code" name="currency_code">
-									<option value=""><?php esc_html_e( '— Use site default —', 'post-runtime-engine' ); ?></option>
+									<option value=""><?php esc_html_e( '— Use site default —', 'promptless-cpt-pages' ); ?></option>
 									<?php foreach ( PRE_Validator::SUPPORTED_CURRENCIES as $code ) : ?>
 										<option value="<?php echo esc_attr( $code ); ?>" <?php selected( $values['currency_code'], $code ); ?>>
 											<?php echo esc_html( $code ); ?>
@@ -608,14 +608,14 @@ class PRE_Admin_Post_Fields {
 									<?php endforeach; ?>
 								</select>
 								<p class="description">
-									<?php esc_html_e( 'ISO 4217 code. Leave empty to inherit from AISB Business Identity (if active) or the pre_currency option fallback.', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'ISO 4217 code. Leave empty to inherit from AISB Business Identity (if active) or the pre_currency option fallback.', 'promptless-cpt-pages' ); ?>
 								</p>
 							</td>
 						</tr>
 
 						<tr>
 							<th scope="row">
-								<label for="pre-field-value-suffix"><?php esc_html_e( 'Value suffix', 'post-runtime-engine' ); ?></label>
+								<label for="pre-field-value-suffix"><?php esc_html_e( 'Value suffix', 'promptless-cpt-pages' ); ?></label>
 							</th>
 							<td>
 								<input
@@ -627,7 +627,7 @@ class PRE_Admin_Post_Fields {
 									placeholder="+"
 									maxlength="<?php echo (int) PRE_Validator::MAX_VALUE_SUFFIX_LEN; ?>">
 								<p class="description">
-									<?php esc_html_e( 'Optional text appended after the formatted value. Examples: "+" for "starting at" pricing ($2,328+), "/mo" for subscriptions ($45/mo), "/night" for hotels ($120/night). Leave empty for plain currency formatting.', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'Optional text appended after the formatted value. Examples: "+" for "starting at" pricing ($2,328+), "/mo" for subscriptions ($45/mo), "/night" for hotels ($120/night). Leave empty for plain currency formatting.', 'promptless-cpt-pages' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -637,12 +637,12 @@ class PRE_Admin_Post_Fields {
 
 			<!-- Conditional: rating / progress — max + unit label -->
 			<div class="pre-field-cond pre-field-cond-rating" data-shown-when="rating,progress,number_with_label">
-				<h2><?php esc_html_e( 'Numeric attributes', 'post-runtime-engine' ); ?></h2>
+				<h2><?php esc_html_e( 'Numeric attributes', 'promptless-cpt-pages' ); ?></h2>
 				<table class="form-table" role="presentation">
 					<tbody>
 						<tr>
 							<th scope="row">
-								<label for="pre-field-max"><?php esc_html_e( 'Maximum', 'post-runtime-engine' ); ?></label>
+								<label for="pre-field-max"><?php esc_html_e( 'Maximum', 'promptless-cpt-pages' ); ?></label>
 							</th>
 							<td>
 								<input
@@ -653,14 +653,14 @@ class PRE_Admin_Post_Fields {
 									value="<?php echo esc_attr( (string) ( $values['max'] ?? '' ) ); ?>"
 									step="0.1">
 								<p class="description">
-									<?php esc_html_e( 'For rating: the top of the scale (default 5). For progress: the goal value when no per-post goal is set.', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'For rating: the top of the scale (default 5). For progress: the goal value when no per-post goal is set.', 'promptless-cpt-pages' ); ?>
 								</p>
 							</td>
 						</tr>
 
 						<tr>
 							<th scope="row">
-								<label for="pre-field-unit-label"><?php esc_html_e( 'Unit label', 'post-runtime-engine' ); ?></label>
+								<label for="pre-field-unit-label"><?php esc_html_e( 'Unit label', 'promptless-cpt-pages' ); ?></label>
 							</th>
 							<td>
 								<input
@@ -671,7 +671,7 @@ class PRE_Admin_Post_Fields {
 									value="<?php echo esc_attr( $values['unit_label'] ?? '' ); ?>"
 									placeholder="sqft">
 								<p class="description">
-									<?php esc_html_e( 'For number_with_label: the unit suffix (e.g., "sqft", "BR", "miles"). For progress: optional suffix appended to the percentage.', 'post-runtime-engine' ); ?>
+									<?php esc_html_e( 'For number_with_label: the unit suffix (e.g., "sqft", "BR", "miles"). For progress: optional suffix appended to the percentage.', 'promptless-cpt-pages' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -679,8 +679,8 @@ class PRE_Admin_Post_Fields {
 				</table>
 			</div>
 
-			<?php submit_button( $is_edit ? __( 'Update field', 'post-runtime-engine' ) : __( 'Create field', 'post-runtime-engine' ) ); ?>
-			<a href="<?php echo esc_url( $this->url() ); ?>" class="button"><?php esc_html_e( 'Cancel', 'post-runtime-engine' ); ?></a>
+			<?php submit_button( $is_edit ? __( 'Update field', 'promptless-cpt-pages' ) : __( 'Create field', 'promptless-cpt-pages' ) ); ?>
+			<a href="<?php echo esc_url( $this->url() ); ?>" class="button"><?php esc_html_e( 'Cancel', 'promptless-cpt-pages' ); ?></a>
 		</form>
 		<?php
 	}
@@ -697,7 +697,7 @@ class PRE_Admin_Post_Fields {
 
 		$plugin = pre();
 		if ( ! $plugin->post_fields ) {
-			$this->queue_notice( 'error', __( 'Internal error: post field registry not available.', 'post-runtime-engine' ) );
+			$this->queue_notice( 'error', __( 'Internal error: post field registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
 		}
 
@@ -725,7 +725,7 @@ class PRE_Admin_Post_Fields {
 			'success',
 			sprintf(
 				/* translators: %s: field key */
-				__( 'Post field "%s" saved.', 'post-runtime-engine' ),
+				__( 'Post field "%s" saved.', 'promptless-cpt-pages' ),
 				$values['key']
 			)
 		);
@@ -741,7 +741,7 @@ class PRE_Admin_Post_Fields {
 
 		$plugin = pre();
 		if ( ! $plugin->post_fields ) {
-			$this->queue_notice( 'error', __( 'Internal error: post field registry not available.', 'post-runtime-engine' ) );
+			$this->queue_notice( 'error', __( 'Internal error: post field registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
 		}
 
@@ -750,7 +750,7 @@ class PRE_Admin_Post_Fields {
 			: array();
 
 		if ( empty( $ordered ) ) {
-			$this->queue_notice( 'error', __( 'No field order received.', 'post-runtime-engine' ) );
+			$this->queue_notice( 'error', __( 'No field order received.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
 		}
 
@@ -759,7 +759,7 @@ class PRE_Admin_Post_Fields {
 		if ( is_wp_error( $result ) ) {
 			$this->queue_notice( 'error', $result->get_error_message() );
 		} else {
-			$this->queue_notice( 'success', __( 'Post field order updated.', 'post-runtime-engine' ) );
+			$this->queue_notice( 'success', __( 'Post field order updated.', 'promptless-cpt-pages' ) );
 		}
 
 		$this->redirect( $this->url() );
@@ -775,7 +775,7 @@ class PRE_Admin_Post_Fields {
 
 		$plugin = pre();
 		if ( ! $plugin->post_fields ) {
-			$this->queue_notice( 'error', __( 'Internal error: post field registry not available.', 'post-runtime-engine' ) );
+			$this->queue_notice( 'error', __( 'Internal error: post field registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
 		}
 
@@ -788,7 +788,7 @@ class PRE_Admin_Post_Fields {
 				'success',
 				sprintf(
 					/* translators: %s: field key */
-					__( 'Post field "%s" removed.', 'post-runtime-engine' ),
+					__( 'Post field "%s" removed.', 'promptless-cpt-pages' ),
 					$field_key
 				)
 			);
@@ -860,7 +860,7 @@ class PRE_Admin_Post_Fields {
 			if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $decoded ) ) {
 				return new WP_Error(
 					'pre_invalid_options_json',
-					__( 'Options JSON is invalid. Expected an object like { "key": { "label": "Label", "color_intent": "success" } }.', 'post-runtime-engine' )
+					__( 'Options JSON is invalid. Expected an object like { "key": { "label": "Label", "color_intent": "success" } }.', 'promptless-cpt-pages' )
 				);
 			}
 			$definition['options'] = $decoded;
@@ -927,15 +927,15 @@ class PRE_Admin_Post_Fields {
 	 */
 	private function display_type_label( $type ) {
 		$labels = array(
-			'currency'          => __( 'Currency ($1,250,000)', 'post-runtime-engine' ),
-			'number_with_label' => __( 'Number with label (1,800 sqft)', 'post-runtime-engine' ),
-			'badge'             => __( 'Badge (For sale)', 'post-runtime-engine' ),
-			'meta_pair'         => __( 'Meta pair (🛏 3)', 'post-runtime-engine' ),
-			'date'              => __( 'Date (May 20, 2026)', 'post-runtime-engine' ),
-			'text'              => __( 'Text (plain string)', 'post-runtime-engine' ),
-			'rating'            => __( 'Rating (★★★★☆ 4.8)', 'post-runtime-engine' ),
-			'progress'          => __( 'Progress bar (65%)', 'post-runtime-engine' ),
-			'multi_badge'       => __( 'Multi-badge (Vegan, GF, Quick)', 'post-runtime-engine' ),
+			'currency'          => __( 'Currency ($1,250,000)', 'promptless-cpt-pages' ),
+			'number_with_label' => __( 'Number with label (1,800 sqft)', 'promptless-cpt-pages' ),
+			'badge'             => __( 'Badge (For sale)', 'promptless-cpt-pages' ),
+			'meta_pair'         => __( 'Meta pair (🛏 3)', 'promptless-cpt-pages' ),
+			'date'              => __( 'Date (May 20, 2026)', 'promptless-cpt-pages' ),
+			'text'              => __( 'Text (plain string)', 'promptless-cpt-pages' ),
+			'rating'            => __( 'Rating (★★★★☆ 4.8)', 'promptless-cpt-pages' ),
+			'progress'          => __( 'Progress bar (65%)', 'promptless-cpt-pages' ),
+			'multi_badge'       => __( 'Multi-badge (Vegan, GF, Quick)', 'promptless-cpt-pages' ),
 		);
 		return isset( $labels[ $type ] ) ? $labels[ $type ] : $type;
 	}
@@ -948,12 +948,12 @@ class PRE_Admin_Post_Fields {
 	 */
 	private function position_label( $position ) {
 		$labels = array(
-			'image_overlay' => __( 'Image overlay (badge on image)', 'post-runtime-engine' ),
-			'headline'      => __( 'Headline (prominent, above title)', 'post-runtime-engine' ),
-			'subtitle'      => __( 'Subtitle (under title)', 'post-runtime-engine' ),
-			'meta_strip'    => __( 'Meta strip (inline list)', 'post-runtime-engine' ),
-			'footer_meta'   => __( 'Footer meta (bottom row)', 'post-runtime-engine' ),
-			'hidden'        => __( 'Hidden in this context', 'post-runtime-engine' ),
+			'image_overlay' => __( 'Image overlay (badge on image)', 'promptless-cpt-pages' ),
+			'headline'      => __( 'Headline (prominent, above title)', 'promptless-cpt-pages' ),
+			'subtitle'      => __( 'Subtitle (under title)', 'promptless-cpt-pages' ),
+			'meta_strip'    => __( 'Meta strip (inline list)', 'promptless-cpt-pages' ),
+			'footer_meta'   => __( 'Footer meta (bottom row)', 'promptless-cpt-pages' ),
+			'hidden'        => __( 'Hidden in this context', 'promptless-cpt-pages' ),
 		);
 		return isset( $labels[ $position ] ) ? $labels[ $position ] : $position;
 	}
@@ -966,9 +966,9 @@ class PRE_Admin_Post_Fields {
 	 */
 	private function date_format_label( $format ) {
 		$labels = array(
-			'absolute' => __( 'Absolute (May 20, 2026)', 'post-runtime-engine' ),
-			'relative' => __( 'Relative (2 days ago)', 'post-runtime-engine' ),
-			'custom'   => __( 'Custom (use format string below)', 'post-runtime-engine' ),
+			'absolute' => __( 'Absolute (May 20, 2026)', 'promptless-cpt-pages' ),
+			'relative' => __( 'Relative (2 days ago)', 'promptless-cpt-pages' ),
+			'custom'   => __( 'Custom (use format string below)', 'promptless-cpt-pages' ),
 		);
 		return isset( $labels[ $format ] ) ? $labels[ $format ] : $format;
 	}

@@ -1,6 +1,6 @@
 <?php
 /**
- * Single-post renderer for Post Runtime Engine.
+ * Single-post renderer for Promptless CPT Pages.
  *
  * Orchestrates the page structure (hero / above_main / main / below_main /
  * sidebar / footer) and renders each grouping with the correct layout
@@ -818,7 +818,7 @@ class PRE_Renderer {
 
 			<?php if ( $is_linked ) : ?>
 				<span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
-				<a class="pre-grouping__link-overlay" href="<?php echo esc_url( $link ); ?>" aria-label="<?php echo esc_attr( $heading !== '' ? $heading : __( 'View item', 'post-runtime-engine' ) ); ?>"></a>
+				<a class="pre-grouping__link-overlay" href="<?php echo esc_url( $link ); ?>" aria-label="<?php echo esc_attr( $heading !== '' ? $heading : __( 'View item', 'promptless-cpt-pages' ) ); ?>"></a>
 			<?php endif; ?>
 		</li>
 		<?php
@@ -867,7 +867,7 @@ class PRE_Renderer {
 
 		?>
 		<footer class="pre-footer">
-			<h2 class="pre-footer__heading"><?php esc_html_e( 'Related', 'post-runtime-engine' ); ?></h2>
+			<h2 class="pre-footer__heading"><?php esc_html_e( 'Related', 'promptless-cpt-pages' ); ?></h2>
 			<ul class="pre-footer__list">
 				<?php foreach ( $related as $rp ) :
 					$rp_title = get_the_title( $rp );

@@ -3,11 +3,11 @@
  * Admin coordinator for Promptless CPT Pages.
  *
  * Owns the top-level admin menu, sub-page registration, asset enqueuing,
- * and dispatches to the focused admin classes (PRE_Admin_CPTs, etc.) for
+ * and dispatches to the focused admin classes (PCPTPages_Admin_CPTs, etc.) for
  * each page. Loaded on admin_init by the bootstrap.
  *
  * The admin UI is gated behind the `manage_options` capability via
- * PRE_Capabilities — the plugin is intended for administrators only in
+ * PCPTPages_Capabilities — the plugin is intended for administrators only in
  * v1.0. v1.1+ may introduce a delegated role for content editors who can
  * only fill in groupings without managing CPT registrations.
  *
@@ -17,7 +17,7 @@
  * phpcs:disable WordPress.Security.NonceVerification.Recommended
  *
  * Justification: This coordinator dispatches to focused admin pages
- * (PRE_Admin_CPTs, PRE_Admin_Groupings, etc.). Page selection from
+ * (PCPTPages_Admin_CPTs, PCPTPages_Admin_Groupings, etc.). Page selection from
  * $_GET['page'] is a read-only navigation check, not a state-changing
  * action — no nonce required per WordPress core admin conventions
  * (same pattern used by WP_List_Table filter parameters). Each page's
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Admin coordinator.
  */
-class PRE_Admin {
+class PCPTPages_Admin {
 
 	/**
 	 * Top-level menu slug. Used as the parent for all sub-pages.
@@ -43,35 +43,35 @@ class PRE_Admin {
 	 * Sub-page slugs.
 	 */
 	const PAGE_CPTS        = 'promptless-cpt-pages';
-	const PAGE_GROUPINGS   = 'pre-groupings';
-	const PAGE_POST_FIELDS = 'pre-post-fields';
-	const PAGE_SETTINGS    = 'pre-settings';
+	const PAGE_GROUPINGS   = 'pcptpages-groupings';
+	const PAGE_POST_FIELDS = 'pcptpages-post-fields';
+	const PAGE_SETTINGS    = 'pcptpages-settings';
 
 	/**
 	 * CPT management page renderer.
 	 *
-	 * @var PRE_Admin_CPTs|null
+	 * @var PCPTPages_Admin_CPTs|null
 	 */
 	private $cpts_page = null;
 
 	/**
 	 * Grouping management page renderer.
 	 *
-	 * @var PRE_Admin_Groupings|null
+	 * @var PCPTPages_Admin_Groupings|null
 	 */
 	private $groupings_page = null;
 
 	/**
 	 * Post field management page renderer (v1.1).
 	 *
-	 * @var PRE_Admin_Post_Fields|null
+	 * @var PCPTPages_Admin_Post_Fields|null
 	 */
 	private $post_fields_page = null;
 
 	/**
 	 * Post-edit-screen meta box.
 	 *
-	 * @var PRE_Meta_Box|null
+	 * @var PCPTPages_Meta_Box|null
 	 */
 	private $meta_box = null;
 
@@ -85,11 +85,11 @@ class PRE_Admin {
 
 		// Meta box self-registers its own hooks (add_meta_boxes, save_post,
 		// admin_enqueue_scripts) so we instantiate it eagerly.
-		$this->meta_box = new PRE_Meta_Box();
+		$this->meta_box = new PCPTPages_Meta_Box();
 
 		// v1.1 post-fields meta box. Same self-registering pattern; only
 		// renders on CPTs that have at least one post field defined.
-		new PRE_Meta_Box_Post_Fields();
+		new PCPTPages_Meta_Box_Post_Fields();
 	}
 
 	/**
@@ -100,11 +100,11 @@ class PRE_Admin {
 	 * from there.
 	 */
 	public function register_menu() {
-		if ( ! PRE_Capabilities::current_user_can_manage() ) {
+		if ( ! PCPTPages_Capabilities::current_user_can_manage() ) {
 			return;
 		}
 
-		$cap = apply_filters( 'pre_manage_capability', PRE_Capabilities::MANAGE_CAP );
+		$cap = apply_filters( 'pcptpages_manage_capability', PCPTPages_Capabilities::MANAGE_CAP );
 
 		add_menu_page(
 			__( 'Promptless CPT Pages', 'promptless-cpt-pages' ),
@@ -161,21 +161,21 @@ class PRE_Admin {
 	public function enqueue_assets( $hook ) {
 		// Match any of our admin page hooks. WordPress prefixes the parent
 		// menu slug with "toplevel_page_" and submenus with the parent slug.
-		$is_pre_page = (
+		$is_pcptpages_page = (
 			strpos( $hook, self::MENU_SLUG ) !== false
 			|| strpos( $hook, 'pre-' ) !== false
 			|| $hook === 'toplevel_page_' . self::MENU_SLUG
 		);
 
-		if ( ! $is_pre_page ) {
+		if ( ! $is_pcptpages_page ) {
 			return;
 		}
 
 		wp_enqueue_style(
-			'pre-admin',
-			PRE_PLUGIN_URL . 'assets/css/admin.css',
+			'pcptpages-admin',
+			PCPTPages_PLUGIN_URL . 'assets/css/admin.css',
 			array(),
-			PRE_VERSION
+			PCPTPages_VERSION
 		);
 
 		$current_page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
@@ -186,10 +186,10 @@ class PRE_Admin {
 		// no-inline-scripts guideline.
 		if ( $current_page === self::PAGE_GROUPINGS ) {
 			wp_enqueue_script(
-				'pre-admin-groupings',
-				PRE_PLUGIN_URL . 'assets/js/admin-groupings.js',
+				'pcptpages-admin-groupings',
+				PCPTPages_PLUGIN_URL . 'assets/js/admin-groupings.js',
 				array(),
-				PRE_VERSION,
+				PCPTPages_VERSION,
 				true
 			);
 		}
@@ -199,10 +199,10 @@ class PRE_Admin {
 		// of the admin lean.
 		if ( $current_page === self::PAGE_POST_FIELDS ) {
 			wp_enqueue_script(
-				'pre-post-fields-editor',
-				PRE_PLUGIN_URL . 'assets/js/post-fields-editor.js',
+				'pcptpages-post-fields-editor',
+				PCPTPages_PLUGIN_URL . 'assets/js/post-fields-editor.js',
 				array( 'jquery', 'jquery-ui-sortable' ),
-				PRE_VERSION,
+				PCPTPages_VERSION,
 				true
 			);
 		}
@@ -234,7 +234,7 @@ class PRE_Admin {
 	 * Render the CPT management page.
 	 */
 	public function render_cpts_page() {
-		if ( ! PRE_Capabilities::current_user_can_manage() ) {
+		if ( ! PCPTPages_Capabilities::current_user_can_manage() ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'promptless-cpt-pages' ) );
 		}
 
@@ -245,7 +245,7 @@ class PRE_Admin {
 	 * Render the per-CPT groupings management page.
 	 */
 	public function render_groupings_page() {
-		if ( ! PRE_Capabilities::current_user_can_manage() ) {
+		if ( ! PCPTPages_Capabilities::current_user_can_manage() ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'promptless-cpt-pages' ) );
 		}
 
@@ -265,7 +265,7 @@ class PRE_Admin {
 	 * Render the per-CPT post-fields management page (v1.1).
 	 */
 	public function render_post_fields_page() {
-		if ( ! PRE_Capabilities::current_user_can_manage() ) {
+		if ( ! PCPTPages_Capabilities::current_user_can_manage() ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'promptless-cpt-pages' ) );
 		}
 
@@ -281,11 +281,11 @@ class PRE_Admin {
 	/**
 	 * Lazily instantiate and return the CPTs page handler.
 	 *
-	 * @return PRE_Admin_CPTs
+	 * @return PCPTPages_Admin_CPTs
 	 */
 	private function get_cpts_page() {
 		if ( $this->cpts_page === null ) {
-			$this->cpts_page = new PRE_Admin_CPTs();
+			$this->cpts_page = new PCPTPages_Admin_CPTs();
 		}
 		return $this->cpts_page;
 	}
@@ -293,11 +293,11 @@ class PRE_Admin {
 	/**
 	 * Lazily instantiate and return the Groupings page handler.
 	 *
-	 * @return PRE_Admin_Groupings
+	 * @return PCPTPages_Admin_Groupings
 	 */
 	private function get_groupings_page() {
 		if ( $this->groupings_page === null ) {
-			$this->groupings_page = new PRE_Admin_Groupings();
+			$this->groupings_page = new PCPTPages_Admin_Groupings();
 		}
 		return $this->groupings_page;
 	}
@@ -305,11 +305,11 @@ class PRE_Admin {
 	/**
 	 * Lazily instantiate and return the Post Fields page handler.
 	 *
-	 * @return PRE_Admin_Post_Fields
+	 * @return PCPTPages_Admin_Post_Fields
 	 */
 	private function get_post_fields_page() {
 		if ( $this->post_fields_page === null ) {
-			$this->post_fields_page = new PRE_Admin_Post_Fields();
+			$this->post_fields_page = new PCPTPages_Admin_Post_Fields();
 		}
 		return $this->post_fields_page;
 	}

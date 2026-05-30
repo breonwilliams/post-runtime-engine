@@ -3,7 +3,7 @@
  * Post Fields admin page for Promptless CPT Pages (v1.1).
  *
  * Per-CPT management UI for the second field type — scalar post fields.
- * Mirrors PRE_Admin_Groupings exactly: list view + new/edit form, server-
+ * Mirrors PCPTPages_Admin_Groupings exactly: list view + new/edit form, server-
  * rendered, save via admin-post with nonce, GET-with-nonce for delete.
  *
  * The "live preview pane" from the design contract (§ 8) is intentionally
@@ -11,7 +11,7 @@
  * include one, and shipping a live preview on the new page alone would
  * be UX inconsistent. Real client demand can drive the follow-up.
  *
- * URL: admin.php?page=pre-post-fields&cpt={slug}
+ * URL: admin.php?page=pcptpages-post-fields&cpt={slug}
  *
  * @package PostRuntimeEngine
  * @since 1.1.0
@@ -40,12 +40,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Renders the Post Fields admin page and handles its save / delete /
  * reorder actions.
  */
-class PRE_Admin_Post_Fields {
+class PCPTPages_Admin_Post_Fields {
 
-	const ACTION_SAVE    = 'pre_save_post_field';
-	const ACTION_DELETE  = 'pre_delete_post_field';
-	const ACTION_REORDER = 'pre_reorder_post_fields';
-	const NOTICE_KEY     = 'pre_post_fields_notice';
+	const ACTION_SAVE    = 'pcptpages_save_post_field';
+	const ACTION_DELETE  = 'pcptpages_delete_post_field';
+	const ACTION_REORDER = 'pcptpages_reorder_post_fields';
+	const NOTICE_KEY     = 'pcptpages_post_fields_notice';
 
 	/**
 	 * Form values stashed from a failed POST so the form view can pre-fill
@@ -71,10 +71,10 @@ class PRE_Admin_Post_Fields {
 
 	/**
 	 * Dispatch POST / GET-action handlers before any output. Called on
-	 * admin_init by PRE_Admin::handle_actions().
+	 * admin_init by PCPTPages_Admin::handle_actions().
 	 */
 	public function handle_action() {
-		if ( ! PRE_Capabilities::current_user_can_manage() ) {
+		if ( ! PCPTPages_Capabilities::current_user_can_manage() ) {
 			return;
 		}
 
@@ -114,13 +114,13 @@ class PRE_Admin_Post_Fields {
 
 		echo '<div class="wrap pre-admin">';
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		$cpt    = $plugin->cpts ? $plugin->cpts->get( $this->cpt_slug ) : null;
 
 		if ( $this->cpt_slug === '' || ! $cpt ) {
 			echo '<h1>' . esc_html__( 'Manage Post Fields', 'promptless-cpt-pages' ) . '</h1>';
 			echo '<p>' . esc_html__( 'No CPT specified, or that CPT is not registered. Open this page from the Post Types list.', 'promptless-cpt-pages' ) . '</p>';
-			echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_CPTS ) ) . '">';
+			echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . PCPTPages_Admin::PAGE_CPTS ) ) . '">';
 			echo esc_html__( '← Back to Post Types', 'promptless-cpt-pages' );
 			echo '</a></p>';
 			echo '</div>';
@@ -151,11 +151,11 @@ class PRE_Admin_Post_Fields {
 	 * @param array $cpt CPT definition.
 	 */
 	private function render_list( array $cpt ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$fields = $plugin->post_fields ? $plugin->post_fields->get_all( $this->cpt_slug ) : array();
 		$count  = count( $fields );
-		$soft   = PRE_Validator::SOFT_FIELD_COUNT_WARNING;
-		$hard   = (int) apply_filters( 'pre_max_post_fields_per_cpt', PRE_Validator::HARD_FIELD_COUNT_LIMIT );
+		$soft   = PCPTPages_Validator::SOFT_FIELD_COUNT_WARNING;
+		$hard   = (int) apply_filters( 'pcptpages_max_post_fields_per_cpt', PCPTPages_Validator::HARD_FIELD_COUNT_LIMIT );
 
 		?>
 		<h1 class="wp-heading-inline">
@@ -169,10 +169,10 @@ class PRE_Admin_Post_Fields {
 				<?php esc_html_e( 'Add New', 'promptless-cpt-pages' ); ?>
 			</a>
 		<?php endif; ?>
-		<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_CPTS ) ); ?>" class="page-title-action">
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PCPTPages_Admin::PAGE_CPTS ) ); ?>" class="page-title-action">
 			<?php esc_html_e( '← Post Types', 'promptless-cpt-pages' ); ?>
 		</a>
-		<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_GROUPINGS . '&cpt=' . $this->cpt_slug ) ); ?>" class="page-title-action">
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PCPTPages_Admin::PAGE_GROUPINGS . '&cpt=' . $this->cpt_slug ) ); ?>" class="page-title-action">
 			<?php esc_html_e( 'Groupings', 'promptless-cpt-pages' ); ?>
 		</a>
 		<hr class="wp-header-end">
@@ -216,7 +216,7 @@ class PRE_Admin_Post_Fields {
 		<?php else : ?>
 			<form method="post" action="<?php echo esc_url( $this->url() ); ?>" class="pre-post-fields-reorder">
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_REORDER ); ?>">
-				<?php wp_nonce_field( self::ACTION_REORDER, 'pre_nonce' ); ?>
+				<?php wp_nonce_field( self::ACTION_REORDER, 'pcptpages_nonce' ); ?>
 
 				<table class="wp-list-table widefat fixed striped pre-post-fields-table">
 					<thead>
@@ -280,7 +280,7 @@ class PRE_Admin_Post_Fields {
 	 * @param string $field_key Field key when editing.
 	 */
 	private function render_form( $mode, array $cpt, $field_key = '' ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 
 		if ( $this->form_values !== null ) {
 			// Repopulate from a failed POST.
@@ -299,10 +299,10 @@ class PRE_Admin_Post_Fields {
 		}
 
 		$is_edit       = ( $mode === 'edit' );
-		$display_types = PRE_Validator::DISPLAY_TYPES;
-		$positions     = PRE_Validator::FIELD_POSITIONS;
-		$color_intents = PRE_Validator::COLOR_INTENTS;
-		$date_formats  = PRE_Validator::DATE_FORMATS;
+		$display_types = PCPTPages_Validator::DISPLAY_TYPES;
+		$positions     = PCPTPages_Validator::FIELD_POSITIONS;
+		$color_intents = PCPTPages_Validator::COLOR_INTENTS;
+		$date_formats  = PCPTPages_Validator::DATE_FORMATS;
 
 		?>
 		<h1>
@@ -331,7 +331,7 @@ class PRE_Admin_Post_Fields {
 			<?php if ( $is_edit ) : ?>
 				<input type="hidden" name="original_key" value="<?php echo esc_attr( $field_key ); ?>">
 			<?php endif; ?>
-			<?php wp_nonce_field( self::ACTION_SAVE, 'pre_nonce' ); ?>
+			<?php wp_nonce_field( self::ACTION_SAVE, 'pcptpages_nonce' ); ?>
 
 			<table class="form-table" role="presentation">
 				<tbody>
@@ -349,7 +349,7 @@ class PRE_Admin_Post_Fields {
 								<?php echo $is_edit ? 'readonly' : ''; ?>
 								required>
 							<p class="description">
-								<?php esc_html_e( 'Lowercase letters, numbers, and underscores. Used as the meta key (_pre_field_{key}). Cannot be changed after creation.', 'promptless-cpt-pages' ); ?>
+								<?php esc_html_e( 'Lowercase letters, numbers, and underscores. Used as the meta key (_pcptpages_field_{key}). Cannot be changed after creation.', 'promptless-cpt-pages' ); ?>
 							</p>
 						</td>
 					</tr>
@@ -436,7 +436,7 @@ class PRE_Admin_Post_Fields {
 								name="description"
 								class="large-text"
 								rows="2"
-								maxlength="<?php echo (int) PRE_Validator::MAX_FIELD_DESCRIPTION_LEN; ?>"><?php echo esc_textarea( $values['description'] ); ?></textarea>
+								maxlength="<?php echo (int) PCPTPages_Validator::MAX_FIELD_DESCRIPTION_LEN; ?>"><?php echo esc_textarea( $values['description'] ); ?></textarea>
 							<p class="description">
 								<?php esc_html_e( 'Optional admin help text. Shown above the field in the post-edit meta box.', 'promptless-cpt-pages' ); ?>
 							</p>
@@ -516,8 +516,8 @@ class PRE_Admin_Post_Fields {
 								<select id="pre-field-icon" name="icon">
 									<option value=""><?php esc_html_e( '— No icon —', 'promptless-cpt-pages' ); ?></option>
 									<?php
-									if ( class_exists( 'PRE_Icon_Library' ) ) {
-										$grouped = PRE_Icon_Library::get_grouped_by_category();
+									if ( class_exists( 'PCPTPages_Icon_Library' ) ) {
+										$grouped = PCPTPages_Icon_Library::get_grouped_by_category();
 										foreach ( $grouped as $category => $icons_in_category ) {
 											echo '<optgroup label="' . esc_attr( $category ) . '">';
 											foreach ( $icons_in_category as $icon_key => $icon ) {
@@ -534,7 +534,7 @@ class PRE_Admin_Post_Fields {
 									?>
 								</select>
 								<p class="description">
-									<?php esc_html_e( 'Curated icon shown to the left of the value (e.g. 🛏 3 BR). Reuses the existing 53-icon library; extensible via the pre_icon_library filter.', 'promptless-cpt-pages' ); ?>
+									<?php esc_html_e( 'Curated icon shown to the left of the value (e.g. 🛏 3 BR). Reuses the existing 53-icon library; extensible via the pcptpages_icon_library filter.', 'promptless-cpt-pages' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -601,14 +601,14 @@ class PRE_Admin_Post_Fields {
 							<td>
 								<select id="pre-field-currency-code" name="currency_code">
 									<option value=""><?php esc_html_e( '— Use site default —', 'promptless-cpt-pages' ); ?></option>
-									<?php foreach ( PRE_Validator::SUPPORTED_CURRENCIES as $code ) : ?>
+									<?php foreach ( PCPTPages_Validator::SUPPORTED_CURRENCIES as $code ) : ?>
 										<option value="<?php echo esc_attr( $code ); ?>" <?php selected( $values['currency_code'], $code ); ?>>
 											<?php echo esc_html( $code ); ?>
 										</option>
 									<?php endforeach; ?>
 								</select>
 								<p class="description">
-									<?php esc_html_e( 'ISO 4217 code. Leave empty to inherit from AISB Business Identity (if active) or the pre_currency option fallback.', 'promptless-cpt-pages' ); ?>
+									<?php esc_html_e( 'ISO 4217 code. Leave empty to inherit from AISB Business Identity (if active) or the pcptpages_currency option fallback.', 'promptless-cpt-pages' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -625,7 +625,7 @@ class PRE_Admin_Post_Fields {
 									class="regular-text"
 									value="<?php echo esc_attr( $values['value_suffix'] ?? '' ); ?>"
 									placeholder="+"
-									maxlength="<?php echo (int) PRE_Validator::MAX_VALUE_SUFFIX_LEN; ?>">
+									maxlength="<?php echo (int) PCPTPages_Validator::MAX_VALUE_SUFFIX_LEN; ?>">
 								<p class="description">
 									<?php esc_html_e( 'Optional text appended after the formatted value. Examples: "+" for "starting at" pricing ($2,328+), "/mo" for subscriptions ($45/mo), "/night" for hotels ($120/night). Leave empty for plain currency formatting.', 'promptless-cpt-pages' ); ?>
 								</p>
@@ -693,9 +693,9 @@ class PRE_Admin_Post_Fields {
 	 * Handle the save (new or edit) POST.
 	 */
 	private function handle_save() {
-		check_admin_referer( self::ACTION_SAVE, 'pre_nonce' );
+		check_admin_referer( self::ACTION_SAVE, 'pcptpages_nonce' );
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->post_fields ) {
 			$this->queue_notice( 'error', __( 'Internal error: post field registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
@@ -737,9 +737,9 @@ class PRE_Admin_Post_Fields {
 	 * Handle the reorder POST.
 	 */
 	private function handle_reorder() {
-		check_admin_referer( self::ACTION_REORDER, 'pre_nonce' );
+		check_admin_referer( self::ACTION_REORDER, 'pcptpages_nonce' );
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->post_fields ) {
 			$this->queue_notice( 'error', __( 'Internal error: post field registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
@@ -773,7 +773,7 @@ class PRE_Admin_Post_Fields {
 
 		check_admin_referer( self::ACTION_DELETE . '_' . $field_key );
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->post_fields ) {
 			$this->queue_notice( 'error', __( 'Internal error: post field registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
@@ -803,7 +803,7 @@ class PRE_Admin_Post_Fields {
 
 	/**
 	 * Collect POSTed form values, conservatively sanitized. Real validation
-	 * runs in PRE_Validator on save.
+	 * runs in PCPTPages_Validator on save.
 	 *
 	 * @return array
 	 */
@@ -859,7 +859,7 @@ class PRE_Admin_Post_Fields {
 			$decoded = json_decode( $values['options_json'], true );
 			if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $decoded ) ) {
 				return new WP_Error(
-					'pre_invalid_options_json',
+					'pcptpages_invalid_options_json',
 					__( 'Options JSON is invalid. Expected an object like { "key": { "label": "Label", "color_intent": "success" } }.', 'promptless-cpt-pages' )
 				);
 			}
@@ -978,7 +978,7 @@ class PRE_Admin_Post_Fields {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Render any queued notice (one-shot transient). Called by PRE_Admin
+	 * Render any queued notice (one-shot transient). Called by PCPTPages_Admin
 	 * before the page render.
 	 */
 	public function render_notice() {
@@ -1022,7 +1022,7 @@ class PRE_Admin_Post_Fields {
 	private function url( $args = array() ) {
 		$base = add_query_arg(
 			array(
-				'page' => PRE_Admin::PAGE_POST_FIELDS,
+				'page' => PCPTPages_Admin::PAGE_POST_FIELDS,
 				'cpt'  => $this->cpt_slug,
 			),
 			admin_url( 'admin.php' )

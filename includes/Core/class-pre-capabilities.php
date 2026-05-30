@@ -8,7 +8,7 @@
  * MANAGE_CAP constant.
  *
  * Capability model:
- *   - `pre_manage_cpts`: Controls access to CPT registration, grouping
+ *   - `pcptpages_manage_cpts`: Controls access to CPT registration, grouping
  *     definition CRUD, plugin admin UI, and the Cowork connector's site-config
  *     endpoints. Per-post grouping editing falls back to the standard
  *     CPT-derived capabilities (`edit_posts` / `edit_post`) which administrators
@@ -16,8 +16,8 @@
  *
  * Granted to the `administrator` role by default on install and upgrade.
  * Admins can delegate to additional roles via the
- * `pre_default_manage_cpts_roles` filter (fires at activation/upgrade) or by
- * calling `add_cap()` from a small mu-plugin. The `pre_manage_capability`
+ * `pcptpages_default_manage_cpts_roles` filter (fires at activation/upgrade) or by
+ * calling `add_cap()` from a small mu-plugin. The `pcptpages_manage_capability`
  * filter remains available for runtime overrides (e.g., mapping the check to
  * `manage_options` on a site that explicitly wants to keep the legacy
  * behavior).
@@ -38,28 +38,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Capability resolver and permission helpers.
  */
-class PRE_Capabilities {
+class PCPTPages_Capabilities {
 
 	/**
 	 * Capability required to manage CPT registrations, grouping definitions,
 	 * plugin settings, and connector site-config endpoints.
 	 *
-	 * Use `current_user_can( PRE_Capabilities::MANAGE_CAP )` everywhere a
+	 * Use `current_user_can( PCPTPages_Capabilities::MANAGE_CAP )` everywhere a
 	 * check is needed. Do not hard-code the string elsewhere.
 	 *
 	 * Default-granted to `administrator` on activation and on every plugin
-	 * version upgrade. Override the filter `pre_default_manage_cpts_roles` to
-	 * grant additional roles at install time, or `pre_manage_capability` for
+	 * version upgrade. Override the filter `pcptpages_default_manage_cpts_roles` to
+	 * grant additional roles at install time, or `pcptpages_manage_capability` for
 	 * runtime overrides.
 	 *
 	 * @var string
 	 */
-	const MANAGE_CAP = 'pre_manage_cpts';
+	const MANAGE_CAP = 'pcptpages_manage_cpts';
 
 	/**
 	 * Roles that receive MANAGE_CAP by default on install and upgrade.
 	 *
-	 * Extendable via the `pre_default_manage_cpts_roles` filter so site owners
+	 * Extendable via the `pcptpages_default_manage_cpts_roles` filter so site owners
 	 * can opt additional roles in at activation time rather than granting the
 	 * capability manually after the fact.
 	 *
@@ -75,7 +75,7 @@ class PRE_Capabilities {
 		 * @param array $roles Default roles (administrator only by default).
 		 */
 		return apply_filters(
-			'pre_default_manage_cpts_roles',
+			'pcptpages_default_manage_cpts_roles',
 			array( 'administrator' )
 		);
 	}
@@ -192,7 +192,7 @@ class PRE_Capabilities {
 	/**
 	 * Resolve the runtime capability required to manage the plugin.
 	 *
-	 * Defensively wraps the `pre_manage_capability` filter so call sites get
+	 * Defensively wraps the `pcptpages_manage_capability` filter so call sites get
 	 * a single source of truth. Returns the constant directly when no filter
 	 * is registered.
 	 *
@@ -201,13 +201,13 @@ class PRE_Capabilities {
 	public static function required_capability() {
 		/**
 		 * Filter the capability required to manage Promptless CPT Pages
-		 * configuration. Default is `pre_manage_cpts`. Override to map the
+		 * configuration. Default is `pcptpages_manage_cpts`. Override to map the
 		 * check to `manage_options` (legacy behavior) or to a custom
 		 * capability your role model already uses.
 		 *
 		 * @param string $cap Capability name.
 		 */
-		$cap = apply_filters( 'pre_manage_capability', self::MANAGE_CAP );
+		$cap = apply_filters( 'pcptpages_manage_capability', self::MANAGE_CAP );
 
 		if ( ! is_string( $cap ) || $cap === '' ) {
 			return self::MANAGE_CAP;

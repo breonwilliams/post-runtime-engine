@@ -5,7 +5,7 @@
  * Orchestrates the page structure (hero / above_main / main / below_main /
  * sidebar / footer) and renders each grouping with the correct layout
  * variant. Output is escaped at every interpolation point; the underlying
- * data has already been validated through PRE_Validator on save.
+ * data has already been validated through PCPTPages_Validator on save.
  *
  * @package PostRuntimeEngine
  */
@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  *     - The post is re-saved (post_modified bumps).
  *     - Any grouping definition for the post's CPT is updated (the
- *       updated_option hook bumps pre_groupings_changed_{cpt_slug}).
+ *       updated_option hook bumps pcptpages_groupings_changed_{cpt_slug}).
  *
  *   Active invalidation also fires on save_post / before_delete_post /
  *   set_object_terms — these keep the transient store cleaner but aren't
@@ -39,8 +39,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   $use_cache=false explicitly for the same reason.
  *
  *   Filters:
- *     - `pre_render_cache_enabled` (bool, $post): force-disable per post.
- *     - `pre_render_cache_lifetime` (int, $post): TTL in seconds; default
+ *     - `pcptpages_render_cache_enabled` (bool, $post): force-disable per post.
+ *     - `pcptpages_render_cache_lifetime` (int, $post): TTL in seconds; default
  *       1 hour. Caching plugins (WP Rocket, W3TC) cache the full page so
  *       this layer matters most for pages without those plugins active.
  *
@@ -52,14 +52,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * post__not_in (to exclude the current post from the related list).
  * These are documented WordPress query patterns flagged as advisory.
  */
-class PRE_Renderer {
+class PCPTPages_Renderer {
 
 	/**
 	 * Transient key prefix for cached renders.
 	 *
 	 * @var string
 	 */
-	const CACHE_KEY_PREFIX = 'pre_render_';
+	const CACHE_KEY_PREFIX = 'pcptpages_render_';
 
 	/**
 	 * Default cache TTL — 1 hour. Short enough that referenced-attachment
@@ -73,7 +73,7 @@ class PRE_Renderer {
 	/**
 	 * Source resolver dependency.
 	 *
-	 * @var PRE_Source_Resolver
+	 * @var PCPTPages_Source_Resolver
 	 */
 	private $source_resolver;
 
@@ -81,7 +81,7 @@ class PRE_Renderer {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->source_resolver = new PRE_Source_Resolver();
+		$this->source_resolver = new PCPTPages_Source_Resolver();
 	}
 
 	/**
@@ -119,7 +119,7 @@ class PRE_Renderer {
 
 	/**
 	 * Bump the per-CPT `groupings_changed` timestamp when a
-	 * `pre_groupings_{cpt_slug}` option is updated. Read at render time;
+	 * `pcptpages_groupings_{cpt_slug}` option is updated. Read at render time;
 	 * mismatched values force a re-render.
 	 *
 	 * @param string $option    Option name being updated.
@@ -130,7 +130,7 @@ class PRE_Renderer {
 		if ( ! is_string( $option ) ) {
 			return;
 		}
-		$prefix = PRE_Grouping_Registry::OPTION_PREFIX;
+		$prefix = PCPTPages_Grouping_Registry::OPTION_PREFIX;
 		if ( strpos( $option, $prefix ) !== 0 ) {
 			return;
 		}
@@ -138,7 +138,7 @@ class PRE_Renderer {
 		if ( $cpt_slug === '' ) {
 			return;
 		}
-		update_option( 'pre_groupings_changed_' . $cpt_slug, time() );
+		update_option( 'pcptpages_groupings_changed_' . $cpt_slug, time() );
 	}
 
 	/**
@@ -187,7 +187,7 @@ class PRE_Renderer {
 		 */
 		$cache_enabled = $use_cache
 			&& ! $can_edit
-			&& apply_filters( 'pre_render_cache_enabled', true, $post );
+			&& apply_filters( 'pcptpages_render_cache_enabled', true, $post );
 
 		if ( ! $cache_enabled ) {
 			$this->render_internal( $post );
@@ -195,7 +195,7 @@ class PRE_Renderer {
 		}
 
 		$cache_key    = self::CACHE_KEY_PREFIX . (int) $post->ID;
-		$defs_changed = (int) get_option( 'pre_groupings_changed_' . $post->post_type, 0 );
+		$defs_changed = (int) get_option( 'pcptpages_groupings_changed_' . $post->post_type, 0 );
 		$cached       = get_transient( $cache_key );
 
 		if ( is_array( $cached )
@@ -224,7 +224,7 @@ class PRE_Renderer {
 		 * @param WP_Post $post     The post being cached.
 		 */
 		$lifetime = (int) apply_filters(
-			'pre_render_cache_lifetime',
+			'pcptpages_render_cache_lifetime',
 			self::DEFAULT_CACHE_LIFETIME,
 			$post
 		);
@@ -253,7 +253,7 @@ class PRE_Renderer {
 	 * @param WP_Post $post Post to render.
 	 */
 	private function render_internal( WP_Post $post ) {
-		$plugin      = pre();
+		$plugin      = pcptpages();
 		$cpt_def     = $plugin->cpts ? $plugin->cpts->get( $post->post_type ) : null;
 		$definitions = $plugin->groupings ? $plugin->groupings->get_all( $post->post_type ) : array();
 
@@ -274,11 +274,11 @@ class PRE_Renderer {
 		// CPT-level default icon. Used as a fallback when:
 		//   - a grouping item has neither image_id nor icon_id set (any
 		//     variant — gives every auto-source row a baseline visual cue
-		//     without requiring per-post _pre_icon meta)
+		//     without requiring per-post _pcptpages_icon meta)
 		//   - the variant is icon-only (compact-grid, horizontal-row) and
 		//     the item only has an image_id (variant intent overrides the
 		//     item's image; icon falls through to default)
-		// Validated against PRE_Icon_Library at registration time, so we
+		// Validated against PCPTPages_Icon_Library at registration time, so we
 		// don't need to re-validate here. Passed down to render_grouping
 		// → render_item so each item resolution sees the same default.
 		$cpt_default_icon = is_array( $cpt_def ) && ! empty( $cpt_def['default_icon'] )
@@ -377,12 +377,12 @@ class PRE_Renderer {
 							//   doesn't match its calling context (e.g.
 							//   shortcode renders in widgets / sidebars
 							//   that come after this render).
-							$pre_render_original_post = isset( $GLOBALS['post'] ) ? $GLOBALS['post'] : null;
+							$pcptpages_render_original_post = isset( $GLOBALS['post'] ) ? $GLOBALS['post'] : null;
 							$GLOBALS['post']          = $post;
 							setup_postdata( $post );
 							the_content();
 							wp_reset_postdata();
-							$GLOBALS['post'] = $pre_render_original_post;
+							$GLOBALS['post'] = $pcptpages_render_original_post;
 							?>
 						</div>
 					<?php endif; ?>
@@ -470,7 +470,7 @@ class PRE_Renderer {
 		// `progress` display type) because the non-greedy match stopped at
 		// the wrong </div>. render_position_html is self-contained per
 		// position with no string parsing involved.
-		$card_renderer = new PRE_Card_Renderer();
+		$card_renderer = new PCPTPages_Card_Renderer();
 
 		?>
 		<header class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>">
@@ -537,7 +537,7 @@ class PRE_Renderer {
 
 	/**
 	 * Extract the markup for a single position container out of a
-	 * PRE_Card_Renderer-produced fields wrapper, so the single-post hero
+	 * PCPTPages_Card_Renderer-produced fields wrapper, so the single-post hero
 	 * can interleave field positions with the post title, featured image,
 	 * and excerpt.
 	 *
@@ -545,22 +545,22 @@ class PRE_Renderer {
 	 * fixed order. For the single-post hero we want positions to FLANK
 	 * the title and image, not all stack in one block. This helper does
 	 * a simple regex extraction (the wrapper structure is deterministic,
-	 * produced entirely by PRE_Card_Renderer with no user input on the
+	 * produced entirely by PCPTPages_Card_Renderer with no user input on the
 	 * structure itself).
 	 *
 	 * Returns empty string when the requested position has no fields.
 	 *
-	 * @param string $fields_html The full output of PRE_Card_Renderer::render.
+	 * @param string $fields_html The full output of PCPTPages_Card_Renderer::render.
 	 * @param string $position    Position key (e.g. 'headline').
 	 * @return string Position's container HTML or empty string.
 	 */
 	// Note: previous versions of this class had extract_position_field_html
 	// and extract_overlay_field_html helpers that used a regex to slice
-	// positions out of a single PRE_Card_Renderer::render() output. They
+	// positions out of a single PCPTPages_Card_Renderer::render() output. They
 	// were removed in v0.4.0 because the non-greedy regex `.*?</div>`
 	// stopped at the first </div> it found, truncating positions whose
 	// fields contained nested divs (specifically the `progress` display
-	// type). The replacement is to call PRE_Card_Renderer::render_position_html
+	// type). The replacement is to call PCPTPages_Card_Renderer::render_position_html
 	// once per position — no string parsing required, never had the bug.
 
 	/**
@@ -695,7 +695,7 @@ class PRE_Renderer {
 			if ( $link_post_id > 0 ) {
 				$linked_post = get_post( $link_post_id );
 				if ( $linked_post instanceof WP_Post ) {
-					$plugin = pre();
+					$plugin = pcptpages();
 					$linked_def = $plugin->cpts ? $plugin->cpts->get( $linked_post->post_type ) : null;
 					if ( is_array( $linked_def ) && ! empty( $linked_def['default_icon'] ) ) {
 						return (string) $linked_def['default_icon'];
@@ -779,16 +779,16 @@ class PRE_Renderer {
 				$media_html           = $image_html;
 				$media_class_modifier = ' pre-grouping__media--image';
 			}
-		} elseif ( $icon_id !== '' && PRE_Icon_Library::is_valid_id( $icon_id ) ) {
+		} elseif ( $icon_id !== '' && PCPTPages_Icon_Library::is_valid_id( $icon_id ) ) {
 			// Icon ID stored. is_valid_id() recognizes BOTH legacy curated
 			// IDs (e.g. "home", "users") AND Iconify codes (e.g. "mdi:home",
-			// "logos:wordpress"). PRE_Icon_Library::render() picks the right
+			// "logos:wordpress"). PCPTPages_Icon_Library::render() picks the right
 			// code path — inline SVG span for legacy, <iconify-icon> web
 			// component for Iconify codes. If the icon was removed from the
 			// curated library AND the stored value doesn't match Iconify
 			// format, is_valid_id() returns false and this branch is
 			// skipped — item renders without media (graceful degradation).
-			$media_html           = PRE_Icon_Library::render( $icon_id, 'pre-grouping__icon' );
+			$media_html           = PCPTPages_Icon_Library::render( $icon_id, 'pre-grouping__icon' );
 			$media_class_modifier = ' pre-grouping__media--icon';
 		}
 
@@ -797,7 +797,7 @@ class PRE_Renderer {
 			<?php if ( $media_html !== '' ) : ?>
 				<div class="pre-grouping__media<?php echo esc_attr( $media_class_modifier ); ?>">
 					<?php
-					// $media_html comes from PRE_Icon_Library::render() or wp_get_attachment_image()
+					// $media_html comes from PCPTPages_Icon_Library::render() or wp_get_attachment_image()
 					// — both produce sanitized HTML. Class attributes are esc_attr()'d at source
 					// and SVG content is plugin-curated (no user input). Output is intentionally raw.
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

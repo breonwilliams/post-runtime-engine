@@ -2,16 +2,16 @@
 /**
  * Post-edit-screen meta box for post field values (v1.1).
  *
- * Companion to PRE_Meta_Box (which handles the v1.0 grouping items).
+ * Companion to PCPTPages_Meta_Box (which handles the v1.0 grouping items).
  * This meta box renders one input per registered post field on the CPT,
  * picking the right input shape per display type (currency = numeric with
  * symbol prefix, date = date picker, badge with options = select, etc.).
  * Also surfaces the per-field visibility toggles (Hide on card / Hide on
  * single-page hero).
  *
- * Save handler validates and writes via PRE_Post_Data::set_field_values
+ * Save handler validates and writes via PCPTPages_Post_Data::set_field_values
  * and set_field_visibility — both already enforce per-display-type rules
- * via PRE_Validator.
+ * via PCPTPages_Validator.
  *
  * @package PostRuntimeEngine
  * @since 1.1.0
@@ -24,7 +24,7 @@
  * Justification: Save handler verifies the nonce via wp_verify_nonce on
  * $_POST[self::NONCE_NAME] before processing other $_POST data. Plugin
  * Check's static analyzer flags the $_POST reads because it cannot trace
- * the verification gate. Field values flow through PRE_Validator before
+ * the verification gate. Field values flow through PCPTPages_Validator before
  * persistence, applying per-display-type sanitization there.
  */
 
@@ -36,11 +36,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Renders the Post Fields meta box on managed-CPT post-edit screens.
  */
-class PRE_Meta_Box_Post_Fields {
+class PCPTPages_Meta_Box_Post_Fields {
 
-	const META_BOX_ID  = 'pre-post-fields';
-	const NONCE_NAME   = 'pre_post_fields_nonce';
-	const NONCE_ACTION = 'pre_save_post_fields';
+	const META_BOX_ID  = 'pcptpages-post-fields';
+	const NONCE_NAME   = 'pcptpages_post_fields_nonce';
+	const NONCE_ACTION = 'pcptpages_save_post_fields';
 
 	/**
 	 * Constructor. Wires WordPress hooks.
@@ -56,7 +56,7 @@ class PRE_Meta_Box_Post_Fields {
 	 * means no empty box clutter on posts that don't need it.
 	 */
 	public function register() {
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts || ! $plugin->post_fields ) {
 			return;
 		}
@@ -84,7 +84,7 @@ class PRE_Meta_Box_Post_Fields {
 	 * @param WP_Post $post Current post.
 	 */
 	public function render( $post ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			echo '<p>' . esc_html__( 'This post type is not managed by Promptless CPT Pages.', 'promptless-cpt-pages' ) . '</p>';
 			return;
@@ -93,7 +93,7 @@ class PRE_Meta_Box_Post_Fields {
 		$fields = $plugin->post_fields ? $plugin->post_fields->get_all( $post->post_type ) : array();
 		if ( empty( $fields ) ) {
 			$url = add_query_arg(
-				array( 'page' => PRE_Admin::PAGE_POST_FIELDS, 'cpt' => $post->post_type ),
+				array( 'page' => PCPTPages_Admin::PAGE_POST_FIELDS, 'cpt' => $post->post_type ),
 				admin_url( 'admin.php' )
 			);
 			?>
@@ -200,7 +200,7 @@ class PRE_Meta_Box_Post_Fields {
 				<label class="pre-field-row__visibility-toggle">
 					<input
 						type="checkbox"
-						name="pre_field_visibility[<?php echo esc_attr( $key ); ?>][card_hidden]"
+						name="pcptpages_field_visibility[<?php echo esc_attr( $key ); ?>][card_hidden]"
 						value="1"
 						<?php checked( $card_hidden ); ?>>
 					<?php esc_html_e( 'Hide on cards', 'promptless-cpt-pages' ); ?>
@@ -208,7 +208,7 @@ class PRE_Meta_Box_Post_Fields {
 				<label class="pre-field-row__visibility-toggle">
 					<input
 						type="checkbox"
-						name="pre_field_visibility[<?php echo esc_attr( $key ); ?>][single_hidden]"
+						name="pcptpages_field_visibility[<?php echo esc_attr( $key ); ?>][single_hidden]"
 						value="1"
 						<?php checked( $single_hidden ); ?>>
 					<?php esc_html_e( 'Hide in single-page hero', 'promptless-cpt-pages' ); ?>
@@ -229,7 +229,7 @@ class PRE_Meta_Box_Post_Fields {
 	 */
 	private function render_field_input( $base_id, $key, array $def, $value ) {
 		$display_type = $def['display_type'] ?? 'text';
-		$name_primary = 'pre_field_values[' . $key . ']';
+		$name_primary = 'pcptpages_field_values[' . $key . ']';
 
 		// For composite types (rating, progress), the value is an array.
 		// Extract primary + secondary for input population.
@@ -420,7 +420,7 @@ class PRE_Meta_Box_Post_Fields {
 					name="<?php echo esc_attr( $name_primary ); ?>"
 					value="<?php echo esc_attr( (string) $primary ); ?>"
 					class="regular-text"
-					maxlength="<?php echo (int) PRE_Validator::MAX_TEXT_VALUE_LEN; ?>">
+					maxlength="<?php echo (int) PCPTPages_Validator::MAX_TEXT_VALUE_LEN; ?>">
 				<?php
 				break;
 		}
@@ -428,8 +428,8 @@ class PRE_Meta_Box_Post_Fields {
 
 	/**
 	 * Best-effort currency-symbol guess for the meta-box input prefix.
-	 * Mirrors PRE_Card_Renderer's resolution chain (field → AISB →
-	 * pre_currency → USD) and looks up a symbol per the same map. Kept
+	 * Mirrors PCPTPages_Card_Renderer's resolution chain (field → AISB →
+	 * pcptpages_currency → USD) and looks up a symbol per the same map. Kept
 	 * separate from the renderer so the meta box doesn't depend on
 	 * frontend classes.
 	 *
@@ -445,7 +445,7 @@ class PRE_Meta_Box_Post_Fields {
 			if ( is_array( $aisb ) && ! empty( $aisb['currency'] ) ) {
 				$code = strtoupper( $aisb['currency'] );
 			} else {
-				$code = strtoupper( (string) get_option( 'pre_currency', 'USD' ) );
+				$code = strtoupper( (string) get_option( 'pcptpages_currency', 'USD' ) );
 				if ( $code === '' ) {
 					$code = 'USD';
 				}
@@ -477,7 +477,7 @@ class PRE_Meta_Box_Post_Fields {
 		}
 
 		// Confirm CPT is managed.
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			return;
 		}
@@ -497,8 +497,8 @@ class PRE_Meta_Box_Post_Fields {
 		}
 
 		// Field values.
-		$raw_values = isset( $_POST['pre_field_values'] ) && is_array( $_POST['pre_field_values'] )
-			? wp_unslash( $_POST['pre_field_values'] )
+		$raw_values = isset( $_POST['pcptpages_field_values'] ) && is_array( $_POST['pcptpages_field_values'] )
+			? wp_unslash( $_POST['pcptpages_field_values'] )
 			: array();
 
 		// Normalize composite-type shapes so set_field_values gets the
@@ -544,8 +544,8 @@ class PRE_Meta_Box_Post_Fields {
 		}
 
 		// Visibility overrides.
-		$raw_visibility = isset( $_POST['pre_field_visibility'] ) && is_array( $_POST['pre_field_visibility'] )
-			? wp_unslash( $_POST['pre_field_visibility'] )
+		$raw_visibility = isset( $_POST['pcptpages_field_visibility'] ) && is_array( $_POST['pcptpages_field_visibility'] )
+			? wp_unslash( $_POST['pcptpages_field_visibility'] )
 			: array();
 
 		// Normalize checkbox shape (browsers omit unchecked boxes from the

@@ -19,19 +19,19 @@
  *
  * Dependencies (enqueued by class-pre-meta-box.php): jQuery, jQuery UI
  * Sortable, jQuery UI Autocomplete, wp.media (via wp_enqueue_media).
- * Localized data is on window.preMetaBox.
+ * Localized data is on window.pcptpagesMetaBox.
  */
 
 (function ($) {
 	'use strict';
 
-	if (typeof window.preMetaBox === 'undefined') {
+	if (typeof window.pcptpagesMetaBox === 'undefined') {
 		return;
 	}
 
-	var icons      = window.preMetaBox.icons || {};
-	var mediaTitle = window.preMetaBox.mediaTitle || 'Choose Image';
-	var mediaBtn   = window.preMetaBox.mediaButton || 'Use this image';
+	var icons      = window.pcptpagesMetaBox.icons || {};
+	var mediaTitle = window.pcptpagesMetaBox.mediaTitle || 'Choose Image';
+	var mediaBtn   = window.pcptpagesMetaBox.mediaButton || 'Use this image';
 
 	$(function () {
 		$('.pre-meta-grouping').each(function () {
@@ -157,8 +157,8 @@
 			return;
 		}
 
-		var searchUrl = window.preMetaBox.searchUrl;
-		var nonce     = window.preMetaBox.nonce;
+		var searchUrl = window.pcptpagesMetaBox.searchUrl;
+		var nonce     = window.pcptpagesMetaBox.nonce;
 
 		// If localized data is missing for any reason, fail silently — the
 		// input still works as a plain text field.
@@ -300,14 +300,14 @@
 	 */
 	function renumberIndices($list, groupingKey) {
 		$list.children('.pre-item').each(function (i) {
-			var newPrefix = 'pre_groupings[' + groupingKey + '][items][' + i + ']';
+			var newPrefix = 'pcptpages_groupings[' + groupingKey + '][items][' + i + ']';
 			$(this).find('input, textarea').each(function () {
 				var $el = $(this);
 				var name = $el.attr('name');
 				if (!name) return;
-				// Match: pre_groupings[KEY][items][ANYINDEX][FIELD]
+				// Match: pcptpages_groupings[KEY][items][ANYINDEX][FIELD]
 				var newName = name.replace(
-					/pre_groupings\[[^\]]+\]\[items\]\[[^\]]+\]/,
+					/pcptpages_groupings\[[^\]]+\]\[items\]\[[^\]]+\]/,
 					newPrefix
 				);
 				$el.attr('name', newName);
@@ -321,7 +321,7 @@
 	 *
 	 * Recognizes both representations:
 	 *   - Legacy curated ID (e.g. "home") → render the inline SVG bundled
-	 *     in window.preMetaBox.icons[iconId].svg
+	 *     in window.pcptpagesMetaBox.icons[iconId].svg
 	 *   - Iconify code (e.g. "mdi:home", "logos:wordpress") → render a
 	 *     <iconify-icon> web component; the iconify-icon script loaded on
 	 *     this admin screen fetches the SVG from the Iconify CDN at paint
@@ -368,7 +368,7 @@
 	}
 
 	/**
-	 * Iconify code shape check — mirrors PRE_Icon_Library::is_iconify_format()
+	 * Iconify code shape check — mirrors PCPTPages_Icon_Library::is_iconify_format()
 	 * in PHP. `collection:name` where both sides are sanitize-key-safe slugs
 	 * (lowercase letters, digits, hyphens, underscores), one colon separator,
 	 * no whitespace. Hyphens are required because Iconify icon names use
@@ -475,7 +475,7 @@
 
 	/**
 	 * Icon-only variants — the renderer drops image_id silently for these.
-	 * Mirrors PRE_Renderer::render_item's `$is_icon_only_variant` check
+	 * Mirrors PCPTPages_Renderer::render_item's `$is_icon_only_variant` check
 	 * (compact-grid, horizontal-row). Keep this list in sync with the PHP
 	 * side, or images uploaded in the meta box will silently vanish at
 	 * render time again.
@@ -520,7 +520,7 @@
 		var hasImage = $item.find('.pre-item__image-input').val();
 		var $btn     = $item.find('.pre-pick-image');
 		hasImage = hasImage && hasImage !== '0';
-		$btn.text(hasImage ? (window.preMetaBox.i18n.change || 'Change image') : (window.preMetaBox.i18n.pickImg || 'Pick image'));
+		$btn.text(hasImage ? (window.pcptpagesMetaBox.i18n.change || 'Change image') : (window.pcptpagesMetaBox.i18n.pickImg || 'Pick image'));
 	}
 
 	/**

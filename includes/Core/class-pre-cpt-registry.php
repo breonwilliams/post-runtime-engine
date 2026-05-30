@@ -2,12 +2,12 @@
 /**
  * CPT registry for Promptless CPT Pages.
  *
- * Persists CPT definitions in the `pre_cpts` option and registers them with
+ * Persists CPT definitions in the `pcptpages_cpts` option and registers them with
  * WordPress on `init` (priority 5, set up by the main plugin class). This
  * is the data layer for "Promptless owns CPT registration end-to-end" — no
  * dependency on CPT UI, ACF, or any other field plugin.
  *
- * Definitions are validated through PRE_Validator before persistence. The
+ * Definitions are validated through PCPTPages_Validator before persistence. The
  * registry exposes a focused CRUD API; admin UI and connector endpoints in
  * later phases sit on top of this.
  *
@@ -23,12 +23,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * CPT registry. Stores definitions in wp_options and registers them with
  * WordPress on init.
  */
-class PRE_CPT_Registry {
+class PCPTPages_CPT_Registry {
 
 	/**
 	 * Option key holding the CPT definitions array.
 	 */
-	const OPTION_KEY = 'pre_cpts';
+	const OPTION_KEY = 'pcptpages_cpts';
 
 	/**
 	 * Cache group used for in-process memoization. We do not write to the
@@ -36,12 +36,12 @@ class PRE_CPT_Registry {
 	 * via `alloptions`; this group is for repeat lookups within a single
 	 * request only.
 	 */
-	const CACHE_GROUP = 'pre_cpts';
+	const CACHE_GROUP = 'pcptpages_cpts';
 
 	/**
 	 * Validator instance.
 	 *
-	 * @var PRE_Validator
+	 * @var PCPTPages_Validator
 	 */
 	private $validator;
 
@@ -55,11 +55,11 @@ class PRE_CPT_Registry {
 	/**
 	 * Constructor.
 	 *
-	 * @param PRE_Validator|null $validator Optional validator dependency
+	 * @param PCPTPages_Validator|null $validator Optional validator dependency
 	 *                                      (defaults to a new instance).
 	 */
 	public function __construct( $validator = null ) {
-		$this->validator = $validator ?: new PRE_Validator();
+		$this->validator = $validator ?: new PCPTPages_Validator();
 	}
 
 	/**
@@ -116,7 +116,7 @@ class PRE_CPT_Registry {
 	 * the WP registration timing predictable.
 	 *
 	 * @param string $slug       CPT slug. Sanitized to a key shape.
-	 * @param array  $definition Definition. See PRE_Validator::validate_cpt_definition.
+	 * @param array  $definition Definition. See PCPTPages_Validator::validate_cpt_definition.
 	 * @return true|WP_Error
 	 */
 	public function register( $slug, array $definition ) {
@@ -128,7 +128,7 @@ class PRE_CPT_Registry {
 		// to decide whether to reject.
 		if ( ! is_string( $slug ) || $slug === '' ) {
 			return new WP_Error(
-				'pre_invalid_slug',
+				'pcptpages_invalid_slug',
 				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
@@ -171,7 +171,7 @@ class PRE_CPT_Registry {
 
 		if ( ! $saved && get_option( self::OPTION_KEY ) !== $all ) {
 			return new WP_Error(
-				'pre_cpt_save_failed',
+				'pcptpages_cpt_save_failed',
 				__( 'Failed to persist CPT definition to the database.', 'promptless-cpt-pages' )
 			);
 		}
@@ -179,7 +179,7 @@ class PRE_CPT_Registry {
 		// Flag a rewrite-rules flush. The actual flush runs on the NEXT
 		// init after register_all_with_wp() finishes, because flushing
 		// before the new CPT is registered would just rebuild stale rules.
-		set_transient( 'pre_needs_rewrite_flush', 1, HOUR_IN_SECONDS );
+		set_transient( 'pcptpages_needs_rewrite_flush', 1, HOUR_IN_SECONDS );
 
 		/**
 		 * Fires after a CPT is registered or updated through the registry.
@@ -192,7 +192,7 @@ class PRE_CPT_Registry {
 		 * @param array  $definition Stored definition.
 		 * @param bool   $is_new     True if this is a fresh registration; false on update.
 		 */
-		do_action( 'pre_cpt_registered', $slug, $definition, $existing === null );
+		do_action( 'pcptpages_cpt_registered', $slug, $definition, $existing === null );
 
 		return true;
 	}
@@ -208,7 +208,7 @@ class PRE_CPT_Registry {
 		$slug = $this->sanitize_slug( $slug );
 		if ( $slug === '' ) {
 			return new WP_Error(
-				'pre_invalid_slug',
+				'pcptpages_invalid_slug',
 				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
@@ -216,7 +216,7 @@ class PRE_CPT_Registry {
 		$all = $this->get_all();
 		if ( ! isset( $all[ $slug ] ) ) {
 			return new WP_Error(
-				'pre_cpt_not_found',
+				'pcptpages_cpt_not_found',
 				/* translators: %s: CPT slug */
 				sprintf( __( 'CPT %s is not registered.', 'promptless-cpt-pages' ), $slug )
 			);
@@ -235,14 +235,14 @@ class PRE_CPT_Registry {
 
 		// Same flush flag as register() — removing a CPT also dirties the
 		// rewrite cache.
-		set_transient( 'pre_needs_rewrite_flush', 1, HOUR_IN_SECONDS );
+		set_transient( 'pcptpages_needs_rewrite_flush', 1, HOUR_IN_SECONDS );
 
 		/**
 		 * Fires after a CPT is unregistered through the registry.
 		 *
 		 * @param string $slug CPT slug.
 		 */
-		do_action( 'pre_cpt_unregistered', $slug );
+		do_action( 'pcptpages_cpt_unregistered', $slug );
 
 		return true;
 	}
@@ -271,7 +271,7 @@ class PRE_CPT_Registry {
 				 * @param WP_Error $error      The error returned by core.
 				 * @param array    $definition Stored definition.
 				 */
-				do_action( 'pre_cpt_registration_failed', $slug, $result, $definition );
+				do_action( 'pcptpages_cpt_registration_failed', $slug, $result, $definition );
 			}
 		}
 
@@ -279,9 +279,9 @@ class PRE_CPT_Registry {
 		// flush rewrite rules now (after WP has re-learned the post types).
 		// flush_rewrite_rules(false) is the recommended form — it doesn't
 		// touch the .htaccess file, which is a more expensive write.
-		if ( get_transient( 'pre_needs_rewrite_flush' ) ) {
+		if ( get_transient( 'pcptpages_needs_rewrite_flush' ) ) {
 			flush_rewrite_rules( false );
-			delete_transient( 'pre_needs_rewrite_flush' );
+			delete_transient( 'pcptpages_needs_rewrite_flush' );
 		}
 	}
 
@@ -355,7 +355,7 @@ class PRE_CPT_Registry {
 		 * @param array  $definition The stored definition.
 		 * @param string $slug       The CPT slug.
 		 */
-		return apply_filters( 'pre_cpt_register_args', $args, $definition, $definition['slug'] );
+		return apply_filters( 'pcptpages_cpt_register_args', $args, $definition, $definition['slug'] );
 	}
 
 	/**
@@ -388,7 +388,7 @@ class PRE_CPT_Registry {
 
 			// Default icon — empty string means "no fallback". Authors who
 			// want their compact-grid / horizontal-row groupings to always
-			// have a visual cue set this to an icon ID from PRE_Icon_Library.
+			// have a visual cue set this to an icon ID from PCPTPages_Icon_Library.
 			// Validated at register time, so empty string here is the only
 			// path that bypasses the icon-library check.
 			'default_icon'        => '',

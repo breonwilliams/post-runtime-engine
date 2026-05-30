@@ -10,7 +10,7 @@
  *     plugin never reads or caches)
  *
  * Deliberately a pure data-access class: no UI, no REST, no auth
- * decisions. PRE_Connector_Auth reads the toggle, PRE_Connector_Admin
+ * decisions. PCPTPages_Connector_Auth reads the toggle, PCPTPages_Connector_Admin
  * writes it.
  *
  * @package PostRuntimeEngine
@@ -33,14 +33,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Connector settings accessor.
  */
-class PRE_Connector_Settings {
+class PCPTPages_Connector_Settings {
 
 	/**
 	 * Option key storing the master toggle.
 	 *
 	 * @var string
 	 */
-	const OPTION_ENABLED = 'pre_connector_enabled';
+	const OPTION_ENABLED = 'pcptpages_connector_enabled';
 
 	/**
 	 * User-meta key marking that a user has generated a connector App
@@ -50,7 +50,7 @@ class PRE_Connector_Settings {
 	 *
 	 * @var string
 	 */
-	const USER_META_CONFIGURED = '_pre_connector_configured_at';
+	const USER_META_CONFIGURED = '_pcptpages_connector_configured_at';
 
 	/**
 	 * App Password "name" used when creating the connector credential

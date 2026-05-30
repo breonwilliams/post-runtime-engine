@@ -30,7 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Connector auth and rate-limit enforcement.
  */
-class PRE_Connector_Auth {
+class PCPTPages_Connector_Auth {
 
 	/**
 	 * Per-route-per-user rate limits, in requests per minute.
@@ -111,7 +111,7 @@ class PRE_Connector_Auth {
 	 * @param string      $route_key  Route identifier for rate-limit bucketing.
 	 *                                Must exist in self::RATE_LIMITS.
 	 * @param string|null $capability Capability to check. Null defaults to
-	 *                                PRE_Capabilities::MANAGE_CAP.
+	 *                                PCPTPages_Capabilities::MANAGE_CAP.
 	 * @return callable Closure for permission_callback.
 	 */
 	public static function build_callback( $route_key, $capability = null ) {
@@ -163,7 +163,7 @@ class PRE_Connector_Auth {
 	 *
 	 * @param string                            $route_key  Rate-limit bucket.
 	 * @param string|array|null                 $capability Capability spec. Null =
-	 *                                          PRE_Capabilities::MANAGE_CAP. String =
+	 *                                          PCPTPages_Capabilities::MANAGE_CAP. String =
 	 *                                          single cap. Array = ['cap' => cap,
 	 *                                          'meta_id' => post_id] for
 	 *                                          map_meta_cap-style checks.
@@ -172,7 +172,7 @@ class PRE_Connector_Auth {
 	 */
 	public static function run_permission_stack( $route_key, $capability, $request ) {
 		// Gate 1: connector enabled site-wide.
-		if ( ! PRE_Connector_Settings::is_enabled() ) {
+		if ( ! PCPTPages_Connector_Settings::is_enabled() ) {
 			return new WP_Error(
 				'connector_disabled',
 				__( 'The Promptless CPT Pages connector is not enabled on this site. A site administrator can enable it in Post Runtime → Connector settings.', 'promptless-cpt-pages' ),
@@ -216,7 +216,7 @@ class PRE_Connector_Auth {
 	private static function check_capability( $capability ) {
 		// Default: site-config capability.
 		if ( $capability === null ) {
-			$capability = PRE_Capabilities::MANAGE_CAP;
+			$capability = PCPTPages_Capabilities::MANAGE_CAP;
 		}
 
 		// Per-post: ['cap' => 'edit_post', 'meta_id' => 123].
@@ -283,9 +283,9 @@ class PRE_Connector_Auth {
 		 * @param string $route_key Route identifier.
 		 * @param int    $user_id   Authenticated user's ID.
 		 */
-		$limit = (int) apply_filters( 'pre_connector_rate_limit', $limit, $route_key, $user_id );
+		$limit = (int) apply_filters( 'pcptpages_connector_rate_limit', $limit, $route_key, $user_id );
 
-		$transient_key = 'pre_connector_rate_' . sanitize_key( $route_key ) . '_' . (int) $user_id;
+		$transient_key = 'pcptpages_connector_rate_' . sanitize_key( $route_key ) . '_' . (int) $user_id;
 
 		$current = get_transient( $transient_key );
 

@@ -11,7 +11,7 @@
  *      with Claude Desktop's config
  *   4. Restart Claude Desktop — connector becomes available in Cowork
  *
- * State delegates to PRE_Connector_Settings and WordPress core's
+ * State delegates to PCPTPages_Connector_Settings and WordPress core's
  * WP_Application_Passwords. This class holds no state itself.
  *
  * Mirrors FRE_Connector_Admin's pattern intentionally — the user-facing
@@ -37,10 +37,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Connector admin page coordinator.
  */
-class PRE_Connector_Admin {
+class PCPTPages_Connector_Admin {
 
 	const MENU_SLUG    = 'post-runtime-connector';
-	const NONCE_ACTION = 'pre_connector_nonce';
+	const NONCE_ACTION = 'pcptpages_connector_nonce';
 
 	/**
 	 * Hook suffix for the connector submenu page. Captured at registration
@@ -58,17 +58,17 @@ class PRE_Connector_Admin {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
 		// AJAX handlers — gated behind nonce + capability check.
-		add_action( 'wp_ajax_pre_connector_toggle_enabled', array( $this, 'ajax_toggle_enabled' ) );
-		add_action( 'wp_ajax_pre_connector_generate_password', array( $this, 'ajax_generate_password' ) );
-		add_action( 'wp_ajax_pre_connector_revoke_password', array( $this, 'ajax_revoke_password' ) );
+		add_action( 'wp_ajax_pcptpages_connector_toggle_enabled', array( $this, 'ajax_toggle_enabled' ) );
+		add_action( 'wp_ajax_pcptpages_connector_generate_password', array( $this, 'ajax_generate_password' ) );
+		add_action( 'wp_ajax_pcptpages_connector_revoke_password', array( $this, 'ajax_revoke_password' ) );
 
 		// MCP script download. Intentionally public (no auth) — the served
 		// file is a static JavaScript MCP server with no embedded
 		// secrets; it reads credentials from environment variables at
 		// runtime. Keeping the endpoint unauthenticated lets the bash
 		// setup command curl it without juggling cookies or tokens.
-		add_action( 'wp_ajax_pre_download_connector', array( $this, 'ajax_download_connector' ) );
-		add_action( 'wp_ajax_nopriv_pre_download_connector', array( $this, 'ajax_download_connector' ) );
+		add_action( 'wp_ajax_pcptpages_download_connector', array( $this, 'ajax_download_connector' ) );
+		add_action( 'wp_ajax_nopriv_pcptpages_download_connector', array( $this, 'ajax_download_connector' ) );
 	}
 
 	/**
@@ -76,10 +76,10 @@ class PRE_Connector_Admin {
 	 */
 	public function register_menu() {
 		$this->page_hook = add_submenu_page(
-			PRE_Admin::MENU_SLUG,
+			PCPTPages_Admin::MENU_SLUG,
 			__( 'Connector', 'promptless-cpt-pages' ),
 			__( 'Connector', 'promptless-cpt-pages' ),
-			PRE_Capabilities::MANAGE_CAP,
+			PCPTPages_Capabilities::MANAGE_CAP,
 			self::MENU_SLUG,
 			array( $this, 'render_page' )
 		);
@@ -98,27 +98,27 @@ class PRE_Connector_Admin {
 		$plugin_url = plugins_url( '', dirname( __DIR__, 2 ) . '/post-runtime-engine.php' );
 
 		wp_enqueue_style(
-			'pre-connector-admin',
+			'pcptpages-connector-admin',
 			$plugin_url . '/assets/css/connector-admin.css',
 			array(),
-			PRE_VERSION
+			PCPTPages_VERSION
 		);
 
 		wp_enqueue_script(
-			'pre-connector-admin',
+			'pcptpages-connector-admin',
 			$plugin_url . '/assets/js/connector-admin.js',
 			array(),
-			PRE_VERSION,
+			PCPTPages_VERSION,
 			true
 		);
 
 		wp_localize_script(
-			'pre-connector-admin',
-			'preConnectorAdmin',
+			'pcptpages-connector-admin',
+			'pcptpagesConnectorAdmin',
 			array(
 				'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
 				'nonce'              => wp_create_nonce( self::NONCE_ACTION ),
-				'connectorScriptUrl' => admin_url( 'admin-ajax.php?action=pre_download_connector' ),
+				'connectorScriptUrl' => admin_url( 'admin-ajax.php?action=pcptpages_download_connector' ),
 				'siteUrl'            => home_url(),
 				'i18n'               => array(
 					'enabled'       => __( 'Enabled.', 'promptless-cpt-pages' ),
@@ -137,12 +137,12 @@ class PRE_Connector_Admin {
 	 * Render the admin page.
 	 */
 	public function render_page() {
-		if ( ! current_user_can( PRE_Capabilities::MANAGE_CAP ) ) {
+		if ( ! current_user_can( PCPTPages_Capabilities::MANAGE_CAP ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'promptless-cpt-pages' ) );
 		}
 
-		$is_enabled    = PRE_Connector_Settings::is_enabled();
-		$configured_at = PRE_Connector_Settings::get_user_configured_at();
+		$is_enabled    = PCPTPages_Connector_Settings::is_enabled();
+		$configured_at = PCPTPages_Connector_Settings::get_user_configured_at();
 
 		// Use WordPress's canonical app-password availability check (returns
 		// true on HTTPS sites OR when WP_ENVIRONMENT_TYPE is 'local'). Local
@@ -152,11 +152,11 @@ class PRE_Connector_Admin {
 		$app_passwords_available = wp_is_application_passwords_available();
 
 		$ajax_nonce           = wp_create_nonce( self::NONCE_ACTION );
-		$rest_base_url        = esc_url( rest_url( PRE_REST_NAMESPACE . '/' . PRE_REST_BASE ) );
+		$rest_base_url        = esc_url( rest_url( PCPTPages_REST_NAMESPACE . '/' . PCPTPages_REST_BASE ) );
 		$site_url             = home_url();
-		$connector_script_url = admin_url( 'admin-ajax.php?action=pre_download_connector' );
-		$mcp_setup_url        = PRE_PLUGIN_URL . 'docs/MCP_CONNECTOR_SETUP.md';
-		$spec_url             = PRE_PLUGIN_URL . 'docs/CONNECTOR_SPEC.md';
+		$connector_script_url = admin_url( 'admin-ajax.php?action=pcptpages_download_connector' );
+		$mcp_setup_url        = PCPTPages_PLUGIN_URL . 'docs/MCP_CONNECTOR_SETUP.md';
+		$spec_url             = PCPTPages_PLUGIN_URL . 'docs/CONNECTOR_SPEC.md';
 		$user                 = wp_get_current_user();
 
 		?>
@@ -197,7 +197,7 @@ class PRE_Connector_Admin {
 							type="checkbox"
 							id="pre-connector-enabled"
 							<?php checked( $is_enabled ); ?>
-							data-ajax-action="pre_connector_toggle_enabled"
+							data-ajax-action="pcptpages_connector_toggle_enabled"
 						>
 						<span><?php esc_html_e( 'Allow Claude Cowork to call this site', 'promptless-cpt-pages' ); ?></span>
 						<span class="pre-connector-toggle-status" id="pre-enabled-status" aria-live="polite"></span>
@@ -303,7 +303,7 @@ class PRE_Connector_Admin {
 					<dt><?php esc_html_e( 'Authenticated user', 'promptless-cpt-pages' ); ?></dt>
 					<dd><code><?php echo esc_html( $user->user_login ); ?></code></dd>
 					<dt><?php esc_html_e( 'Plugin version', 'promptless-cpt-pages' ); ?></dt>
-					<dd><code><?php echo esc_html( PRE_VERSION ); ?></code> &middot; <?php esc_html_e( 'Data schema', 'promptless-cpt-pages' ); ?> <code><?php echo esc_html( PRE_DATA_VERSION ); ?></code></dd>
+					<dd><code><?php echo esc_html( PCPTPages_VERSION ); ?></code> &middot; <?php esc_html_e( 'Data schema', 'promptless-cpt-pages' ); ?> <code><?php echo esc_html( PCPTPages_DATA_VERSION ); ?></code></dd>
 					<dt><?php esc_html_e( 'Documentation', 'promptless-cpt-pages' ); ?></dt>
 					<dd>
 						<a href="<?php echo esc_url( $spec_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Connector specification', 'promptless-cpt-pages' ); ?></a>
@@ -328,7 +328,7 @@ class PRE_Connector_Admin {
 	private function verify_ajax() {
 		check_ajax_referer( self::NONCE_ACTION, 'nonce' );
 
-		if ( ! current_user_can( PRE_Capabilities::MANAGE_CAP ) ) {
+		if ( ! current_user_can( PCPTPages_Capabilities::MANAGE_CAP ) ) {
 			wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'promptless-cpt-pages' ) ), 403 );
 		}
 	}
@@ -340,7 +340,7 @@ class PRE_Connector_Admin {
 		$this->verify_ajax();
 
 		$enabled = isset( $_POST['enabled'] ) && '1' === $_POST['enabled'];
-		PRE_Connector_Settings::set_enabled( $enabled );
+		PCPTPages_Connector_Settings::set_enabled( $enabled );
 
 		wp_send_json_success(
 			array(
@@ -377,7 +377,7 @@ class PRE_Connector_Admin {
 		$existing = WP_Application_Passwords::get_user_application_passwords( $user_id );
 		if ( is_array( $existing ) ) {
 			foreach ( $existing as $pw ) {
-				if ( isset( $pw['name'] ) && PRE_Connector_Settings::APP_PASSWORD_NAME === $pw['name'] ) {
+				if ( isset( $pw['name'] ) && PCPTPages_Connector_Settings::APP_PASSWORD_NAME === $pw['name'] ) {
 					WP_Application_Passwords::delete_application_password( $user_id, $pw['uuid'] );
 				}
 			}
@@ -385,7 +385,7 @@ class PRE_Connector_Admin {
 
 		$created = WP_Application_Passwords::create_new_application_password(
 			$user_id,
-			array( 'name' => PRE_Connector_Settings::APP_PASSWORD_NAME )
+			array( 'name' => PCPTPages_Connector_Settings::APP_PASSWORD_NAME )
 		);
 
 		if ( is_wp_error( $created ) ) {
@@ -395,7 +395,7 @@ class PRE_Connector_Admin {
 		// WP returns [ $password_string, $item_metadata ].
 		list( $password_string, $item ) = $created;
 
-		PRE_Connector_Settings::mark_user_configured( $user_id );
+		PCPTPages_Connector_Settings::mark_user_configured( $user_id );
 
 		$current_user = wp_get_current_user();
 
@@ -425,14 +425,14 @@ class PRE_Connector_Admin {
 
 		if ( is_array( $existing ) ) {
 			foreach ( $existing as $pw ) {
-				if ( isset( $pw['name'] ) && PRE_Connector_Settings::APP_PASSWORD_NAME === $pw['name'] ) {
+				if ( isset( $pw['name'] ) && PCPTPages_Connector_Settings::APP_PASSWORD_NAME === $pw['name'] ) {
 					WP_Application_Passwords::delete_application_password( $user_id, $pw['uuid'] );
 					++$count;
 				}
 			}
 		}
 
-		PRE_Connector_Settings::clear_user_configured( $user_id );
+		PCPTPages_Connector_Settings::clear_user_configured( $user_id );
 
 		wp_send_json_success(
 			array(
@@ -455,10 +455,10 @@ class PRE_Connector_Admin {
 	 * Keeping this endpoint unauthenticated lets the bash setup command
 	 * curl it without juggling cookies or tokens.
 	 *
-	 * Route: /wp-admin/admin-ajax.php?action=pre_download_connector
+	 * Route: /wp-admin/admin-ajax.php?action=pcptpages_download_connector
 	 */
 	public function ajax_download_connector() {
-		$path = PRE_PLUGIN_DIR . 'includes/Connector/assets/post-runtime-connector.js';
+		$path = PCPTPages_PLUGIN_DIR . 'includes/Connector/assets/post-runtime-connector.js';
 
 		if ( ! file_exists( $path ) ) {
 			status_header( 404 );

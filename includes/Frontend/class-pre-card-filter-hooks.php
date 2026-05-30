@@ -12,7 +12,7 @@
  *
  * For each fire, the listener checks if the post belongs to a PRE-managed
  * CPT, and if so, echoes the position-specific HTML produced by
- * PRE_Card_Renderer::render_position_html().
+ * PCPTPages_Card_Renderer::render_position_html().
  *
  * Architecture note: PRE has zero PHP-level dependency on Promptless WP or
  * the Promptless theme. Both consumers are simply exposing a do_action()
@@ -38,13 +38,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Listens to the AISB PostGrid + Promptless theme card section actions.
  */
-class PRE_Card_Filter_Hooks {
+class PCPTPages_Card_Filter_Hooks {
 
 	/**
 	 * Memoized card renderer for the request. Lazily instantiated on
 	 * first need.
 	 *
-	 * @var PRE_Card_Renderer|null
+	 * @var PCPTPages_Card_Renderer|null
 	 */
 	private $renderer = null;
 
@@ -116,7 +116,7 @@ class PRE_Card_Filter_Hooks {
 		if ( ! ( $post instanceof WP_Post ) ) {
 			return $show;
 		}
-		$plugin = function_exists( 'pre' ) ? pre() : null;
+		$plugin = function_exists( 'pre' ) ? pcptpages() : null;
 		if ( ! $plugin || ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			// Not a PRE-managed CPT — defer to the theme's decision.
 			return $show;
@@ -169,7 +169,7 @@ class PRE_Card_Filter_Hooks {
 
 		// Silently no-op when the post type isn't one we manage. Avoids
 		// any output on non-PRE cards even though the action fired.
-		$plugin = function_exists( 'pre' ) ? pre() : null;
+		$plugin = function_exists( 'pre' ) ? pcptpages() : null;
 		if ( ! $plugin || ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			return;
 		}
@@ -198,9 +198,9 @@ class PRE_Card_Filter_Hooks {
 	 *
 	 * Two cases land here:
 	 *   1. PostGrid section inside a Promptless page (a non-CPT URL like
-	 *      `/home/`). PRE_Frontend_Assets::enqueue() never fires because
+	 *      `/home/`). PCPTPages_Frontend_Assets::enqueue() never fires because
 	 *      this isn't a registered CPT page; we late-inject both assets.
-	 *   2. Theme archive of a registered CPT where PRE_Frontend_Assets
+	 *   2. Theme archive of a registered CPT where PCPTPages_Frontend_Assets
 	 *      DOES fire (it now covers archives, not just singles). In that
 	 *      case wp_style_is() / wp_script_is() returns true and we skip
 	 *      the duplicate injection.
@@ -221,18 +221,18 @@ class PRE_Card_Filter_Hooks {
 		// wp_print_styles() explicitly to force WordPress to emit the
 		// <link> tag now. Using the API instead of raw printf means the
 		// dependency / version / cache-busting machinery all works.
-		if ( ! wp_style_is( 'pre-cards', 'enqueued' ) ) {
-			if ( ! wp_style_is( 'pre-cards', 'registered' ) ) {
+		if ( ! wp_style_is( 'pcptpages-cards', 'enqueued' ) ) {
+			if ( ! wp_style_is( 'pcptpages-cards', 'registered' ) ) {
 				wp_register_style(
-					'pre-cards',
-					PRE_PLUGIN_URL . 'assets/css/cards.css',
+					'pcptpages-cards',
+					PCPTPages_PLUGIN_URL . 'assets/css/cards.css',
 					array(),
-					PRE_VERSION
+					PCPTPages_VERSION
 				);
 			}
-			wp_enqueue_style( 'pre-cards' );
+			wp_enqueue_style( 'pcptpages-cards' );
 			// Force immediate emission. wp_head has already passed.
-			wp_print_styles( array( 'pre-cards' ) );
+			wp_print_styles( array( 'pcptpages-cards' ) );
 		}
 
 		// Iconify web component — same pattern. Required for the
@@ -241,23 +241,23 @@ class PRE_Card_Filter_Hooks {
 		// registers the custom element, those tags stay as empty 14×14
 		// placeholders (the user sees no glyph). Bundled locally at
 		// assets/js/iconify-icon.min.js.
-		if ( ! wp_script_is( 'pre-iconify-icon', 'enqueued' ) ) {
-			if ( ! wp_script_is( 'pre-iconify-icon', 'registered' ) ) {
+		if ( ! wp_script_is( 'pcptpages-iconify-icon', 'enqueued' ) ) {
+			if ( ! wp_script_is( 'pcptpages-iconify-icon', 'registered' ) ) {
 				wp_register_script(
-					'pre-iconify-icon',
-					PRE_PLUGIN_URL . 'assets/js/iconify-icon.min.js',
+					'pcptpages-iconify-icon',
+					PCPTPages_PLUGIN_URL . 'assets/js/iconify-icon.min.js',
 					array(),
 					'2.1.0',
 					true
 				);
-				wp_script_add_data( 'pre-iconify-icon', 'type', 'module' );
+				wp_script_add_data( 'pcptpages-iconify-icon', 'type', 'module' );
 			}
-			wp_enqueue_script( 'pre-iconify-icon' );
+			wp_enqueue_script( 'pcptpages-iconify-icon' );
 			// Force immediate emission. wp_footer hasn't fired yet but
 			// we want the script available the moment the first
 			// <iconify-icon> element appears in the DOM so the custom
 			// element registers before the browser tries to render it.
-			wp_print_scripts( array( 'pre-iconify-icon' ) );
+			wp_print_scripts( array( 'pcptpages-iconify-icon' ) );
 		}
 	}
 
@@ -265,11 +265,11 @@ class PRE_Card_Filter_Hooks {
 	 * Lazy-instantiate the card renderer. One instance per request is
 	 * enough; render calls don't carry state between invocations.
 	 *
-	 * @return PRE_Card_Renderer
+	 * @return PCPTPages_Card_Renderer
 	 */
 	private function get_renderer() {
 		if ( $this->renderer === null ) {
-			$this->renderer = new PRE_Card_Renderer();
+			$this->renderer = new PCPTPages_Card_Renderer();
 		}
 		return $this->renderer;
 	}

@@ -155,7 +155,7 @@ const TOOLS = [
   {
     name: "postruntime_update_cpt",
     description:
-      "Update a CPT's definition. Slug is immutable (delete and re-register if you need to rename). connector_version MUST match the server's stored version — fetch via postruntime_get_cpt first if you don't have it. Mismatched versions return 409 pre_version_conflict. The update bumps connector_version by 1.",
+      "Update a CPT's definition. Slug is immutable (delete and re-register if you need to rename). connector_version MUST match the server's stored version — fetch via postruntime_get_cpt first if you don't have it. Mismatched versions return 409 pcptpages_version_conflict. The update bumps connector_version by 1.",
     inputSchema: {
       type: "object",
       properties: {
@@ -468,7 +468,7 @@ const TOOLS = [
   },
   {
     name: "postruntime_update_post_field",
-    description: "Update an existing post-field definition. URL key is authoritative — body `key` is ignored if sent. Requires connector_version from a prior read for optimistic concurrency; mismatch returns pre_stale_connector_version (HTTP 409). All other fields are partial-update: only keys present in the call are touched.",
+    description: "Update an existing post-field definition. URL key is authoritative — body `key` is ignored if sent. Requires connector_version from a prior read for optimistic concurrency; mismatch returns pcptpages_stale_connector_version (HTTP 409). All other fields are partial-update: only keys present in the call are touched.",
     inputSchema: {
       type: "object",
       properties: {
@@ -517,7 +517,7 @@ const TOOLS = [
   },
   {
     name: "postruntime_reorder_post_fields",
-    description: "Bulk reorder all post fields on a CPT. ordered_keys MUST contain exactly the set of currently-defined keys — no additions, no removals, no duplicates. Validation runs server-side and returns pre_reorder_key_mismatch (HTTP 422) if the set diverges. Render order matters: fields share positions (e.g. multiple meta_pair fields in meta_strip) and render in this order within each position.",
+    description: "Bulk reorder all post fields on a CPT. ordered_keys MUST contain exactly the set of currently-defined keys — no additions, no removals, no duplicates. Validation runs server-side and returns pcptpages_reorder_key_mismatch (HTTP 422) if the set diverges. Render order matters: fields share positions (e.g. multiple meta_pair fields in meta_strip) and render in this order within each position.",
     inputSchema: {
       type: "object",
       properties: {
@@ -717,7 +717,7 @@ function makeRequest(method, path, body = null) {
 // `default_source` set to {"type":"meta_match","meta_key":"_agent_id"}
 // arrives at PRE's REST validator as the literal string
 // '{"type":"meta_match","meta_key":"_agent_id"}', which is rejected with
-// pre_invalid_source_string. Pre-parsing here makes the MCP path symmetric
+// pcptpages_invalid_source_string. Pre-parsing here makes the MCP path symmetric
 // with the direct REST path so AI agents can use both interchangeably.
 //
 // Safe to call on any value: returns the original value when not a JSON

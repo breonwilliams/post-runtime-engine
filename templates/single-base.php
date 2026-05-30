@@ -2,7 +2,7 @@
 /**
  * Base single-post template for Promptless CPT Pages.
  *
- * Selected by PRE_Template_Router for any registered CPT single page that
+ * Selected by PCPTPages_Template_Router for any registered CPT single page that
  * isn't being handled by Promptless WP and isn't overridden by a theme
  * template. Themes can supply their own copy at:
  *   wp-content/themes/{theme}/post-runtime-engine-{cpt}-single.php
@@ -46,20 +46,20 @@ get_header();
 // many themes hook to). When the Promptless theme is active, we append
 // its content classes — which include aisb-section--{light|dark} based
 // on the customizer's "Content theme" setting.
-$pre_main_classes = 'site-main';
+$pcptpages_main_classes = 'site-main';
 if ( function_exists( 'promptless_get_content_classes' ) ) {
-	$pre_main_classes .= ' ' . promptless_get_content_classes();
+	$pcptpages_main_classes .= ' ' . promptless_get_content_classes();
 }
 ?>
-<main id="main-content" class="<?php echo esc_attr( $pre_main_classes ); ?>">
+<main id="main-content" class="<?php echo esc_attr( $pcptpages_main_classes ); ?>">
 <?php
 
 while ( have_posts() ) :
 	the_post();
-	$pre_post = get_post();
-	if ( $pre_post instanceof WP_Post ) {
-		$pre_renderer = new PRE_Renderer();
-		$pre_renderer->render( $pre_post );
+	$pcptpages_post = get_post();
+	if ( $pcptpages_post instanceof WP_Post ) {
+		$pcptpages_renderer = new PCPTPages_Renderer();
+		$pcptpages_renderer->render( $pcptpages_post );
 	}
 endwhile;
 

@@ -7,7 +7,7 @@
  * kill-switch tucked into the Status card.
  *
  * Loaded only on the connector admin page — see
- * PRE_Connector_Admin::enqueue_assets() for the page-hook gate.
+ * PCPTPages_Connector_Admin::enqueue_assets() for the page-hook gate.
  */
 
 .pre-connector-settings { max-width: 800px; }

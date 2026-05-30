@@ -5,7 +5,7 @@
  * Handles list view, new/edit form, and delete action for custom post
  * types registered through Promptless CPT Pages. Uses standard WordPress
  * admin patterns (admin notices, nonces, the form-table CSS, submit_button
- * helper). All persistence goes through PRE_CPT_Registry; this class only
+ * helper). All persistence goes through PCPTPages_CPT_Registry; this class only
  * deals with the UI layer.
  *
  * @package PostRuntimeEngine
@@ -39,13 +39,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * CPT management page renderer.
  */
-class PRE_Admin_CPTs {
+class PCPTPages_Admin_CPTs {
 
 	/**
 	 * Action name for the save form.
 	 */
-	const ACTION_SAVE   = 'pre_save_cpt';
-	const ACTION_DELETE = 'pre_delete_cpt';
+	const ACTION_SAVE   = 'pcptpages_save_cpt';
+	const ACTION_DELETE = 'pcptpages_delete_cpt';
 
 	/**
 	 * Notice queued for display on the next render. Stored in transient
@@ -73,11 +73,11 @@ class PRE_Admin_CPTs {
 	private $form_error = null;
 
 	/**
-	 * Handle form submission and delete actions. Called from PRE_Admin
+	 * Handle form submission and delete actions. Called from PCPTPages_Admin
 	 * before any output.
 	 */
 	public function handle_action() {
-		if ( ! PRE_Capabilities::current_user_can_manage() ) {
+		if ( ! PCPTPages_Capabilities::current_user_can_manage() ) {
 			return;
 		}
 
@@ -98,7 +98,7 @@ class PRE_Admin_CPTs {
 
 		// Pull a notice queued from a previous request.
 		$user_id = get_current_user_id();
-		$key     = 'pre_admin_notice_' . $user_id;
+		$key     = 'pcptpages_admin_notice_' . $user_id;
 		$notice  = get_transient( $key );
 		if ( $notice ) {
 			$this->notice = $notice;
@@ -137,7 +137,7 @@ class PRE_Admin_CPTs {
 	 * Render the CPT list view.
 	 */
 	private function render_list() {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$cpts   = $plugin->cpts ? $plugin->cpts->get_all() : array();
 
 		?>
@@ -191,11 +191,11 @@ class PRE_Admin_CPTs {
 									<?php esc_html_e( 'Edit', 'promptless-cpt-pages' ); ?>
 								</a>
 								&nbsp;|&nbsp;
-								<a href="<?php echo esc_url( admin_url( 'admin.php?page=pre-groupings&cpt=' . $slug ) ); ?>">
+								<a href="<?php echo esc_url( admin_url( 'admin.php?page=pcptpages-groupings&cpt=' . $slug ) ); ?>">
 									<?php esc_html_e( 'Groupings', 'promptless-cpt-pages' ); ?>
 								</a>
 								&nbsp;|&nbsp;
-								<a href="<?php echo esc_url( admin_url( 'admin.php?page=pre-post-fields&cpt=' . $slug ) ); ?>">
+								<a href="<?php echo esc_url( admin_url( 'admin.php?page=pcptpages-post-fields&cpt=' . $slug ) ); ?>">
 									<?php esc_html_e( 'Post Fields', 'promptless-cpt-pages' ); ?>
 								</a>
 								&nbsp;|&nbsp;
@@ -246,7 +246,7 @@ class PRE_Admin_CPTs {
 
 		$failures = array();
 		add_action(
-			'pre_cpt_registration_failed',
+			'pcptpages_cpt_registration_failed',
 			function ( $slug, $error ) use ( &$failures ) {
 				$failures[ $slug ] = $error instanceof WP_Error ? $error->get_error_message() : (string) $error;
 			},
@@ -268,7 +268,7 @@ class PRE_Admin_CPTs {
 	 * @param string $cpt_slug Existing CPT slug (edit mode only).
 	 */
 	private function render_form( $mode, $cpt_slug = '' ) {
-		$plugin     = pre();
+		$plugin     = pcptpages();
 		$is_edit    = ( $mode === 'edit' );
 		$existing   = null;
 
@@ -314,11 +314,11 @@ class PRE_Admin_CPTs {
 		// across the POST round-trip — hence the explicit query string.
 		$form_action_url = $is_edit
 			? add_query_arg(
-				array( 'page' => PRE_Admin::PAGE_CPTS, 'action' => 'edit', 'cpt' => $cpt_slug ),
+				array( 'page' => PCPTPages_Admin::PAGE_CPTS, 'action' => 'edit', 'cpt' => $cpt_slug ),
 				admin_url( 'admin.php' )
 			)
 			: add_query_arg(
-				array( 'page' => PRE_Admin::PAGE_CPTS, 'action' => 'new' ),
+				array( 'page' => PCPTPages_Admin::PAGE_CPTS, 'action' => 'new' ),
 				admin_url( 'admin.php' )
 			);
 		?>
@@ -330,18 +330,18 @@ class PRE_Admin_CPTs {
 			<?php if ( $is_edit ) : ?>
 				<input type="hidden" name="original_slug" value="<?php echo esc_attr( $cpt_slug ); ?>">
 			<?php endif; ?>
-			<?php wp_nonce_field( self::ACTION_SAVE, 'pre_nonce' ); ?>
+			<?php wp_nonce_field( self::ACTION_SAVE, 'pcptpages_nonce' ); ?>
 
 			<h2 class="title"><?php esc_html_e( 'Basic info', 'promptless-cpt-pages' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_slug"><?php esc_html_e( 'Slug', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_slug"><?php esc_html_e( 'Slug', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_slug"
+							id="pcptpages_slug"
 							name="slug"
 							class="regular-text code"
 							value="<?php echo esc_attr( $values['slug'] ); ?>"
@@ -355,12 +355,12 @@ class PRE_Admin_CPTs {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_label_singular"><?php esc_html_e( 'Singular label', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_label_singular"><?php esc_html_e( 'Singular label', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_label_singular"
+							id="pcptpages_label_singular"
 							name="label_singular"
 							class="regular-text"
 							value="<?php echo esc_attr( $values['label_singular'] ); ?>"
@@ -373,12 +373,12 @@ class PRE_Admin_CPTs {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_label_plural"><?php esc_html_e( 'Plural label', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_label_plural"><?php esc_html_e( 'Plural label', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_label_plural"
+							id="pcptpages_label_plural"
 							name="label_plural"
 							class="regular-text"
 							value="<?php echo esc_attr( $values['label_plural'] ); ?>"
@@ -391,11 +391,11 @@ class PRE_Admin_CPTs {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_description"><?php esc_html_e( 'Description', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_description"><?php esc_html_e( 'Description', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<textarea
-							id="pre_description"
+							id="pcptpages_description"
 							name="description"
 							class="large-text"
 							rows="2"><?php echo esc_textarea( $values['description'] ); ?></textarea>
@@ -442,12 +442,12 @@ class PRE_Admin_CPTs {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_menu_position"><?php esc_html_e( 'Menu position', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_menu_position"><?php esc_html_e( 'Menu position', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="number"
-							id="pre_menu_position"
+							id="pcptpages_menu_position"
 							name="menu_position"
 							class="small-text"
 							value="<?php echo esc_attr( (string) $values['menu_position'] ); ?>"
@@ -460,12 +460,12 @@ class PRE_Admin_CPTs {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_menu_icon"><?php esc_html_e( 'Menu icon', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_menu_icon"><?php esc_html_e( 'Menu icon', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_menu_icon"
+							id="pcptpages_menu_icon"
 							name="menu_icon"
 							class="regular-text code"
 							value="<?php echo esc_attr( $values['menu_icon'] ); ?>">
@@ -519,12 +519,12 @@ class PRE_Admin_CPTs {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_taxonomies"><?php esc_html_e( 'Taxonomies', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_taxonomies"><?php esc_html_e( 'Taxonomies', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_taxonomies"
+							id="pcptpages_taxonomies"
 							name="taxonomies"
 							class="regular-text code"
 							value="<?php echo esc_attr( implode( ', ', $values['taxonomies'] ) ); ?>">
@@ -535,12 +535,12 @@ class PRE_Admin_CPTs {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_capability_type"><?php esc_html_e( 'Capability type', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_capability_type"><?php esc_html_e( 'Capability type', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_capability_type"
+							id="pcptpages_capability_type"
 							name="capability_type"
 							class="regular-text code"
 							value="<?php echo esc_attr( $values['capability_type'] ); ?>">
@@ -559,10 +559,10 @@ class PRE_Admin_CPTs {
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_hero_layout"><?php esc_html_e( 'Hero layout', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_hero_layout"><?php esc_html_e( 'Hero layout', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
-						<select id="pre_hero_layout" name="hero_layout">
+						<select id="pcptpages_hero_layout" name="hero_layout">
 							<option value="stacked" <?php selected( $values['hero_layout'], 'stacked' ); ?>>
 								<?php esc_html_e( 'Stacked — featured image as a banner above the title (16:9)', 'promptless-cpt-pages' ); ?>
 							</option>
@@ -577,10 +577,10 @@ class PRE_Admin_CPTs {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_hero_image_position"><?php esc_html_e( 'Image position', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_hero_image_position"><?php esc_html_e( 'Image position', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
-						<select id="pre_hero_image_position" name="hero_image_position">
+						<select id="pcptpages_hero_image_position" name="hero_image_position">
 							<option value="left" <?php selected( $values['hero_image_position'], 'left' ); ?>>
 								<?php esc_html_e( 'Left', 'promptless-cpt-pages' ); ?>
 							</option>
@@ -595,10 +595,10 @@ class PRE_Admin_CPTs {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_hero_image_aspect"><?php esc_html_e( 'Image aspect ratio', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_hero_image_aspect"><?php esc_html_e( 'Image aspect ratio', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
-						<select id="pre_hero_image_aspect" name="hero_image_aspect">
+						<select id="pcptpages_hero_image_aspect" name="hero_image_aspect">
 							<option value="square" <?php selected( $values['hero_image_aspect'], 'square' ); ?>>
 								<?php esc_html_e( 'Square (1:1) — headshots, profiles, team pages', 'promptless-cpt-pages' ); ?>
 							</option>
@@ -624,14 +624,14 @@ class PRE_Admin_CPTs {
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_default_icon"><?php esc_html_e( 'Default icon', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_default_icon"><?php esc_html_e( 'Default icon', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
-						<select id="pre_default_icon" name="default_icon">
+						<select id="pcptpages_default_icon" name="default_icon">
 							<option value="" <?php selected( $values['default_icon'], '' ); ?>>
 								<?php esc_html_e( '— None —', 'promptless-cpt-pages' ); ?>
 							</option>
-							<?php foreach ( PRE_Icon_Library::get_grouped_by_category() as $category => $icons_in_category ) : ?>
+							<?php foreach ( PCPTPages_Icon_Library::get_grouped_by_category() as $category => $icons_in_category ) : ?>
 								<optgroup label="<?php echo esc_attr( $category ); ?>">
 									<?php foreach ( $icons_in_category as $icon_id => $icon ) : ?>
 										<option value="<?php echo esc_attr( $icon_id ); ?>" <?php selected( $values['default_icon'], $icon_id ); ?>>
@@ -699,11 +699,11 @@ class PRE_Admin_CPTs {
 	 * Handle a save (new or edit) submission.
 	 */
 	private function handle_save() {
-		check_admin_referer( self::ACTION_SAVE, 'pre_nonce' );
+		check_admin_referer( self::ACTION_SAVE, 'pcptpages_nonce' );
 
 		$values = $this->collect_form_values();
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts ) {
 			$this->queue_notice( 'error', __( 'Internal error: CPT registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
@@ -738,7 +738,7 @@ class PRE_Admin_CPTs {
 
 		check_admin_referer( self::ACTION_DELETE . '_' . $cpt_slug );
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts ) {
 			$this->queue_notice( 'error', __( 'Internal error: CPT registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
@@ -775,7 +775,7 @@ class PRE_Admin_CPTs {
 
 	/**
 	 * Collect, sanitize, and shape the POSTed form values into a definition
-	 * array suitable for PRE_CPT_Registry::register().
+	 * array suitable for PCPTPages_CPT_Registry::register().
 	 *
 	 * Sanitization here is conservative — actual rejection of malformed
 	 * input happens in the validator. Everything that passes through here
@@ -821,7 +821,7 @@ class PRE_Admin_CPTs {
 		$hero_image_aspect = isset( $_POST['hero_image_aspect'] )
 			? sanitize_key( wp_unslash( $_POST['hero_image_aspect'] ) )
 			: 'square';
-		// default_icon is validated against PRE_Icon_Library by the validator
+		// default_icon is validated against PCPTPages_Icon_Library by the validator
 		// — sanitize_key strips invalid chars (icon IDs are snake_case) before
 		// the lookup so malformed input fails with a typed error.
 		$default_icon = isset( $_POST['default_icon'] )
@@ -883,7 +883,7 @@ class PRE_Admin_CPTs {
 	private function queue_notice( $type, $message ) {
 		$user_id = get_current_user_id();
 		set_transient(
-			'pre_admin_notice_' . $user_id,
+			'pcptpages_admin_notice_' . $user_id,
 			array( 'type' => $type, 'message' => $message ),
 			60
 		);
@@ -897,7 +897,7 @@ class PRE_Admin_CPTs {
 	 */
 	private function url( $args = array() ) {
 		return add_query_arg(
-			array_merge( array( 'page' => PRE_Admin::PAGE_CPTS ), $args ),
+			array_merge( array( 'page' => PCPTPages_Admin::PAGE_CPTS ), $args ),
 			admin_url( 'admin.php' )
 		);
 	}
@@ -928,7 +928,7 @@ class PRE_Admin_CPTs {
 	/**
 	 * Convert a stored CPT definition into form values for the edit form.
 	 *
-	 * @param array $definition Definition from PRE_CPT_Registry::get().
+	 * @param array $definition Definition from PCPTPages_CPT_Registry::get().
 	 * @return array
 	 */
 	private function definition_to_form_values( array $definition ) {

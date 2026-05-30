@@ -4,6 +4,46 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.5.0] — 2026-05-30
+
+WordPress.org plugin directory compliance release — final round. The
+3-character `pre` / `PRE_` prefix fell below WP.org's required 4-character
+minimum (the same rule that bit FRE during its review), so the entire
+symbol surface was re-prefixed to `pcptpages` / `PCPTPages_`.
+
+Unlike FRE's equivalent rename, PRE ships without an option-key
+migration routine because there are no production installs of this
+plugin yet. The plugin is positioned for first-time WordPress.org
+distribution.
+
+### Changed (breaking for any third-party code referencing the old names)
+- **Re-prefixed all `PRE_` / `pre_` symbols** to `PCPTPages_` /
+  `pcptpages_`: class names, the plugin's global constants
+  (`PCPTPages_VERSION`, `PCPTPages_PLUGIN_DIR`, etc.), public API
+  functions (`pcptpages_register_cpt()`, …), the `pcptpages()` accessor,
+  all action/filter hook names, option keys, AJAX action names,
+  transient keys, the capability constant, and user-meta keys.
+- **Script/style handles, menu slugs, `page=` URLs, and
+  `wp_localize_script` object names** also renamed from `pre-*`/`pre*`
+  to `pcptpages-*`/`pcptpages*`. Element IDs and CSS class names in
+  HTML markup are preserved (`.pre-body__main`, `#pre-setup-command`,
+  etc.) — these are not WordPress-flagged symbols.
+- **Build script (`bin/build-release.sh`) version detection** updated to
+  read the renamed `PCPTPages_VERSION` constant.
+
+### Compatibility
+- `class_alias( 'Promptless_CPT_Pages', 'Post_Runtime_Engine' )` is
+  retained for any external code referencing the old main-class name
+  (smoke tests, integration test scaffolding, third-party extensions).
+- Autoloader file paths (`includes/class-pre-*.php`) intentionally
+  preserved — those are actual on-disk filenames, not symbols.
+
+### Compliance status
+- Plugin Check passes with zero errors after this rename.
+- Header set is clean: Plugin Name, Plugin URI (no duplicate Author URI),
+  Text Domain, Stable tag, Tested up to 7.0 all aligned with WP.org
+  guidelines as proven on FRE's successful submission.
+
 ## [0.4.1] — 2026-05-27
 
 Preemptive WordPress.org plugin directory compliance pass, applying the

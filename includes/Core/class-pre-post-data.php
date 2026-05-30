@@ -2,9 +2,9 @@
 /**
  * Per-post grouping value accessor for Promptless CPT Pages.
  *
- * Reads and writes the `_pre_groupings` post meta array. Validates writes
- * through PRE_Validator (which cross-references the per-CPT grouping
- * definitions provided by PRE_Grouping_Registry). Creates a backup copy
+ * Reads and writes the `_pcptpages_groupings` post meta array. Validates writes
+ * through PCPTPages_Validator (which cross-references the per-CPT grouping
+ * definitions provided by PCPTPages_Grouping_Registry). Creates a backup copy
  * before destructive writes so the connector can roll back.
  *
  * The post meta shape is documented in docs/ARCHITECTURE.md. Each entry
@@ -26,21 +26,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Per-post grouping value accessor.
  */
-class PRE_Post_Data {
+class PCPTPages_Post_Data {
 
 	/**
 	 * Post meta key holding the groupings array.
 	 */
-	const META_KEY = '_pre_groupings';
+	const META_KEY = '_pcptpages_groupings';
 
 	/**
 	 * Backup post meta keys. Created before each connector- or admin-driven
 	 * write so a previous-state restore is always one option lookup away.
 	 */
-	const META_KEY_BACKUP        = '_pre_groupings_backup';
-	const META_KEY_BACKUP_TIME   = '_pre_groupings_backup_time';
-	const META_KEY_BACKUP_USER   = '_pre_groupings_backup_user';
-	const META_KEY_BACKUP_SOURCE = '_pre_groupings_backup_source';
+	const META_KEY_BACKUP        = '_pcptpages_groupings_backup';
+	const META_KEY_BACKUP_TIME   = '_pcptpages_groupings_backup_time';
+	const META_KEY_BACKUP_USER   = '_pcptpages_groupings_backup_user';
+	const META_KEY_BACKUP_SOURCE = '_pcptpages_groupings_backup_source';
 
 	// ---------------------------------------------------------------------
 	// v1.1 post-field meta keys
@@ -48,15 +48,15 @@ class PRE_Post_Data {
 
 	/**
 	 * Prefix for per-field value post meta entries. Each registered field
-	 * stores its value at `_pre_field_{field_key}`. Per-field meta keeps
+	 * stores its value at `_pcptpages_field_{field_key}`. Per-field meta keeps
 	 * values queryable via WP_Query meta_query and visible in WP-CLI /
 	 * wp_postmeta inspection (instead of buried in a serialized blob).
 	 *
 	 * Composite display types (rating, progress) store secondary values
-	 * at `_pre_field_{field_key}_count` (rating review count) and
-	 * `_pre_field_{field_key}_goal` (progress target).
+	 * at `_pcptpages_field_{field_key}_count` (rating review count) and
+	 * `_pcptpages_field_{field_key}_goal` (progress target).
 	 */
-	const FIELD_VALUE_META_PREFIX = '_pre_field_';
+	const FIELD_VALUE_META_PREFIX = '_pcptpages_field_';
 
 	/**
 	 * Single post meta entry holding the per-post visibility overrides as
@@ -64,26 +64,26 @@ class PRE_Post_Data {
 	 * visibility is configuration data, not queryable content. See
 	 * docs/POST_FIELDS_V1_1_DESIGN.md § 5.2.
 	 */
-	const FIELD_VISIBILITY_META_KEY = '_pre_field_visibility';
+	const FIELD_VISIBILITY_META_KEY = '_pcptpages_field_visibility';
 
 	/**
 	 * CPT registry dependency.
 	 *
-	 * @var PRE_CPT_Registry
+	 * @var PCPTPages_CPT_Registry
 	 */
 	private $cpts;
 
 	/**
 	 * Grouping registry dependency.
 	 *
-	 * @var PRE_Grouping_Registry
+	 * @var PCPTPages_Grouping_Registry
 	 */
 	private $groupings;
 
 	/**
 	 * Validator instance.
 	 *
-	 * @var PRE_Validator
+	 * @var PCPTPages_Validator
 	 */
 	private $validator;
 
@@ -92,28 +92,28 @@ class PRE_Post_Data {
 	 * plugin instance when not injected at construction time, so callers
 	 * that pre-date v1.1 (3-argument constructor) keep working.
 	 *
-	 * @var PRE_Post_Field_Registry|null
+	 * @var PCPTPages_Post_Field_Registry|null
 	 */
 	private $post_fields;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param PRE_CPT_Registry           $cpts        CPT registry.
-	 * @param PRE_Grouping_Registry      $groupings   Grouping registry.
-	 * @param PRE_Validator|null         $validator   Optional validator dependency.
-	 * @param PRE_Post_Field_Registry|null $post_fields Optional post field registry
+	 * @param PCPTPages_CPT_Registry           $cpts        CPT registry.
+	 * @param PCPTPages_Grouping_Registry      $groupings   Grouping registry.
+	 * @param PCPTPages_Validator|null         $validator   Optional validator dependency.
+	 * @param PCPTPages_Post_Field_Registry|null $post_fields Optional post field registry
 	 *                                                  (v1.1). Lazy-resolved if null.
 	 */
 	public function __construct(
-		PRE_CPT_Registry $cpts,
-		PRE_Grouping_Registry $groupings,
+		PCPTPages_CPT_Registry $cpts,
+		PCPTPages_Grouping_Registry $groupings,
 		$validator = null,
 		$post_fields = null
 	) {
 		$this->cpts        = $cpts;
 		$this->groupings   = $groupings;
-		$this->validator   = $validator ?: new PRE_Validator();
+		$this->validator   = $validator ?: new PCPTPages_Validator();
 		$this->post_fields = $post_fields;
 	}
 
@@ -123,24 +123,24 @@ class PRE_Post_Data {
 	 * a fresh registry. Lets v1.0 callers (3-arg constructor) keep working
 	 * while v1.1 code can inject explicitly.
 	 *
-	 * @return PRE_Post_Field_Registry
+	 * @return PCPTPages_Post_Field_Registry
 	 */
 	private function get_post_field_registry() {
-		if ( $this->post_fields instanceof PRE_Post_Field_Registry ) {
+		if ( $this->post_fields instanceof PCPTPages_Post_Field_Registry ) {
 			return $this->post_fields;
 		}
 
 		// Resolve through the global plugin instance when available.
 		if ( function_exists( 'pre' ) ) {
-			$plugin = pre();
-			if ( $plugin && isset( $plugin->post_fields ) && $plugin->post_fields instanceof PRE_Post_Field_Registry ) {
+			$plugin = pcptpages();
+			if ( $plugin && isset( $plugin->post_fields ) && $plugin->post_fields instanceof PCPTPages_Post_Field_Registry ) {
 				$this->post_fields = $plugin->post_fields;
 				return $this->post_fields;
 			}
 		}
 
 		// Last-resort fallback. Should not be hit in normal runtime.
-		$this->post_fields = new PRE_Post_Field_Registry( $this->validator );
+		$this->post_fields = new PCPTPages_Post_Field_Registry( $this->validator );
 		return $this->post_fields;
 	}
 
@@ -181,7 +181,7 @@ class PRE_Post_Data {
 		$post_id = absint( $post_id );
 		if ( $post_id === 0 ) {
 			return new WP_Error(
-				'pre_invalid_post_id',
+				'pcptpages_invalid_post_id',
 				__( 'Post ID is invalid.', 'promptless-cpt-pages' )
 			);
 		}
@@ -189,7 +189,7 @@ class PRE_Post_Data {
 		$post = get_post( $post_id );
 		if ( ! $post ) {
 			return new WP_Error(
-				'pre_post_not_found',
+				'pcptpages_post_not_found',
 				/* translators: %d: post ID */
 				sprintf( __( 'Post %d does not exist.', 'promptless-cpt-pages' ), $post_id )
 			);
@@ -198,7 +198,7 @@ class PRE_Post_Data {
 		// Confirm the post belongs to a registered CPT.
 		if ( ! $this->cpts->exists( $post->post_type ) ) {
 			return new WP_Error(
-				'pre_post_type_not_managed',
+				'pcptpages_post_type_not_managed',
 				/* translators: %s: post type */
 				sprintf( __( 'Post type %s is not managed by Promptless CPT Pages.', 'promptless-cpt-pages' ), $post->post_type )
 			);
@@ -227,7 +227,7 @@ class PRE_Post_Data {
 		$current = get_post_meta( $post_id, self::META_KEY, true );
 		if ( $current !== $normalized ) {
 			return new WP_Error(
-				'pre_post_data_save_failed',
+				'pcptpages_post_data_save_failed',
 				__( 'Failed to persist post groupings.', 'promptless-cpt-pages' )
 			);
 		}
@@ -240,7 +240,7 @@ class PRE_Post_Data {
 		 * @param string $source     Identifier for the write source.
 		 * @param string $cpt_slug   The post's post type.
 		 */
-		do_action( 'pre_post_groupings_saved', $post_id, $normalized, $source, $post->post_type );
+		do_action( 'pcptpages_post_groupings_saved', $post_id, $normalized, $source, $post->post_type );
 
 		// Suppress the unused-saved warning (update_post_meta return value).
 		unset( $saved );
@@ -266,7 +266,7 @@ class PRE_Post_Data {
 		$grouping_key = sanitize_key( $grouping_key );
 		if ( $grouping_key === '' ) {
 			return new WP_Error(
-				'pre_invalid_grouping_key',
+				'pcptpages_invalid_grouping_key',
 				__( 'Grouping key is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
@@ -315,7 +315,7 @@ class PRE_Post_Data {
 
 		if ( ! $found ) {
 			return new WP_Error(
-				'pre_grouping_not_present',
+				'pcptpages_grouping_not_present',
 				/* translators: %s: grouping key */
 				sprintf( __( 'Grouping %s is not present on this post.', 'promptless-cpt-pages' ), $grouping_key )
 			);
@@ -342,7 +342,7 @@ class PRE_Post_Data {
 		$post_id = absint( $post_id );
 		if ( $post_id === 0 ) {
 			return new WP_Error(
-				'pre_invalid_post_id',
+				'pcptpages_invalid_post_id',
 				__( 'Post ID is invalid.', 'promptless-cpt-pages' )
 			);
 		}
@@ -350,7 +350,7 @@ class PRE_Post_Data {
 		$backup = get_post_meta( $post_id, self::META_KEY_BACKUP, true );
 		if ( ! is_array( $backup ) ) {
 			return new WP_Error(
-				'pre_no_backup',
+				'pcptpages_no_backup',
 				__( 'No backup available to restore.', 'promptless-cpt-pages' )
 			);
 		}
@@ -363,7 +363,7 @@ class PRE_Post_Data {
 		 * @param int   $post_id Post ID.
 		 * @param array $backup  Restored groupings.
 		 */
-		do_action( 'pre_post_groupings_restored', $post_id, $backup );
+		do_action( 'pcptpages_post_groupings_restored', $post_id, $backup );
 
 		return true;
 	}
@@ -439,7 +439,7 @@ class PRE_Post_Data {
 	 *
 	 * Canonical shape includes link_post_id alongside the link string so
 	 * internal links survive domain/permalink migrations. See
-	 * PRE_Validator::validate_grouping_item for the contract.
+	 * PCPTPages_Validator::validate_grouping_item for the contract.
 	 *
 	 * @param mixed $item Item shape.
 	 * @return array
@@ -465,13 +465,13 @@ class PRE_Post_Data {
 	// v1.1 post field accessors
 	//
 	// Storage shape per docs/POST_FIELDS_V1_1_DESIGN.md § 5.2:
-	//   - Per-field value: `_pre_field_{field_key}` (one meta per field)
+	//   - Per-field value: `_pcptpages_field_{field_key}` (one meta per field)
 	//   - Composite secondary values:
-	//       rating count   => `_pre_field_{field_key}_count`
-	//       progress goal  => `_pre_field_{field_key}_goal`
-	//   - Visibility overrides: `_pre_field_visibility` (JSON object)
+	//       rating count   => `_pcptpages_field_{field_key}_count`
+	//       progress goal  => `_pcptpages_field_{field_key}_goal`
+	//   - Visibility overrides: `_pcptpages_field_visibility` (JSON object)
 	//
-	// All writes validate through PRE_Validator. Reads are tolerant of
+	// All writes validate through PCPTPages_Validator. Reads are tolerant of
 	// missing values (return null / empty array) so the renderer can
 	// skip cleanly when nothing is set.
 	// ---------------------------------------------------------------------
@@ -576,7 +576,7 @@ class PRE_Post_Data {
 		$post_id = absint( $post_id );
 		if ( $post_id === 0 ) {
 			return new WP_Error(
-				'pre_invalid_post_id',
+				'pcptpages_invalid_post_id',
 				__( 'Post ID is invalid.', 'promptless-cpt-pages' )
 			);
 		}
@@ -584,7 +584,7 @@ class PRE_Post_Data {
 		$post = get_post( $post_id );
 		if ( ! $post ) {
 			return new WP_Error(
-				'pre_post_not_found',
+				'pcptpages_post_not_found',
 				/* translators: %d: post ID */
 				sprintf( __( 'Post %d does not exist.', 'promptless-cpt-pages' ), $post_id )
 			);
@@ -593,7 +593,7 @@ class PRE_Post_Data {
 		$cpt_slug = $post->post_type;
 		if ( ! $this->cpts->exists( $cpt_slug ) ) {
 			return new WP_Error(
-				'pre_post_type_not_managed',
+				'pcptpages_post_type_not_managed',
 				/* translators: %s: post type */
 				sprintf( __( 'Post type %s is not managed by Promptless CPT Pages.', 'promptless-cpt-pages' ), $cpt_slug )
 			);
@@ -609,7 +609,7 @@ class PRE_Post_Data {
 
 			if ( ! isset( $field_defs[ $field_key ] ) ) {
 				return new WP_Error(
-					'pre_unknown_field_key',
+					'pcptpages_unknown_field_key',
 					sprintf(
 						/* translators: %1$s: field key, %2$s: CPT slug */
 						__( 'Field %1$s is not registered on CPT %2$s.', 'promptless-cpt-pages' ),
@@ -634,7 +634,7 @@ class PRE_Post_Data {
 		 * @param array  $values  Values that were just written.
 		 * @param string $source  Source identifier (admin / connector / mcp / programmatic).
 		 */
-		do_action( 'pre_post_field_values_saved', $post_id, $values, $source );
+		do_action( 'pcptpages_post_field_values_saved', $post_id, $values, $source );
 
 		return true;
 	}
@@ -694,7 +694,7 @@ class PRE_Post_Data {
 	/**
 	 * Write the per-post field visibility overrides.
 	 *
-	 * Validates the shape via PRE_Validator::validate_post_field_visibility,
+	 * Validates the shape via PCPTPages_Validator::validate_post_field_visibility,
 	 * then persists as a JSON-encoded string at the single meta key.
 	 *
 	 * @param int    $post_id    Post ID.
@@ -706,7 +706,7 @@ class PRE_Post_Data {
 		$post_id = absint( $post_id );
 		if ( $post_id === 0 ) {
 			return new WP_Error(
-				'pre_invalid_post_id',
+				'pcptpages_invalid_post_id',
 				__( 'Post ID is invalid.', 'promptless-cpt-pages' )
 			);
 		}
@@ -740,7 +740,7 @@ class PRE_Post_Data {
 		 * @param array  $visibility Normalized visibility array.
 		 * @param string $source     Source identifier.
 		 */
-		do_action( 'pre_post_field_visibility_saved', $post_id, $normalized, $source );
+		do_action( 'pcptpages_post_field_visibility_saved', $post_id, $normalized, $source );
 
 		return true;
 	}

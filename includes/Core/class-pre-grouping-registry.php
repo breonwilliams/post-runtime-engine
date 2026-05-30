@@ -5,12 +5,12 @@
  * Each CPT can have one or more named "groupings" — repeating field
  * collections that conform to the standard primitive shape (image-or-icon,
  * heading, supporting text, optional link). Definitions live in their own
- * options keyed by CPT slug (`pre_groupings_{cpt_slug}`).
+ * options keyed by CPT slug (`pcptpages_groupings_{cpt_slug}`).
  *
  * The grouping definition specifies the default variant, default position,
  * default source mode, item shape requirements, and max items. Per-post
  * grouping data (the actual filled-in items) lives in post meta and is
- * managed by PRE_Post_Data.
+ * managed by PCPTPages_Post_Data.
  *
  * @package PostRuntimeEngine
  */
@@ -23,18 +23,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Stores and reads grouping definitions per CPT.
  */
-class PRE_Grouping_Registry {
+class PCPTPages_Grouping_Registry {
 
 	/**
 	 * Option key prefix. The actual option for a CPT is
-	 * `pre_groupings_{cpt_slug}`.
+	 * `pcptpages_groupings_{cpt_slug}`.
 	 */
-	const OPTION_PREFIX = 'pre_groupings_';
+	const OPTION_PREFIX = 'pcptpages_groupings_';
 
 	/**
 	 * Validator instance.
 	 *
-	 * @var PRE_Validator
+	 * @var PCPTPages_Validator
 	 */
 	private $validator;
 
@@ -49,10 +49,10 @@ class PRE_Grouping_Registry {
 	/**
 	 * Constructor.
 	 *
-	 * @param PRE_Validator|null $validator Optional validator dependency.
+	 * @param PCPTPages_Validator|null $validator Optional validator dependency.
 	 */
 	public function __construct( $validator = null ) {
-		$this->validator = $validator ?: new PRE_Validator();
+		$this->validator = $validator ?: new PCPTPages_Validator();
 	}
 
 	/**
@@ -120,7 +120,7 @@ class PRE_Grouping_Registry {
 		$cpt_slug = sanitize_key( $cpt_slug );
 		if ( $cpt_slug === '' ) {
 			return new WP_Error(
-				'pre_invalid_cpt_slug',
+				'pcptpages_invalid_cpt_slug',
 				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
@@ -158,7 +158,7 @@ class PRE_Grouping_Registry {
 
 		if ( ! $saved && get_option( self::OPTION_PREFIX . $cpt_slug ) !== $all ) {
 			return new WP_Error(
-				'pre_grouping_save_failed',
+				'pcptpages_grouping_save_failed',
 				__( 'Failed to persist grouping definition to the database.', 'promptless-cpt-pages' )
 			);
 		}
@@ -174,7 +174,7 @@ class PRE_Grouping_Registry {
 		 *                             False indicates the grouping was defined
 		 *                             ahead of its CPT (legal but unusual).
 		 */
-		do_action( 'pre_grouping_defined', $cpt_slug, $grouping_key, $definition, $existing === null, $cpt_exists );
+		do_action( 'pcptpages_grouping_defined', $cpt_slug, $grouping_key, $definition, $existing === null, $cpt_exists );
 
 		return true;
 	}
@@ -194,7 +194,7 @@ class PRE_Grouping_Registry {
 
 		if ( $cpt_slug === '' || $grouping_key === '' ) {
 			return new WP_Error(
-				'pre_invalid_args',
+				'pcptpages_invalid_args',
 				__( 'CPT slug and grouping key are required.', 'promptless-cpt-pages' )
 			);
 		}
@@ -202,7 +202,7 @@ class PRE_Grouping_Registry {
 		$all = $this->get_all( $cpt_slug );
 		if ( ! isset( $all[ $grouping_key ] ) ) {
 			return new WP_Error(
-				'pre_grouping_not_found',
+				'pcptpages_grouping_not_found',
 				/* translators: %1$s: grouping key, %2$s: CPT slug */
 				sprintf( __( 'Grouping %1$s is not defined for CPT %2$s.', 'promptless-cpt-pages' ), $grouping_key, $cpt_slug )
 			);
@@ -225,14 +225,14 @@ class PRE_Grouping_Registry {
 		 * @param string $cpt_slug     CPT slug.
 		 * @param string $grouping_key Removed grouping key.
 		 */
-		do_action( 'pre_grouping_removed', $cpt_slug, $grouping_key );
+		do_action( 'pcptpages_grouping_removed', $cpt_slug, $grouping_key );
 
 		return true;
 	}
 
 	/**
 	 * Remove all groupings for a CPT. Called automatically when a CPT is
-	 * unregistered via PRE_CPT_Registry::unregister().
+	 * unregistered via PCPTPages_CPT_Registry::unregister().
 	 *
 	 * @param string $cpt_slug CPT slug.
 	 * @return bool True if the option was deleted; false if it didn't exist.
@@ -288,7 +288,7 @@ class PRE_Grouping_Registry {
 			return true;
 		}
 
-		$cpts = get_option( PRE_CPT_Registry::OPTION_KEY, array() );
+		$cpts = get_option( PCPTPages_CPT_Registry::OPTION_KEY, array() );
 		return is_array( $cpts ) && isset( $cpts[ $cpt_slug ] );
 	}
 

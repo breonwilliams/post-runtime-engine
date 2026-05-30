@@ -4,7 +4,7 @@
  *
  * Single entry point `render( $post_id, $context )` where $context is
  * `card` or `single_hero`. Consumed by:
- *   - PRE_Renderer (single-post template, $context='single_hero')
+ *   - PCPTPages_Renderer (single-post template, $context='single_hero')
  *   - Promptless WP's PostGrid section via aisb_postgrid_card_content
  *     filter (Phase 12, $context='card')
  *   - Promptless theme's archive card template via
@@ -12,7 +12,7 @@
  *   - Any third-party caller that wants design-coherent card field rendering
  *
  * The renderer does NOT render the post title, featured image, or excerpt
- * — those are the caller's responsibility. PRE_Card_Renderer is a content
+ * — those are the caller's responsibility. PCPTPages_Card_Renderer is a content
  * augmenter that emits HTML for the five field positions (image_overlay,
  * headline, subtitle, meta_strip, footer_meta). The caller wraps that
  * output in its own card / hero markup.
@@ -31,13 +31,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Renders post field values for a post in either card or single-hero context.
  */
-class PRE_Card_Renderer {
+class PCPTPages_Card_Renderer {
 
 	/**
 	 * Ordered list of positions for rendering. Output renders positions in
 	 * this order; multiple fields in the same position render in their
 	 * field-definition order (set by `define()` and `reorder()` on
-	 * PRE_Post_Field_Registry).
+	 * PCPTPages_Post_Field_Registry).
 	 */
 	const POSITION_RENDER_ORDER = array(
 		'image_overlay',
@@ -57,22 +57,22 @@ class PRE_Card_Renderer {
 	/**
 	 * Post field registry. Lazy-resolved if null.
 	 *
-	 * @var PRE_Post_Field_Registry|null
+	 * @var PCPTPages_Post_Field_Registry|null
 	 */
 	private $post_fields;
 
 	/**
 	 * Post data accessor. Lazy-resolved if null.
 	 *
-	 * @var PRE_Post_Data|null
+	 * @var PCPTPages_Post_Data|null
 	 */
 	private $post_data;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param PRE_Post_Field_Registry|null $post_fields Optional injection.
-	 * @param PRE_Post_Data|null           $post_data   Optional injection.
+	 * @param PCPTPages_Post_Field_Registry|null $post_fields Optional injection.
+	 * @param PCPTPages_Post_Data|null           $post_data   Optional injection.
 	 */
 	public function __construct( $post_fields = null, $post_data = null ) {
 		$this->post_fields = $post_fields;
@@ -156,7 +156,7 @@ class PRE_Card_Renderer {
 		 * @param int    $post_id Post ID.
 		 * @param string $context 'card' or 'single_hero'.
 		 */
-		return apply_filters( 'pre_card_fields_html', $html, $post_id, $context );
+		return apply_filters( 'pcptpages_card_fields_html', $html, $post_id, $context );
 	}
 
 	/**
@@ -164,7 +164,7 @@ class PRE_Card_Renderer {
 	 * inject post fields at semantically-meaningful points in their own
 	 * card markup (AISB PostGrid via aisb_postgrid_card_section action,
 	 * Promptless theme archive via promptless_archive_card_section action,
-	 * PRE's own single-post hero via the extract helpers in PRE_Renderer).
+	 * PRE's own single-post hero via the extract helpers in PCPTPages_Renderer).
 	 *
 	 * Returns empty string when:
 	 *   - The post's CPT has no post fields registered
@@ -211,7 +211,7 @@ class PRE_Card_Renderer {
 	/**
 	 * Bucket visible fields by position, in definition order.
 	 *
-	 * Resolves visibility via PRE_Post_Data::is_field_visible() so per-post
+	 * Resolves visibility via PCPTPages_Post_Data::is_field_visible() so per-post
 	 * overrides are honored. Fields with no stored value are silently
 	 * dropped (the renderer never emits empty markers).
 	 *
@@ -349,7 +349,7 @@ class PRE_Card_Renderer {
 		 * @param string $context   'card' or 'single_hero'.
 		 * @param int    $post_id   Post ID.
 		 */
-		return apply_filters( 'pre_card_field_html', $html, $field_def, $value, $position, $context, $post_id );
+		return apply_filters( 'pcptpages_card_field_html', $html, $field_def, $value, $position, $context, $post_id );
 	}
 
 	// =====================================================================
@@ -422,15 +422,15 @@ class PRE_Card_Renderer {
 	/**
 	 * Render an icon + value pair (designed for meta_strip).
 	 *
-	 * Pulls the icon SVG from PRE_Icon_Library when an icon slug is set;
+	 * Pulls the icon SVG from PCPTPages_Icon_Library when an icon slug is set;
 	 * otherwise just renders the value.
 	 */
 	private function render_meta_pair( array $field_def, $value, $position, $context ) {
 		$icon_slug = $field_def['icon'] ?? '';
 		$icon_html = '';
 
-		if ( $icon_slug !== '' && class_exists( 'PRE_Icon_Library' ) ) {
-			$icon_html = PRE_Icon_Library::render( $icon_slug, 'pre-field__icon' );
+		if ( $icon_slug !== '' && class_exists( 'PCPTPages_Icon_Library' ) ) {
+			$icon_html = PCPTPages_Icon_Library::render( $icon_slug, 'pre-field__icon' );
 		}
 
 		$value_html = sprintf(
@@ -628,7 +628,7 @@ class PRE_Card_Renderer {
 	 * Resolution chain (per design doc § 12.1):
 	 *   1. Field-level currency_code attribute
 	 *   2. AISB Business Identity (`aisb_business_settings` option) when active
-	 *   3. `pre_currency` option fallback
+	 *   3. `pcptpages_currency` option fallback
 	 *   4. 'USD' final default
 	 *
 	 * @param mixed $value     Numeric value.
@@ -648,7 +648,7 @@ class PRE_Card_Renderer {
 		// Strip cents when the value is a whole number, even for 2-decimal
 		// currencies. "$1,250,000" reads cleaner than "$1,250,000.00" in
 		// card headlines. Sites that want fixed precision can hook the
-		// pre_format_currency filter below.
+		// pcptpages_format_currency filter below.
 		if ( $decimals === 2 && floor( $amount ) === $amount ) {
 			$decimals = 0;
 		}
@@ -673,7 +673,7 @@ class PRE_Card_Renderer {
 		 * @param string $code      ISO 4217 currency code.
 		 * @param array  $field_def Field definition.
 		 */
-		return (string) apply_filters( 'pre_format_currency', $formatted, $amount, $code, $field_def );
+		return (string) apply_filters( 'pcptpages_format_currency', $formatted, $amount, $code, $field_def );
 	}
 
 	/**
@@ -697,9 +697,9 @@ class PRE_Card_Renderer {
 		}
 
 		// 3. PRE fallback option.
-		$pre_currency = get_option( 'pre_currency', '' );
-		if ( $pre_currency !== '' ) {
-			return strtoupper( $pre_currency );
+		$pcptpages_currency = get_option( 'pcptpages_currency', '' );
+		if ( $pcptpages_currency !== '' ) {
+			return strtoupper( $pcptpages_currency );
 		}
 
 		// 4. Final default.
@@ -748,11 +748,11 @@ class PRE_Card_Renderer {
 
 		/**
 		 * Filter the currency-code → symbol map. Add custom currencies
-		 * here when extending PRE_Validator::SUPPORTED_CURRENCIES.
+		 * here when extending PCPTPages_Validator::SUPPORTED_CURRENCIES.
 		 *
 		 * @param array $symbols Default map.
 		 */
-		$symbols = apply_filters( 'pre_currency_symbols', $default_symbols );
+		$symbols = apply_filters( 'pcptpages_currency_symbols', $default_symbols );
 
 		return isset( $symbols[ $code ] ) ? $symbols[ $code ] : ( $code . ' ' );
 	}
@@ -869,45 +869,45 @@ class PRE_Card_Renderer {
 	 * Resolve the post field registry, preferring constructor injection,
 	 * then the global plugin instance, then a fresh fallback.
 	 *
-	 * @return PRE_Post_Field_Registry
+	 * @return PCPTPages_Post_Field_Registry
 	 */
 	private function get_post_fields() {
-		if ( $this->post_fields instanceof PRE_Post_Field_Registry ) {
+		if ( $this->post_fields instanceof PCPTPages_Post_Field_Registry ) {
 			return $this->post_fields;
 		}
 		if ( function_exists( 'pre' ) ) {
-			$plugin = pre();
-			if ( $plugin && isset( $plugin->post_fields ) && $plugin->post_fields instanceof PRE_Post_Field_Registry ) {
+			$plugin = pcptpages();
+			if ( $plugin && isset( $plugin->post_fields ) && $plugin->post_fields instanceof PCPTPages_Post_Field_Registry ) {
 				$this->post_fields = $plugin->post_fields;
 				return $this->post_fields;
 			}
 		}
-		$this->post_fields = new PRE_Post_Field_Registry();
+		$this->post_fields = new PCPTPages_Post_Field_Registry();
 		return $this->post_fields;
 	}
 
 	/**
 	 * Resolve the post data accessor, preferring constructor injection.
 	 *
-	 * @return PRE_Post_Data
+	 * @return PCPTPages_Post_Data
 	 */
 	private function get_post_data() {
-		if ( $this->post_data instanceof PRE_Post_Data ) {
+		if ( $this->post_data instanceof PCPTPages_Post_Data ) {
 			return $this->post_data;
 		}
 		if ( function_exists( 'pre' ) ) {
-			$plugin = pre();
-			if ( $plugin && isset( $plugin->post_data ) && $plugin->post_data instanceof PRE_Post_Data ) {
+			$plugin = pcptpages();
+			if ( $plugin && isset( $plugin->post_data ) && $plugin->post_data instanceof PCPTPages_Post_Data ) {
 				$this->post_data = $plugin->post_data;
 				return $this->post_data;
 			}
 		}
 		// Last-resort fallback. Builds dependencies fresh — should not
-		// normally be hit because PRE_Post_Data needs a CPT registry and
+		// normally be hit because PCPTPages_Post_Data needs a CPT registry and
 		// grouping registry to construct cleanly.
-		$cpts      = new PRE_CPT_Registry();
-		$groupings = new PRE_Grouping_Registry();
-		$this->post_data = new PRE_Post_Data( $cpts, $groupings, null, $this->get_post_fields() );
+		$cpts      = new PCPTPages_CPT_Registry();
+		$groupings = new PCPTPages_Grouping_Registry();
+		$this->post_data = new PCPTPages_Post_Data( $cpts, $groupings, null, $this->get_post_fields() );
 		return $this->post_data;
 	}
 }

@@ -6,7 +6,7 @@
  * grouped under a human-readable category (rendered as <optgroup> labels in
  * the admin dropdown). The actual SVG markup is rendered at output time.
  *
- * The library is extensible via the `pre_icon_library` filter — a theme
+ * The library is extensible via the `pcptpages_icon_library` filter — a theme
  * developer or third-party plugin can add their own icons without forking
  * this plugin. Adding icons via filter is the supported extension path.
  *
@@ -42,7 +42,7 @@
  *   - Decorative variations of icons we already have (single "heart" is
  *     enough; we don't ship `heart-filled`, `heart-broken`, etc.).
  *
- * If a client needs a niche icon, the right path is the `pre_icon_library`
+ * If a client needs a niche icon, the right path is the `pcptpages_icon_library`
  * filter at the theme/site level. Site-specific extensions don't belong in
  * the plugin's built-in set.
  *
@@ -91,7 +91,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * inline curated SVG is preferred when both are available — same render
  * cost, no network.
  */
-class PRE_Icon_Library {
+class PCPTPages_Icon_Library {
 
 	/**
 	 * Memoized icon set. Built lazily on first access; rebuilt only if the
@@ -242,7 +242,7 @@ class PRE_Icon_Library {
 		 *
 		 * @param array<string,array> $icons Default icon set keyed by ID.
 		 */
-		$filtered = apply_filters( 'pre_icon_library', $icons );
+		$filtered = apply_filters( 'pcptpages_icon_library', $icons );
 
 		// Defensive normalization: skip malformed entries rather than crash.
 		$result = array();
@@ -348,7 +348,7 @@ class PRE_Icon_Library {
 			return '<span' . $class_attr . ' aria-hidden="true">' . $icon['svg'] . '</span>';
 		}
 
-		// Iconify code — web component path. The PRE_Frontend_Assets enqueue
+		// Iconify code — web component path. The PCPTPages_Frontend_Assets enqueue
 		// loads the iconify-icon JS module from the jsdelivr CDN when any
 		// grouping item has a non-empty icon_id, so the component is
 		// available by the time the page paints.

@@ -4,9 +4,9 @@
  *
  * Each CPT can have one or more named "post fields" — scalar (non-repeatable)
  * fields with a closed enum of display types and positions. Definitions live
- * in their own options keyed by CPT slug (`pre_post_fields_{cpt_slug}`),
- * parallel to the existing `pre_groupings_{cpt_slug}` storage pattern used
- * by PRE_Grouping_Registry.
+ * in their own options keyed by CPT slug (`pcptpages_post_fields_{cpt_slug}`),
+ * parallel to the existing `pcptpages_groupings_{cpt_slug}` storage pattern used
+ * by PCPTPages_Grouping_Registry.
  *
  * Distinct from groupings:
  *   - Groupings are repeatable with a fixed item shape (image-or-icon,
@@ -15,9 +15,9 @@
  *     can occupy the same render position (e.g., several meta_strip items).
  *
  * Per-post values for these fields live in their own post meta entries
- * (one per field, keyed `_pre_field_{field_key}`), not in a serialized blob.
- * Per-post visibility overrides live in `_pre_field_visibility`. Both are
- * managed by PRE_Post_Data; this class only owns the field DEFINITIONS.
+ * (one per field, keyed `_pcptpages_field_{field_key}`), not in a serialized blob.
+ * Per-post visibility overrides live in `_pcptpages_field_visibility`. Both are
+ * managed by PCPTPages_Post_Data; this class only owns the field DEFINITIONS.
  *
  * Design contract: docs/POST_FIELDS_V1_1_DESIGN.md § 5.
  *
@@ -33,20 +33,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Stores and reads post field definitions per CPT.
  */
-class PRE_Post_Field_Registry {
+class PCPTPages_Post_Field_Registry {
 
 	/**
 	 * Option key prefix. The actual option for a CPT is
-	 * `pre_post_fields_{cpt_slug}`.
+	 * `pcptpages_post_fields_{cpt_slug}`.
 	 *
-	 * Parallel to PRE_Grouping_Registry::OPTION_PREFIX (`pre_groupings_`).
+	 * Parallel to PCPTPages_Grouping_Registry::OPTION_PREFIX (`pcptpages_groupings_`).
 	 */
-	const OPTION_PREFIX = 'pre_post_fields_';
+	const OPTION_PREFIX = 'pcptpages_post_fields_';
 
 	/**
 	 * Validator instance.
 	 *
-	 * @var PRE_Validator
+	 * @var PCPTPages_Validator
 	 */
 	private $validator;
 
@@ -63,10 +63,10 @@ class PRE_Post_Field_Registry {
 	/**
 	 * Constructor.
 	 *
-	 * @param PRE_Validator|null $validator Optional validator dependency.
+	 * @param PCPTPages_Validator|null $validator Optional validator dependency.
 	 */
 	public function __construct( $validator = null ) {
-		$this->validator = $validator ?: new PRE_Validator();
+		$this->validator = $validator ?: new PCPTPages_Validator();
 	}
 
 	/**
@@ -132,7 +132,7 @@ class PRE_Post_Field_Registry {
 	 * fields are updated in place (order preserved). To change order, use
 	 * `reorder()` after defining.
 	 *
-	 * Enforces the hard field-count cap (`PRE_Validator::HARD_FIELD_COUNT_LIMIT`,
+	 * Enforces the hard field-count cap (`PCPTPages_Validator::HARD_FIELD_COUNT_LIMIT`,
 	 * default 12). Returns WP_Error on attempt to exceed.
 	 *
 	 * @param string $cpt_slug   CPT slug. Must be a registered CPT.
@@ -144,12 +144,12 @@ class PRE_Post_Field_Registry {
 		$cpt_slug = sanitize_key( $cpt_slug );
 		if ( $cpt_slug === '' ) {
 			return new WP_Error(
-				'pre_invalid_cpt_slug',
+				'pcptpages_invalid_cpt_slug',
 				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
 
-		// Optional CPT-existence check: matches PRE_Grouping_Registry's
+		// Optional CPT-existence check: matches PCPTPages_Grouping_Registry's
 		// behavior of permitting field definitions ahead of CPT
 		// registration (connector-driven setups commonly push the two
 		// together). The action below carries the cpt_exists flag so
@@ -173,7 +173,7 @@ class PRE_Post_Field_Registry {
 			$limit = $this->get_max_field_count();
 			if ( count( $all ) >= $limit ) {
 				return new WP_Error(
-					'pre_max_field_count_exceeded',
+					'pcptpages_max_field_count_exceeded',
 					sprintf(
 						/* translators: %d: the field count limit */
 						__( 'Cannot add another post field. The hard limit of %d post fields per CPT has been reached. Remove an unused field to add a new one.', 'promptless-cpt-pages' ),
@@ -205,7 +205,7 @@ class PRE_Post_Field_Registry {
 		// no-op success). The defensive read confirms persistence.
 		if ( ! $saved && get_option( self::OPTION_PREFIX . $cpt_slug ) !== $all ) {
 			return new WP_Error(
-				'pre_post_field_save_failed',
+				'pcptpages_post_field_save_failed',
 				__( 'Failed to persist post field definition to the database.', 'promptless-cpt-pages' )
 			);
 		}
@@ -221,15 +221,15 @@ class PRE_Post_Field_Registry {
 		 *                           False indicates the field was defined
 		 *                           ahead of its CPT (legal but unusual).
 		 */
-		do_action( 'pre_post_field_defined', $cpt_slug, $field_key, $definition, $existing === null, $cpt_exists );
+		do_action( 'pcptpages_post_field_defined', $cpt_slug, $field_key, $definition, $existing === null, $cpt_exists );
 
 		return true;
 	}
 
 	/**
 	 * Remove a post field definition. Does not touch per-post field values;
-	 * the orphaned `_pre_field_{key}` meta entries remain on existing posts
-	 * until the post is next saved, at which point PRE_Post_Data cleans
+	 * the orphaned `_pcptpages_field_{key}` meta entries remain on existing posts
+	 * until the post is next saved, at which point PCPTPages_Post_Data cleans
 	 * them up (or they can be cleaned via a manual sweep).
 	 *
 	 * @param string $cpt_slug  CPT slug.
@@ -242,7 +242,7 @@ class PRE_Post_Field_Registry {
 
 		if ( $cpt_slug === '' || $field_key === '' ) {
 			return new WP_Error(
-				'pre_invalid_args',
+				'pcptpages_invalid_args',
 				__( 'CPT slug and field key are required.', 'promptless-cpt-pages' )
 			);
 		}
@@ -250,7 +250,7 @@ class PRE_Post_Field_Registry {
 		$all = $this->get_all( $cpt_slug );
 		if ( ! isset( $all[ $field_key ] ) ) {
 			return new WP_Error(
-				'pre_post_field_not_found',
+				'pcptpages_post_field_not_found',
 				sprintf(
 					/* translators: %1$s: field key, %2$s: CPT slug */
 					__( 'Post field %1$s is not defined for CPT %2$s.', 'promptless-cpt-pages' ),
@@ -281,15 +281,15 @@ class PRE_Post_Field_Registry {
 		 *                                   for listeners that need to clean
 		 *                                   up related state.
 		 */
-		do_action( 'pre_post_field_removed', $cpt_slug, $field_key, $removed_definition );
+		do_action( 'pcptpages_post_field_removed', $cpt_slug, $field_key, $removed_definition );
 
 		return true;
 	}
 
 	/**
 	 * Remove all post field definitions for a CPT. Called automatically when
-	 * a CPT is unregistered via PRE_CPT_Registry::unregister(). Mirrors the
-	 * behavior of PRE_Grouping_Registry::remove_all_for_cpt().
+	 * a CPT is unregistered via PCPTPages_CPT_Registry::unregister(). Mirrors the
+	 * behavior of PCPTPages_Grouping_Registry::remove_all_for_cpt().
 	 *
 	 * Does not touch per-post field-value post meta. Orphaned values clean
 	 * up on next save or via manual sweep.
@@ -327,7 +327,7 @@ class PRE_Post_Field_Registry {
 		$cpt_slug = sanitize_key( $cpt_slug );
 		if ( $cpt_slug === '' ) {
 			return new WP_Error(
-				'pre_invalid_cpt_slug',
+				'pcptpages_invalid_cpt_slug',
 				__( 'CPT slug is empty or invalid.', 'promptless-cpt-pages' )
 			);
 		}
@@ -341,7 +341,7 @@ class PRE_Post_Field_Registry {
 		// clear caller error and would silently lose data on rewrite.
 		if ( count( $ordered_keys ) !== count( array_unique( $ordered_keys ) ) ) {
 			return new WP_Error(
-				'pre_reorder_duplicate_keys',
+				'pcptpages_reorder_duplicate_keys',
 				__( 'Reorder list contains duplicate field keys.', 'promptless-cpt-pages' )
 			);
 		}
@@ -355,7 +355,7 @@ class PRE_Post_Field_Registry {
 
 		if ( ! empty( $missing ) || ! empty( $extra ) ) {
 			return new WP_Error(
-				'pre_reorder_keys_mismatch',
+				'pcptpages_reorder_keys_mismatch',
 				__( 'Reorder list must contain exactly the existing field keys, no additions or removals.', 'promptless-cpt-pages' ),
 				array(
 					'missing_from_input' => array_values( $missing ),
@@ -384,7 +384,7 @@ class PRE_Post_Field_Registry {
 		 * @param string   $cpt_slug     CPT slug.
 		 * @param string[] $ordered_keys New order (sanitized).
 		 */
-		do_action( 'pre_post_fields_reordered', $cpt_slug, $ordered_keys );
+		do_action( 'pcptpages_post_fields_reordered', $cpt_slug, $ordered_keys );
 
 		return true;
 	}
@@ -421,7 +421,7 @@ class PRE_Post_Field_Registry {
 
 	/**
 	 * Resolve the effective max field count, honoring the
-	 * `pre_max_post_fields_per_cpt` filter.
+	 * `pcptpages_max_post_fields_per_cpt` filter.
 	 *
 	 * @return int
 	 */
@@ -429,7 +429,7 @@ class PRE_Post_Field_Registry {
 		/**
 		 * Filter the hard cap on post fields per CPT.
 		 *
-		 * Default 12 (PRE_Validator::HARD_FIELD_COUNT_LIMIT). Beyond 12
+		 * Default 12 (PCPTPages_Validator::HARD_FIELD_COUNT_LIMIT). Beyond 12
 		 * the card layout starts to break down regardless of viewport.
 		 * Sites with genuinely unusual needs can raise the cap via this
 		 * filter; raising it past ~16 is unlikely to produce usable
@@ -437,11 +437,11 @@ class PRE_Post_Field_Registry {
 		 *
 		 * @param int $limit Maximum fields allowed per CPT.
 		 */
-		return (int) apply_filters( 'pre_max_post_fields_per_cpt', PRE_Validator::HARD_FIELD_COUNT_LIMIT );
+		return (int) apply_filters( 'pcptpages_max_post_fields_per_cpt', PCPTPages_Validator::HARD_FIELD_COUNT_LIMIT );
 	}
 
 	/**
-	 * Check whether a CPT is registered. Mirrors PRE_Grouping_Registry's
+	 * Check whether a CPT is registered. Mirrors PCPTPages_Grouping_Registry's
 	 * helper: prefer post_type_exists() once WP has hit init; fall back to
 	 * the option-level registry otherwise.
 	 *
@@ -453,7 +453,7 @@ class PRE_Post_Field_Registry {
 			return true;
 		}
 
-		$cpts = get_option( PRE_CPT_Registry::OPTION_KEY, array() );
+		$cpts = get_option( PCPTPages_CPT_Registry::OPTION_KEY, array() );
 		return is_array( $cpts ) && isset( $cpts[ $cpt_slug ] );
 	}
 

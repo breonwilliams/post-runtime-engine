@@ -11,7 +11,7 @@
  *      the form sends the reorder POST.
  *
  * No build step. Plain jQuery, mirroring the existing meta-box.js style.
- * No live preview pane in v1.1 — see PRE_Admin_Post_Fields docblock for
+ * No live preview pane in v1.1 — see PCPTPages_Admin_Post_Fields docblock for
  * the design decision.
  */
 

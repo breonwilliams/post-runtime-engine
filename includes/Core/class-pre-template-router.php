@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * template_include filter handler.
  */
-class PRE_Template_Router {
+class PCPTPages_Template_Router {
 
 	/**
 	 * Constructor. Registers the filter at high priority so we run after
@@ -46,7 +46,7 @@ class PRE_Template_Router {
 			return $template;
 		}
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			return $template;
 		}
@@ -73,6 +73,6 @@ class PRE_Template_Router {
 		}
 
 		// Fall back to the plugin-bundled template.
-		return PRE_PLUGIN_DIR . 'templates/single-base.php';
+		return PCPTPages_PLUGIN_DIR . 'templates/single-base.php';
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * Post Runtime Engine — post field rendering styles (v1.1).
  *
- * Powers PRE_Card_Renderer output. Two render contexts share these rules:
+ * Powers PCPTPages_Card_Renderer output. Two render contexts share these rules:
  *   - Single-post hero (.pre-card-fields--single-hero, .pre-hero) — fields render
  *     alongside the post title and featured image inside the existing
  *     .pre-hero wrapper. Inherits the .pre-single intermediate variables
@@ -180,7 +180,7 @@
 }
 
 /* image_overlay positions absolutely over the parent media wrapper. The
- * caller (PRE_Renderer for the hero, AISB PostGrid for cards) provides
+ * caller (PCPTPages_Renderer for the hero, AISB PostGrid for cards) provides
  * a position: relative container. */
 .pre-card-fields__position--image-overlay {
 	position: absolute;
@@ -649,7 +649,7 @@
 
 /* headline position in single-hero gets generous breathing room above the
  * post title. The card renderer's output is interleaved with the existing
- * .pre-hero__title h1 by PRE_Renderer. */
+ * .pre-hero__title h1 by PCPTPages_Renderer. */
 :is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position--headline {
 	margin-bottom: 0.5em;
 }

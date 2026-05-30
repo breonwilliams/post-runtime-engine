@@ -36,7 +36,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Resolves grouping sources to item arrays.
  */
-class PRE_Source_Resolver {
+class PCPTPages_Source_Resolver {
 
 	/**
 	 * Maximum items returned by an auto source if the definition didn't
@@ -46,15 +46,15 @@ class PRE_Source_Resolver {
 	const DEFAULT_LIMIT = 6;
 
 	/**
-	 * Hard upper bound across all sources. Mirrors PRE_Validator.
+	 * Hard upper bound across all sources. Mirrors PCPTPages_Validator.
 	 */
 	const MAX_LIMIT = 100;
 
 	/**
 	 * Resolve the items array for a grouping on a given post.
 	 *
-	 * @param array   $entry Per-post grouping entry from `_pre_groupings`.
-	 * @param array   $def   Grouping definition (from PRE_Grouping_Registry).
+	 * @param array   $entry Per-post grouping entry from `_pcptpages_groupings`.
+	 * @param array   $def   Grouping definition (from PCPTPages_Grouping_Registry).
 	 * @param WP_Post $post  Current post being rendered.
 	 * @return array<int,array>
 	 */
@@ -238,7 +238,7 @@ class PRE_Source_Resolver {
 	 *
 	 * Field mapping:
 	 *   image_id        → featured image ID (if set)
-	 *   icon_id         → _pre_icon post meta (if set; takes precedence over image when no thumbnail)
+	 *   icon_id         → _pcptpages_icon post meta (if set; takes precedence over image when no thumbnail)
 	 *   heading         → post_title
 	 *   supporting_text → post_excerpt (or trimmed post_content if no excerpt)
 	 *   link            → permalink
@@ -248,7 +248,7 @@ class PRE_Source_Resolver {
 	 */
 	private function post_to_item( WP_Post $post ) {
 		$image_id = (int) get_post_thumbnail_id( $post->ID );
-		$icon_id  = (string) get_post_meta( $post->ID, '_pre_icon', true );
+		$icon_id  = (string) get_post_meta( $post->ID, '_pcptpages_icon', true );
 
 		// If both an icon and an image exist, the image wins by default —
 		// cards with photos are richer than cards with icons. The validator

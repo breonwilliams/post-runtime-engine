@@ -5,12 +5,12 @@
  * Registers all routes under /wp-json/post-runtime/v1/connector/*.
  * Delegates to existing plugin subsystems:
  *
- *   - PRE_CPT_Registry      for CPT CRUD
- *   - PRE_Grouping_Registry for grouping CRUD
- *   - PRE_Post_Data         for per-post grouping read/write
- *   - PRE_Validator         for shape validation (called transitively)
- *   - PRE_Icon_Library      for the icon catalogue
- *   - PRE_Renderer          for the preview endpoint
+ *   - PCPTPages_CPT_Registry      for CPT CRUD
+ *   - PCPTPages_Grouping_Registry for grouping CRUD
+ *   - PCPTPages_Post_Data         for per-post grouping read/write
+ *   - PCPTPages_Validator         for shape validation (called transitively)
+ *   - PCPTPages_Icon_Library      for the icon catalogue
+ *   - PCPTPages_Renderer          for the preview endpoint
  *
  * Owns:
  *   - Route registration (self::register_routes)
@@ -18,9 +18,9 @@
  *   - Argument validation via register_rest_route's $args
  *
  * Does NOT own:
- *   - Permission decisions   — see PRE_Connector_Auth
- *   - Storage                — see PRE_CPT_Registry, PRE_Post_Data
- *   - Validation rules       — see PRE_Validator
+ *   - Permission decisions   — see PCPTPages_Connector_Auth
+ *   - Storage                — see PCPTPages_CPT_Registry, PCPTPages_Post_Data
+ *   - Validation rules       — see PCPTPages_Validator
  *
  * Contract documented in docs/CONNECTOR_SPEC.md.
  *
@@ -41,7 +41,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Connector REST controller.
  */
-class PRE_Connector_API {
+class PCPTPages_Connector_API {
 
 	/**
 	 * Hook registration. Wires register_routes() to rest_api_init and
@@ -75,7 +75,7 @@ class PRE_Connector_API {
 	 *                else WP blogname as a fallback
 	 *   - env_hint:  heuristic classification of the host as production
 	 *                vs staging — best-effort, filterable via
-	 *                pre_site_envelope_env_hint
+	 *                pcptpages_site_envelope_env_hint
 	 *
 	 * Scoped strictly to PRE namespace routes; other plugins' REST
 	 * responses are untouched.
@@ -96,10 +96,10 @@ class PRE_Connector_API {
 			return $response;
 		}
 
-		// Only act on our namespace's routes. PRE_REST_NAMESPACE is
+		// Only act on our namespace's routes. PCPTPages_REST_NAMESPACE is
 		// 'post-runtime/v1'; routes look like '/post-runtime/v1/connector/...'.
 		$route = $request->get_route();
-		if ( strpos( $route, '/' . PRE_REST_NAMESPACE . '/' ) !== 0 ) {
+		if ( strpos( $route, '/' . PCPTPages_REST_NAMESPACE . '/' ) !== 0 ) {
 			return $response;
 		}
 
@@ -157,7 +157,7 @@ class PRE_Connector_API {
 		 *
 		 * @param array $envelope {site_url, site_name, env_hint, ...}
 		 */
-		$cached = apply_filters( 'pre_site_envelope', $cached );
+		$cached = apply_filters( 'pcptpages_site_envelope', $cached );
 
 		return $cached;
 	}
@@ -167,7 +167,7 @@ class PRE_Connector_API {
 	 *
 	 * Best-effort — a sufficiently weird hostname will be misclassified.
 	 * Sites that need tighter classification can override via the
-	 * `pre_site_envelope` filter.
+	 * `pcptpages_site_envelope` filter.
 	 *
 	 * @return string 'production' | 'staging' | 'development'
 	 */
@@ -219,38 +219,38 @@ class PRE_Connector_API {
 	/**
 	 * Register all connector routes.
 	 *
-	 * Every route delegates to PRE_Connector_Auth::build_callback() for
+	 * Every route delegates to PCPTPages_Connector_Auth::build_callback() for
 	 * the auth + rate-limit stack. Per-post routes use
 	 * build_per_post_callback() for object-level capability checks.
 	 */
 	public function register_routes() {
-		$ns   = PRE_REST_NAMESPACE;
-		$base = PRE_REST_BASE;
+		$ns   = PCPTPages_REST_NAMESPACE;
+		$base = PCPTPages_REST_BASE;
 
 		// ----- Preflight + introspection (5 routes) -----
 
 		register_rest_route( $ns, "/{$base}/preflight", array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'handle_preflight' ),
-			'permission_callback' => PRE_Connector_Auth::build_callback( 'preflight' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'preflight' ),
 		) );
 
 		register_rest_route( $ns, "/{$base}/icons", array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'handle_list_icons' ),
-			'permission_callback' => PRE_Connector_Auth::build_callback( 'list_icons' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'list_icons' ),
 		) );
 
 		register_rest_route( $ns, "/{$base}/variants", array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'handle_list_variants' ),
-			'permission_callback' => PRE_Connector_Auth::build_callback( 'list_variants' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'list_variants' ),
 		) );
 
 		register_rest_route( $ns, "/{$base}/positions", array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'handle_list_positions' ),
-			'permission_callback' => PRE_Connector_Auth::build_callback( 'list_positions' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'list_positions' ),
 		) );
 
 		// ----- CPTs (5 routes) -----
@@ -259,12 +259,12 @@ class PRE_Connector_API {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'handle_list_cpts' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'list_cpts' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'list_cpts' ),
 			),
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'handle_register_cpt' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'register_cpt' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'register_cpt' ),
 			),
 		) );
 
@@ -272,19 +272,19 @@ class PRE_Connector_API {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'handle_get_cpt' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'get_cpt' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'get_cpt' ),
 				'args'                => $this->cpt_slug_arg(),
 			),
 			array(
 				'methods'             => WP_REST_Server::EDITABLE,
 				'callback'            => array( $this, 'handle_update_cpt' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'update_cpt' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'update_cpt' ),
 				'args'                => $this->cpt_slug_arg(),
 			),
 			array(
 				'methods'             => WP_REST_Server::DELETABLE,
 				'callback'            => array( $this, 'handle_delete_cpt' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'delete_cpt' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'delete_cpt' ),
 				'args'                => $this->cpt_slug_arg(),
 			),
 		) );
@@ -295,13 +295,13 @@ class PRE_Connector_API {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'handle_list_groupings' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'list_groupings' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'list_groupings' ),
 				'args'                => $this->cpt_slug_arg(),
 			),
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'handle_define_grouping' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'define_grouping' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'define_grouping' ),
 				'args'                => $this->cpt_slug_arg(),
 			),
 		) );
@@ -310,19 +310,19 @@ class PRE_Connector_API {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'handle_get_grouping' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'get_grouping' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'get_grouping' ),
 				'args'                => $this->cpt_slug_and_key_args(),
 			),
 			array(
 				'methods'             => WP_REST_Server::EDITABLE,
 				'callback'            => array( $this, 'handle_update_grouping' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'update_grouping' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'update_grouping' ),
 				'args'                => $this->cpt_slug_and_key_args(),
 			),
 			array(
 				'methods'             => WP_REST_Server::DELETABLE,
 				'callback'            => array( $this, 'handle_delete_grouping' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'delete_grouping' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'delete_grouping' ),
 				'args'                => $this->cpt_slug_and_key_args(),
 			),
 		) );
@@ -333,13 +333,13 @@ class PRE_Connector_API {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'handle_get_post_groupings' ),
-				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'get_post_groupings' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_per_post_callback( 'get_post_groupings' ),
 				'args'                => $this->post_id_arg(),
 			),
 			array(
 				'methods'             => WP_REST_Server::EDITABLE,
 				'callback'            => array( $this, 'handle_set_post_groupings' ),
-				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'set_post_groupings' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_per_post_callback( 'set_post_groupings' ),
 				'args'                => $this->post_id_arg(),
 			),
 		) );
@@ -351,13 +351,13 @@ class PRE_Connector_API {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'handle_list_post_fields' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'list_post_fields' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'list_post_fields' ),
 				'args'                => $this->cpt_slug_arg(),
 			),
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'handle_define_post_field' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'define_post_field' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'define_post_field' ),
 				'args'                => $this->cpt_slug_arg(),
 			),
 		) );
@@ -367,7 +367,7 @@ class PRE_Connector_API {
 		register_rest_route( $ns, "/{$base}/cpts/(?P<slug>[a-z0-9_]+)/post-fields/reorder", array(
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => array( $this, 'handle_reorder_post_fields' ),
-			'permission_callback' => PRE_Connector_Auth::build_callback( 'reorder_post_fields' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'reorder_post_fields' ),
 			'args'                => $this->cpt_slug_arg(),
 		) );
 
@@ -376,19 +376,19 @@ class PRE_Connector_API {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'handle_get_post_field' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'get_post_field' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'get_post_field' ),
 				'args'                => $this->cpt_slug_and_key_args(),
 			),
 			array(
 				'methods'             => WP_REST_Server::EDITABLE,
 				'callback'            => array( $this, 'handle_update_post_field' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'update_post_field' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'update_post_field' ),
 				'args'                => $this->cpt_slug_and_key_args(),
 			),
 			array(
 				'methods'             => WP_REST_Server::DELETABLE,
 				'callback'            => array( $this, 'handle_delete_post_field' ),
-				'permission_callback' => PRE_Connector_Auth::build_callback( 'delete_post_field' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'delete_post_field' ),
 				'args'                => $this->cpt_slug_and_key_args(),
 			),
 		) );
@@ -398,13 +398,13 @@ class PRE_Connector_API {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'handle_get_post_field_values' ),
-				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'get_post_field_values' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_per_post_callback( 'get_post_field_values' ),
 				'args'                => $this->post_id_arg(),
 			),
 			array(
 				'methods'             => WP_REST_Server::EDITABLE,
 				'callback'            => array( $this, 'handle_set_post_field_values' ),
-				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'set_post_field_values' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_per_post_callback( 'set_post_field_values' ),
 				'args'                => $this->post_id_arg(),
 			),
 		) );
@@ -414,13 +414,13 @@ class PRE_Connector_API {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'handle_get_post_field_visibility' ),
-				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'get_post_field_visibility' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_per_post_callback( 'get_post_field_visibility' ),
 				'args'                => $this->post_id_arg(),
 			),
 			array(
 				'methods'             => WP_REST_Server::EDITABLE,
 				'callback'            => array( $this, 'handle_set_post_field_visibility' ),
-				'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'set_post_field_visibility' ),
+				'permission_callback' => PCPTPages_Connector_Auth::build_per_post_callback( 'set_post_field_visibility' ),
 				'args'                => $this->post_id_arg(),
 			),
 		) );
@@ -430,20 +430,20 @@ class PRE_Connector_API {
 		register_rest_route( $ns, "/{$base}/posts", array(
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => array( $this, 'handle_create_post' ),
-			'permission_callback' => PRE_Connector_Auth::build_callback( 'create_post' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'create_post' ),
 		) );
 
 		register_rest_route( $ns, "/{$base}/posts/(?P<id>\d+)", array(
 			'methods'             => WP_REST_Server::EDITABLE,
 			'callback'            => array( $this, 'handle_update_post' ),
-			'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'update_post' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_per_post_callback( 'update_post' ),
 			'args'                => $this->post_id_arg(),
 		) );
 
 		register_rest_route( $ns, "/{$base}/posts/(?P<id>\d+)/preview", array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'handle_preview_post' ),
-			'permission_callback' => PRE_Connector_Auth::build_per_post_callback( 'preview_post' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_per_post_callback( 'preview_post' ),
 			'args'                => $this->post_id_arg(),
 		) );
 	}
@@ -456,7 +456,7 @@ class PRE_Connector_API {
 	 * GET /preflight — site readiness check.
 	 */
 	public function handle_preflight( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 
 		$registered_cpts = array();
 		if ( $plugin->cpts ) {
@@ -468,17 +468,17 @@ class PRE_Connector_API {
 		$user = wp_get_current_user();
 
 		return rest_ensure_response( array(
-			'plugin_version'   => PRE_VERSION,
-			'data_version'     => PRE_DATA_VERSION,
+			'plugin_version'   => PCPTPages_VERSION,
+			'data_version'     => PCPTPages_DATA_VERSION,
 			'wp_version'       => get_bloginfo( 'version' ),
-			'rest_namespace'   => PRE_REST_NAMESPACE,
-			'rest_base'        => '/wp-json/' . PRE_REST_NAMESPACE . '/' . PRE_REST_BASE,
+			'rest_namespace'   => PCPTPages_REST_NAMESPACE,
+			'rest_base'        => '/wp-json/' . PCPTPages_REST_NAMESPACE . '/' . PCPTPages_REST_BASE,
 			'user'             => array(
 				'id'                     => (int) $user->ID,
 				'login'                  => $user->user_login,
-				'can_manage_cpts'        => current_user_can( PRE_Capabilities::MANAGE_CAP ),
-				'can_manage_groupings'   => current_user_can( PRE_Capabilities::MANAGE_CAP ),
-				'can_manage_post_fields' => current_user_can( PRE_Capabilities::MANAGE_CAP ),
+				'can_manage_cpts'        => current_user_can( PCPTPages_Capabilities::MANAGE_CAP ),
+				'can_manage_groupings'   => current_user_can( PCPTPages_Capabilities::MANAGE_CAP ),
+				'can_manage_post_fields' => current_user_can( PCPTPages_Capabilities::MANAGE_CAP ),
 			),
 			'registered_cpts'  => $registered_cpts,
 			// Promptless WP defines AISB_MODERN_VERSION; this flag tells the
@@ -496,7 +496,7 @@ class PRE_Connector_API {
 			'critical_rules'   => self::get_critical_rules(),
 			// Per-variant grouping item shape. Field names that aren't in
 			// this list will be silently ignored on write — the canonical
-			// shape is enforced by PRE_Validator::validate_grouping_item.
+			// shape is enforced by PCPTPages_Validator::validate_grouping_item.
 			'field_name_hints' => self::get_field_name_hints(),
 			// Allowed source modes + per-mode required parameter set. Surfaced
 			// here so AI consumers can discover the meta_match mode added in
@@ -512,8 +512,8 @@ class PRE_Connector_API {
 	/**
 	 * Allowed source modes and the parameter shape each mode requires.
 	 *
-	 * Mirrors PRE_Validator::SOURCE_MODES + the per-mode validation rules in
-	 * PRE_Validator::validate_source_value(). Each entry documents the form
+	 * Mirrors PCPTPages_Validator::SOURCE_MODES + the per-mode validation rules in
+	 * PCPTPages_Validator::validate_source_value(). Each entry documents the form
 	 * (string vs. object), required + optional params, and a one-line use
 	 * case so AI consumers can choose the right mode without trial and error.
 	 *
@@ -577,21 +577,21 @@ class PRE_Connector_API {
 			'link_post_id_canonical'       => 'For internal links to same-site posts, prefer link_post_id over a literal URL. The renderer resolves it via get_permalink() at render time, which makes stored data domain-portable across staging → production migrations and after permalink-structure changes. The literal `link` field is preserved as a fallback when the referenced post has been trashed/deleted.',
 			'postgrid_grid_balance'        => 'Postgrid sections render posts_per_page items in a grid_columns grid. Promptless\'s design optimizer (LayoutOptimizer::apply_postgrid_grid_balance, v1.4+) auto-balances these for you when only one is explicit: send `posts_per_page: 4` and the optimizer picks `grid_columns: "4"`; send `grid_columns: "4"` and the optimizer picks `posts_per_page: 8`. When BOTH are explicit, defer-to-explicit applies (your asymmetric pair like 5+3 is honored as-is). When NEITHER is explicit, the renderer\'s defaults align (6+3). Awkward post counts are handled by minimizing orphan slots: 5 → 3 cols (1 orphan), 7 → 4 cols (1 orphan). Bypass entirely by passing design_options.apply_design_strategy:false.',
 			'featured_card_max_one'        => 'featured-card variant has max_items=1 enforced by the validator. featured-card is for ONE prominent item per grouping (a Lead Architect, a Schedule a Tour CTA, a Currently Featured project). For multi-item collections of cards-with-images use card-grid.',
-			'icon_ids_must_be_registered'  => 'CPT default_icon and grouping item icon_id accept TWO formats, both verified by PRE_Icon_Library::is_valid_id(): (1) A legacy curated ID from the built-in 53-icon library — e.g. `home`, `shield`, `briefcase` — renders as an inline SVG (zero network requests, fastest paint). Call GET /icons (or postruntime_list_icons via MCP) to discover them. (2) Any Iconify code in `collection:name` form — e.g. `mdi:home`, `logos:wordpress`, `material-symbols:business-outline`, `heroicons:user-circle`, `fa6-solid:tooth` — renders as an `<iconify-icon>` web component, fetching SVG from api.iconify.design at paint time. 200,000+ icons across 100+ sets; browse at https://icon-sets.iconify.design/. Prefer Iconify codes for parity with Promptless WP (which already uses Iconify everywhere) and for industry-specific glyphs the curated 53 do not cover. Both formats pass through the same validator and renderer; an invalid format (anything that does not match either) returns 422 pre_invalid_default_icon or pre_unknown_icon at write time. The /icons response includes an `iconify` block with the format pattern + a legacy → Iconify map for cross-format awareness.',
+			'icon_ids_must_be_registered'  => 'CPT default_icon and grouping item icon_id accept TWO formats, both verified by PCPTPages_Icon_Library::is_valid_id(): (1) A legacy curated ID from the built-in 53-icon library — e.g. `home`, `shield`, `briefcase` — renders as an inline SVG (zero network requests, fastest paint). Call GET /icons (or postruntime_list_icons via MCP) to discover them. (2) Any Iconify code in `collection:name` form — e.g. `mdi:home`, `logos:wordpress`, `material-symbols:business-outline`, `heroicons:user-circle`, `fa6-solid:tooth` — renders as an `<iconify-icon>` web component, fetching SVG from api.iconify.design at paint time. 200,000+ icons across 100+ sets; browse at https://icon-sets.iconify.design/. Prefer Iconify codes for parity with Promptless WP (which already uses Iconify everywhere) and for industry-specific glyphs the curated 53 do not cover. Both formats pass through the same validator and renderer; an invalid format (anything that does not match either) returns 422 pcptpages_invalid_default_icon or pcptpages_unknown_icon at write time. The /icons response includes an `iconify` block with the format pattern + a legacy → Iconify map for cross-format awareness.',
 			'choosing_a_source_mode'       => 'Four source modes are available — see source_modes in this preflight for the full descriptor. Quick chooser: (1) Use manual when each post curates its own items (e.g. a Listing\'s Features grouping where the agent picks specific selling points). (2) Use child_posts when the relationship is hierarchical and natural in WordPress (a Course post with Lesson child posts). (3) Use taxonomy_match when the relationship is "shares a category / tag / region" (related Articles in same topic). (4) Use meta_match when the relationship is a stored entity ID — "more from this agent" with meta_key=_agent_id, "other openings from this employer" with _employer_id, "other locations of this business" with _business_id. meta_match short-circuits to empty when the current post has no value for the configured meta_key, so it is safe to enable on a CPT before every post has the meta populated.',
 			// v1.1 — post field authoring rules.
 			'post_fields_vs_groupings'     => 'Two field types coexist on every CPT: groupings (v1.0, repeatable {icon, heading, text, link} items) and post fields (v1.1, scalar values with typed display). Use groupings for collections that need their own items per post — features lists, FAQ items, course modules. Use post fields for single per-post values that decorate the hero and cards — price, status, location, beds/baths, rating, posted date. Two extreme tells: if every post has a different LIST of things, it is a grouping; if every post has the SAME named values (each one filled differently), they are post fields.',
 			'post_field_positions'         => 'Post fields render in a closed set of 5 positions per context (card AND single-post hero, symmetric): image_overlay (badge on featured image, top-left), headline (large prominent value above the title — price, salary, event date), subtitle (small line under the title — location, company, cuisine), meta_strip (inline horizontal list of small items — beds/baths/sqft, prep/cook/rating, posted/duration/level), footer_meta (smallest line at the bottom — listed-date, attendees). A field can use ANY of the 5 positions in EITHER context, plus a sixth `hidden` value to register a field that should not render in that context. Multiple fields can occupy the same position — they render in field-definition order (controlled by /post-fields/reorder).',
 			'post_field_display_types'     => 'Closed enum of 9 display types — see post_field_enums.display_types in this preflight for the full list with examples. Quick chooser: currency for monetary values (locale-formatted), number_with_label for "N <unit>" pairs (1,800 sqft, 3 BR), badge for single pills with color intent (For sale, Featured), meta_pair for icon+value cells in meta_strip (🛏 3), date for dates (absolute or relative), text for plain string display, rating for "★★★★☆ 4.8 (1,243)" composites, progress for funding-style "$320K of $500K" bars, multi_badge for comma-separated pill lists (Vegan, GF, Quick). Each display type has its own per-value validation in the validator — see post_field_value_shape below.',
 			'post_field_value_shape'       => 'Per-display-type value rules: (currency, number_with_label, rating-value, progress-value) numeric; (date) YYYY-MM-DD or any strtotime-parseable string; (text, meta_pair) string up to 500 chars; (badge) string or one of the predefined options[].key when defined; (multi_badge) comma-separated string OR array of segments; (rating) array { value: 0-max, count: int|null }; (progress) array { value: 0+, goal: number|null }. Empty / null clears the field on set_post_field_values. Composite types (rating, progress) accept either the array shape OR a bare scalar for the primary value (secondary defaults to null).',
-			'post_field_count_cap'         => 'Each CPT supports up to 12 post fields (HARD_FIELD_COUNT_LIMIT, filterable via pre_max_post_fields_per_cpt). Cards display best with 8 or fewer; beyond that meta_strip starts wrapping on mobile. The connector rejects field #13 with pre_max_field_count_exceeded (HTTP 422). Plan field allocation up front: 1-2 for headline (price/date), 1 for image_overlay (status), 0-1 for subtitle (location), 2-4 for meta_strip, 0-2 for footer_meta.',
+			'post_field_count_cap'         => 'Each CPT supports up to 12 post fields (HARD_FIELD_COUNT_LIMIT, filterable via pcptpages_max_post_fields_per_cpt). Cards display best with 8 or fewer; beyond that meta_strip starts wrapping on mobile. The connector rejects field #13 with pcptpages_max_field_count_exceeded (HTTP 422). Plan field allocation up front: 1-2 for headline (price/date), 1 for image_overlay (status), 0-1 for subtitle (location), 2-4 for meta_strip, 0-2 for footer_meta.',
 			'post_field_visibility_model'  => 'Two layers of visibility control: (1) CPT-level position attribute (card_position, single_position) — set to `hidden` to drop the field from one context entirely; (2) per-post overrides via PUT /posts/{id}/field-visibility — hide a specific field on a specific post in a specific context while leaving the CPT-level config intact. The intent is "homeowner doesn\'t want their price shown on the card listing" without redefining the entire field. Positions cannot be overridden per post; only visibility.',
 		);
 	}
 
 	/**
 	 * Per-variant grouping item shape. Field names that aren't in this map
-	 * are silently dropped on write by PRE_Validator. The list helps AI
+	 * are silently dropped on write by PCPTPages_Validator. The list helps AI
 	 * agents avoid invented field names like "title" (use heading) or
 	 * "subtitle" (use supporting_text). icon_id and image_id are mutually
 	 * exclusive — the validator rejects both being set on the same item.
@@ -609,7 +609,7 @@ class PRE_Connector_API {
 			'cpt_definition'       => array( 'slug', 'label_singular', 'label_plural', 'supports', 'public', 'has_archive', 'show_in_rest', 'show_in_menu', 'menu_position', 'menu_icon', 'taxonomies', 'capability_type', 'description', 'rewrite', 'hero_layout', 'hero_image_position', 'hero_image_aspect', 'default_icon', 'archive_show_post_date', 'archive_show_post_author' ),
 			'grouping_definition'  => array( 'key', 'label', 'description', 'default_variant', 'default_position', 'default_source', 'max_items', 'heading_required', 'supporting_text_required', 'link_required', 'icon_or_image_required' ),
 			'post_field_definition' => array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'options', 'required', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'max', 'unit_label' ),
-			'notes'                => 'icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails). Post field definition fields not in post_field_definition above are silently dropped on write by PRE_Validator; conditional fields (color_intent, options for badge; icon for meta_pair; date_format / date_format_string for date; currency_code for currency; max + unit_label for rating / progress / number_with_label) are only meaningful when paired with the right display_type.',
+			'notes'                => 'icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails). Post field definition fields not in post_field_definition above are silently dropped on write by PCPTPages_Validator; conditional fields (color_intent, options for badge; icon for meta_pair; date_format / date_format_string for date; currency_code for currency; max + unit_label for rating / progress / number_with_label) are only meaningful when paired with the right display_type.',
 		);
 	}
 
@@ -626,14 +626,14 @@ class PRE_Connector_API {
 			// 9 display types with example renderings — the labels mirror
 			// the admin-UI dropdown so AI agents and humans see the same hints.
 			'display_types' => array(
-				array( 'value' => 'currency',          'label' => 'Currency ($1,250,000)',           'description' => 'Locale-formatted currency value. Currency code resolves via field currency_code → AISB Business Identity → pre_currency option → USD. Optional value_suffix is appended after the formatted amount: "+" for starting-at pricing ($2,328+), "/mo" for subscriptions ($45/mo), "/night" for hotels.' ),
+				array( 'value' => 'currency',          'label' => 'Currency ($1,250,000)',           'description' => 'Locale-formatted currency value. Currency code resolves via field currency_code → AISB Business Identity → pcptpages_currency option → USD. Optional value_suffix is appended after the formatted amount: "+" for starting-at pricing ($2,328+), "/mo" for subscriptions ($45/mo), "/night" for hotels.' ),
 				array( 'value' => 'number_with_label', 'label' => 'Number with unit (1,800 sqft)',   'description' => 'Numeric value with a unit suffix from unit_label. Designed for meta_strip cells.' ),
 				array( 'value' => 'badge',             'label' => 'Badge (For sale)',                'description' => 'Single pill with color intent. Define options to constrain the value to a curated list with per-value intent overrides.' ),
-				array( 'value' => 'meta_pair',         'label' => 'Icon + value (🛏 3)',             'description' => 'Designed for meta_strip. Pulls icon from PRE_Icon_Library via the icon attribute. Pairs an icon glyph with a short numeric or string value.' ),
+				array( 'value' => 'meta_pair',         'label' => 'Icon + value (🛏 3)',             'description' => 'Designed for meta_strip. Pulls icon from PCPTPages_Icon_Library via the icon attribute. Pairs an icon glyph with a short numeric or string value.' ),
 				array( 'value' => 'date',              'label' => 'Date (May 20, 2026)',             'description' => 'Date display. date_format picks one of: absolute (May 20, 2026), relative (2 days ago), custom (uses date_format_string).' ),
 				array( 'value' => 'text',              'label' => 'Plain text',                       'description' => 'Catch-all string display. Use for category names, location strings, anything that doesn\'t fit a more specific type.' ),
-				array( 'value' => 'rating',            'label' => 'Star rating (★★★★☆ 4.8 (1,243))', 'description' => 'Composite: stars + numeric value + optional review count. Value stored at _pre_field_{key}; count at _pre_field_{key}_count. max defaults to 5.' ),
-				array( 'value' => 'progress',          'label' => 'Progress bar (65% funded)',       'description' => 'Bar + label. Value stored at _pre_field_{key} (current); goal at _pre_field_{key}_goal (target). When currency_code is set, label reads "$320,000 of $500,000".' ),
+				array( 'value' => 'rating',            'label' => 'Star rating (★★★★☆ 4.8 (1,243))', 'description' => 'Composite: stars + numeric value + optional review count. Value stored at _pcptpages_field_{key}; count at _pcptpages_field_{key}_count. max defaults to 5.' ),
+				array( 'value' => 'progress',          'label' => 'Progress bar (65% funded)',       'description' => 'Bar + label. Value stored at _pcptpages_field_{key} (current); goal at _pcptpages_field_{key}_goal (target). When currency_code is set, label reads "$320,000 of $500,000".' ),
 				array( 'value' => 'multi_badge',       'label' => 'Multi-badge (Vegan, GF, Quick)',  'description' => 'Comma-separated string OR array. Each segment renders as its own pill in the same row. options can map per-segment to a label + color_intent.' ),
 			),
 			// 5 positions + hidden, symmetric across card and single-hero contexts.
@@ -663,11 +663,11 @@ class PRE_Connector_API {
 				array( 'value' => 'custom',   'label' => 'Custom format string',      'description' => 'Uses the value of date_format_string with date_i18n. Example: "F j" for "May 20".' ),
 			),
 			// Closed set of ISO 4217 currency codes the validator accepts on
-			// currency_code. Extend via the pre_supported_currencies filter.
-			'supported_currencies' => PRE_Validator::SUPPORTED_CURRENCIES,
+			// currency_code. Extend via the pcptpages_supported_currencies filter.
+			'supported_currencies' => PCPTPages_Validator::SUPPORTED_CURRENCIES,
 			// Field-count thresholds. Soft is a UI warning; hard is enforced.
-			'soft_field_count_warning' => PRE_Validator::SOFT_FIELD_COUNT_WARNING,
-			'hard_field_count_limit'   => (int) apply_filters( 'pre_max_post_fields_per_cpt', PRE_Validator::HARD_FIELD_COUNT_LIMIT ),
+			'soft_field_count_warning' => PCPTPages_Validator::SOFT_FIELD_COUNT_WARNING,
+			'hard_field_count_limit'   => (int) apply_filters( 'pcptpages_max_post_fields_per_cpt', PCPTPages_Validator::HARD_FIELD_COUNT_LIMIT ),
 		);
 	}
 
@@ -693,14 +693,14 @@ class PRE_Connector_API {
 		$icons       = array();
 		$cat_seen    = array();
 
-		foreach ( PRE_Icon_Library::get_all() as $id => $icon ) {
+		foreach ( PCPTPages_Icon_Library::get_all() as $id => $icon ) {
 			$icons[] = array(
 				'id'           => $id,
 				'label'        => $icon['label'],
 				'category'     => $icon['category'],
 				'tags'         => $icon['tags'],
-				'iconify_code' => isset( PRE_Icon_Library::get_legacy_iconify_map()[ $id ] )
-					? PRE_Icon_Library::get_legacy_iconify_map()[ $id ]
+				'iconify_code' => isset( PCPTPages_Icon_Library::get_legacy_iconify_map()[ $id ] )
+					? PCPTPages_Icon_Library::get_legacy_iconify_map()[ $id ]
 					: null,
 			);
 			$cat_seen[ $icon['category'] ] = true;
@@ -713,11 +713,11 @@ class PRE_Connector_API {
 				'supported'      => true,
 				'format'         => 'collection:name',
 				'pattern'        => '^[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_-]*$',
-				'max_length'     => PRE_Icon_Library::MAX_ICONIFY_LENGTH,
+				'max_length'     => PCPTPages_Icon_Library::MAX_ICONIFY_LENGTH,
 				'browse_url'     => 'https://icon-sets.iconify.design/',
 				'render_pattern' => '<iconify-icon icon="…"></iconify-icon>',
 				'note'           => 'icon_id accepts BOTH a curated id from icons[] (renders inline SVG) and any Iconify code in collection:name form (renders via iconify-icon web component; SVG fetched from api.iconify.design at paint time with graceful fallback for missing icons). Recommended for connector workflows: prefer Iconify codes for parity with Promptless WP (which already uses Iconify everywhere) and for industry-specific glyphs the curated 53 do not cover (logos:wordpress, mdi:hammer-wrench, fa6-solid:tooth, etc.).',
-				'legacy_map'     => PRE_Icon_Library::get_legacy_iconify_map(),
+				'legacy_map'     => PCPTPages_Icon_Library::get_legacy_iconify_map(),
 			),
 		) );
 	}
@@ -774,9 +774,9 @@ class PRE_Connector_API {
 	// ========================================================================
 
 	public function handle_list_cpts( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts ) {
-			return $this->error_response( 'pre_internal_error', __( 'CPT registry not initialized.', 'promptless-cpt-pages' ), 500 );
+			return $this->error_response( 'pcptpages_internal_error', __( 'CPT registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$cpts = array();
@@ -788,9 +788,9 @@ class PRE_Connector_API {
 	}
 
 	public function handle_register_cpt( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts ) {
-			return $this->error_response( 'pre_internal_error', __( 'CPT registry not initialized.', 'promptless-cpt-pages' ), 500 );
+			return $this->error_response( 'pcptpages_internal_error', __( 'CPT registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -800,7 +800,7 @@ class PRE_Connector_API {
 
 		$slug = isset( $body['slug'] ) ? sanitize_key( $body['slug'] ) : '';
 		if ( $slug === '' ) {
-			return $this->error_response( 'pre_invalid_slug', __( 'Missing or invalid slug.', 'promptless-cpt-pages' ), 422 );
+			return $this->error_response( 'pcptpages_invalid_slug', __( 'Missing or invalid slug.', 'promptless-cpt-pages' ), 422 );
 		}
 
 		// Strip server-managed fields if the agent sent them.
@@ -816,11 +816,11 @@ class PRE_Connector_API {
 	}
 
 	public function handle_get_cpt( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$def = $plugin->cpts->get( $slug );
@@ -828,11 +828,11 @@ class PRE_Connector_API {
 	}
 
 	public function handle_update_cpt( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -843,7 +843,7 @@ class PRE_Connector_API {
 		// Slug is immutable.
 		if ( isset( $body['slug'] ) && sanitize_key( $body['slug'] ) !== $slug ) {
 			return $this->error_response(
-				'pre_immutable_field',
+				'pcptpages_immutable_field',
 				__( 'CPT slug is immutable. Delete and re-register to rename.', 'promptless-cpt-pages' ),
 				400
 			);
@@ -864,7 +864,7 @@ class PRE_Connector_API {
 		// / label_plural required, etc.) — so for a true partial-update
 		// we must merge the body INTO the existing definition first.
 		// Without this merge a caller doing `update_cpt(slug, has_archive: true)`
-		// would be rejected with `pre_missing_label_singular`. The slug-
+		// would be rejected with `pcptpages_missing_label_singular`. The slug-
 		// keyed registry storage already discards anything we don't pass
 		// here; merging just fills in the required keys from the
 		// last-known-good state.
@@ -886,14 +886,14 @@ class PRE_Connector_API {
 	}
 
 	public function handle_delete_cpt( WP_REST_Request $request ) {
-		$plugin     = pre();
+		$plugin     = pcptpages();
 		$slug       = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 		// purge_data is a query-string flag, not a URL-pattern capture, so
 		// it correctly uses get_param.
 		$purge_data = (bool) $request->get_param( 'purge_data' );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		// Always remove grouping definitions for the CPT.
@@ -911,8 +911,8 @@ class PRE_Connector_API {
 				'post_status'    => 'any',
 			) );
 			foreach ( $posts as $post_id ) {
-				delete_post_meta( $post_id, '_pre_groupings' );
-				delete_post_meta( $post_id, '_pre_groupings_backup' );
+				delete_post_meta( $post_id, '_pcptpages_groupings' );
+				delete_post_meta( $post_id, '_pcptpages_groupings_backup' );
 			}
 		}
 
@@ -926,11 +926,11 @@ class PRE_Connector_API {
 	// ========================================================================
 
 	public function handle_list_groupings( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$groupings = array();
@@ -942,11 +942,11 @@ class PRE_Connector_API {
 	}
 
 	public function handle_define_grouping( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -967,15 +967,15 @@ class PRE_Connector_API {
 	}
 
 	public function handle_get_grouping( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->groupings->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_grouping_not_found', __( 'Grouping not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_grouping_not_found', __( 'Grouping not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$def = $plugin->groupings->get( $slug, $key );
@@ -983,15 +983,15 @@ class PRE_Connector_API {
 	}
 
 	public function handle_update_grouping( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->groupings->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_grouping_not_found', __( 'Grouping not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_grouping_not_found', __( 'Grouping not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -1023,15 +1023,15 @@ class PRE_Connector_API {
 	}
 
 	public function handle_delete_grouping( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->groupings->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_grouping_not_found', __( 'Grouping not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_grouping_not_found', __( 'Grouping not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$plugin->groupings->remove( $slug, $key );
@@ -1044,10 +1044,10 @@ class PRE_Connector_API {
 	// ========================================================================
 
 	public function handle_get_post_groupings( WP_REST_Request $request ) {
-		$plugin  = pre();
+		$plugin  = pcptpages();
 		$post_id = (int) $this->get_url_param( $request, 'id' );
 
-		$err = $this->require_pre_post( $post_id );
+		$err = $this->require_pcptpages_post( $post_id );
 		if ( is_wp_error( $err ) ) {
 			return $err;
 		}
@@ -1063,10 +1063,10 @@ class PRE_Connector_API {
 	}
 
 	public function handle_set_post_groupings( WP_REST_Request $request ) {
-		$plugin  = pre();
+		$plugin  = pcptpages();
 		$post_id = (int) $this->get_url_param( $request, 'id' );
 
-		$err = $this->require_pre_post( $post_id );
+		$err = $this->require_pcptpages_post( $post_id );
 		if ( is_wp_error( $err ) ) {
 			return $err;
 		}
@@ -1100,7 +1100,7 @@ class PRE_Connector_API {
 	// ========================================================================
 
 	public function handle_create_post( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 
 		$body = $this->parse_json_body( $request );
 		if ( is_wp_error( $body ) ) {
@@ -1111,7 +1111,7 @@ class PRE_Connector_API {
 
 		if ( $post_type === '' || ! $plugin->cpts || ! $plugin->cpts->exists( $post_type ) ) {
 			return $this->error_response(
-				'pre_unregistered_post_type',
+				'pcptpages_unregistered_post_type',
 				__( 'post_type must be a CPT registered through Promptless CPT Pages.', 'promptless-cpt-pages' ),
 				422
 			);
@@ -1119,7 +1119,7 @@ class PRE_Connector_API {
 
 		// Per-CPT capability check (the route-level callback only checked
 		// site-wide create_post; tighten to the actual CPT's publish cap).
-		if ( ! current_user_can( PRE_Capabilities::publish_cap_for( $post_type ) ) ) {
+		if ( ! current_user_can( PCPTPages_Capabilities::publish_cap_for( $post_type ) ) ) {
 			return $this->error_response(
 				'rest_forbidden',
 				__( 'Your account cannot publish posts of this type.', 'promptless-cpt-pages' ),
@@ -1129,7 +1129,7 @@ class PRE_Connector_API {
 
 		$title = isset( $body['post_title'] ) ? wp_strip_all_tags( (string) $body['post_title'] ) : '';
 		if ( $title === '' ) {
-			return $this->error_response( 'pre_missing_post_title', __( 'post_title is required.', 'promptless-cpt-pages' ), 422 );
+			return $this->error_response( 'pcptpages_missing_post_title', __( 'post_title is required.', 'promptless-cpt-pages' ), 422 );
 		}
 
 		// Defensive sanitization: AI agents sometimes wrap post_content with
@@ -1157,7 +1157,7 @@ class PRE_Connector_API {
 
 		$post_id = wp_insert_post( $insert_args, true );
 		if ( is_wp_error( $post_id ) ) {
-			return $this->error_response( 'pre_post_create_failed', $post_id->get_error_message(), 500 );
+			return $this->error_response( 'pcptpages_post_create_failed', $post_id->get_error_message(), 500 );
 		}
 
 		$warnings = $content_warnings;
@@ -1215,7 +1215,7 @@ class PRE_Connector_API {
 	public function handle_update_post( WP_REST_Request $request ) {
 		$post_id = (int) $this->get_url_param( $request, 'id' );
 
-		$err = $this->require_pre_post( $post_id );
+		$err = $this->require_pcptpages_post( $post_id );
 		if ( is_wp_error( $err ) ) {
 			return $err;
 		}
@@ -1225,7 +1225,7 @@ class PRE_Connector_API {
 			return $body;
 		}
 
-		$plugin = pre();
+		$plugin = pcptpages();
 
 		$update_args = array( 'ID' => $post_id );
 		$warnings    = array();
@@ -1233,7 +1233,7 @@ class PRE_Connector_API {
 		if ( array_key_exists( 'post_title', $body ) ) {
 			$title = wp_strip_all_tags( (string) $body['post_title'] );
 			if ( $title === '' ) {
-				return $this->error_response( 'pre_missing_post_title', __( 'post_title cannot be empty.', 'promptless-cpt-pages' ), 422 );
+				return $this->error_response( 'pcptpages_missing_post_title', __( 'post_title cannot be empty.', 'promptless-cpt-pages' ), 422 );
 			}
 			$update_args['post_title'] = $title;
 		}
@@ -1258,7 +1258,7 @@ class PRE_Connector_API {
 			$valid  = array( 'publish', 'draft', 'pending', 'private', 'future' );
 			if ( ! in_array( $status, $valid, true ) ) {
 				return $this->error_response(
-					'pre_invalid_post_status',
+					'pcptpages_invalid_post_status',
 					sprintf(
 						/* translators: %1$s: invalid status; %2$s: list of valid statuses */
 						__( 'post_status %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
@@ -1275,7 +1275,7 @@ class PRE_Connector_API {
 		if ( count( $update_args ) > 1 ) {
 			$result = wp_update_post( $update_args, true );
 			if ( is_wp_error( $result ) ) {
-				return $this->error_response( 'pre_post_update_failed', $result->get_error_message(), 500 );
+				return $this->error_response( 'pcptpages_post_update_failed', $result->get_error_message(), 500 );
 			}
 		}
 
@@ -1311,28 +1311,28 @@ class PRE_Connector_API {
 	public function handle_preview_post( WP_REST_Request $request ) {
 		$post_id = (int) $this->get_url_param( $request, 'id' );
 
-		$err = $this->require_pre_post( $post_id );
+		$err = $this->require_pcptpages_post( $post_id );
 		if ( is_wp_error( $err ) ) {
 			return $err;
 		}
 
 		$post = get_post( $post_id );
 
-		// Render through PRE_Renderer with output buffering so we
+		// Render through PCPTPages_Renderer with output buffering so we
 		// capture the article HTML without theme chrome. Pass $use_cache
 		// = false: the connector preview is for agents verifying their
 		// just-written changes, so a cached version from before the
 		// write would be misleading.
 		ob_start();
 		setup_postdata( $post );
-		( new PRE_Renderer() )->render( $post, false );
+		( new PCPTPages_Renderer() )->render( $post, false );
 		wp_reset_postdata();
 		$html = ob_get_clean();
 
 		return rest_ensure_response( array(
 			'post_id'   => $post_id,
 			'html'      => $html,
-			'css_url'   => PRE_PLUGIN_URL . 'assets/css/frontend.css?ver=' . PRE_VERSION,
+			'css_url'   => PCPTPages_PLUGIN_URL . 'assets/css/frontend.css?ver=' . PCPTPages_VERSION,
 			'permalink' => get_permalink( $post_id ),
 		) );
 	}
@@ -1371,7 +1371,7 @@ class PRE_Connector_API {
 	 * param is guaranteed present.
 	 *
 	 * Use this method (or the same get_url_params() pattern in
-	 * non-PRE_Connector_API code) for ANY URL-derived identifier.
+	 * non-PCPTPages_Connector_API code) for ANY URL-derived identifier.
 	 * Continue using $request->get_param() for body/query data.
 	 *
 	 * @param WP_REST_Request $request The REST request.
@@ -1704,7 +1704,7 @@ class PRE_Connector_API {
 			$body = $request->get_json_params();
 			if ( ! is_array( $body ) || empty( $body ) ) {
 				return $this->error_response(
-					'pre_unsupported_media_type',
+					'pcptpages_unsupported_media_type',
 					__( 'Content-Type must be application/json.', 'promptless-cpt-pages' ),
 					415
 				);
@@ -1715,7 +1715,7 @@ class PRE_Connector_API {
 		$body = $request->get_json_params();
 		if ( ! is_array( $body ) ) {
 			return $this->error_response(
-				'pre_invalid_json',
+				'pcptpages_invalid_json',
 				__( 'Request body is not valid JSON.', 'promptless-cpt-pages' ),
 				400
 			);
@@ -1758,7 +1758,7 @@ class PRE_Connector_API {
 
 		if ( $submitted_version !== $current ) {
 			return new WP_Error(
-				'pre_version_conflict',
+				'pcptpages_version_conflict',
 				sprintf(
 					/* translators: 1: server version, 2: submitted version */
 					__( 'Version conflict — server has %1$d, you sent %2$d. Re-read the resource and retry.', 'promptless-cpt-pages' ),
@@ -1782,17 +1782,17 @@ class PRE_Connector_API {
 	 * @param int $post_id Post ID.
 	 * @return true|WP_Error
 	 */
-	private function require_pre_post( $post_id ) {
-		$plugin = pre();
+	private function require_pcptpages_post( $post_id ) {
+		$plugin = pcptpages();
 		$post   = get_post( $post_id );
 
 		if ( ! $post ) {
-			return $this->error_response( 'pre_post_not_found', __( 'Post not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_post_not_found', __( 'Post not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			return $this->error_response(
-				'pre_unregistered_post_type',
+				'pcptpages_unregistered_post_type',
 				__( 'This post is not of a Promptless CPT Pages CPT.', 'promptless-cpt-pages' ),
 				404
 			);
@@ -1834,14 +1834,14 @@ class PRE_Connector_API {
 	 * GET /cpts/{slug}/post-fields — list all field definitions for a CPT.
 	 */
 	public function handle_list_post_fields( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields ) {
-			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'promptless-cpt-pages' ), 500 );
+			return $this->error_response( 'pcptpages_post_fields_unavailable', __( 'Post field registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$out = array();
@@ -1856,14 +1856,14 @@ class PRE_Connector_API {
 	 * POST /cpts/{slug}/post-fields — define a new post field.
 	 */
 	public function handle_define_post_field( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields ) {
-			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'promptless-cpt-pages' ), 500 );
+			return $this->error_response( 'pcptpages_post_fields_unavailable', __( 'Post field registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -1890,15 +1890,15 @@ class PRE_Connector_API {
 	 * GET /cpts/{slug}/post-fields/{key} — read one definition.
 	 */
 	public function handle_get_post_field( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields || ! $plugin->post_fields->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_post_field_not_found', __( 'Post field not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$def = $plugin->post_fields->get( $slug, $key );
@@ -1913,15 +1913,15 @@ class PRE_Connector_API {
 	 * is checked for optimistic concurrency.
 	 */
 	public function handle_update_post_field( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields || ! $plugin->post_fields->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_post_field_not_found', __( 'Post field not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -1962,15 +1962,15 @@ class PRE_Connector_API {
 	 * delete behavior — preserves user data through accidental deletions.
 	 */
 	public function handle_delete_post_field( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 		$key    = sanitize_key( $this->get_url_param( $request, 'key' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields || ! $plugin->post_fields->exists( $slug, $key ) ) {
-			return $this->error_response( 'pre_post_field_not_found', __( 'Post field not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_post_field_not_found', __( 'Post field not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
 		$plugin->post_fields->remove( $slug, $key );
@@ -1985,17 +1985,17 @@ class PRE_Connector_API {
 	 *
 	 * The submitted list MUST contain exactly the set of currently-defined
 	 * field keys — no additions, no removals, no duplicates. Validation
-	 * happens in PRE_Post_Field_Registry::reorder.
+	 * happens in PCPTPages_Post_Field_Registry::reorder.
 	 */
 	public function handle_reorder_post_fields( WP_REST_Request $request ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 		$slug   = sanitize_key( $this->get_url_param( $request, 'slug' ) );
 
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $slug ) ) {
-			return $this->error_response( 'pre_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
+			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 		if ( ! $plugin->post_fields ) {
-			return $this->error_response( 'pre_post_fields_unavailable', __( 'Post field registry not initialized.', 'promptless-cpt-pages' ), 500 );
+			return $this->error_response( 'pcptpages_post_fields_unavailable', __( 'Post field registry not initialized.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		$body = $this->parse_json_body( $request );
@@ -2028,10 +2028,10 @@ class PRE_Connector_API {
 	 * arrays so a consumer can read both halves in one call.
 	 */
 	public function handle_get_post_field_values( WP_REST_Request $request ) {
-		$plugin  = pre();
+		$plugin  = pcptpages();
 		$post_id = (int) $this->get_url_param( $request, 'id' );
 
-		$err = $this->require_pre_post( $post_id );
+		$err = $this->require_pcptpages_post( $post_id );
 		if ( is_wp_error( $err ) ) {
 			return $err;
 		}
@@ -2056,10 +2056,10 @@ class PRE_Connector_API {
 	 * unchanged. To clear a field, send an explicit null or empty string.
 	 */
 	public function handle_set_post_field_values( WP_REST_Request $request ) {
-		$plugin  = pre();
+		$plugin  = pcptpages();
 		$post_id = (int) $this->get_url_param( $request, 'id' );
 
-		$err = $this->require_pre_post( $post_id );
+		$err = $this->require_pcptpages_post( $post_id );
 		if ( is_wp_error( $err ) ) {
 			return $err;
 		}
@@ -2082,7 +2082,7 @@ class PRE_Connector_API {
 
 		if ( ! is_array( $values ) || empty( $values ) ) {
 			return $this->error_response(
-				'pre_empty_field_values',
+				'pcptpages_empty_field_values',
 				__( 'Body must include a non-empty "values" object mapping field keys to values.', 'promptless-cpt-pages' ),
 				400
 			);
@@ -2104,10 +2104,10 @@ class PRE_Connector_API {
 	 * GET /posts/{id}/field-visibility — read per-post visibility overrides.
 	 */
 	public function handle_get_post_field_visibility( WP_REST_Request $request ) {
-		$plugin  = pre();
+		$plugin  = pcptpages();
 		$post_id = (int) $this->get_url_param( $request, 'id' );
 
-		$err = $this->require_pre_post( $post_id );
+		$err = $this->require_pcptpages_post( $post_id );
 		if ( is_wp_error( $err ) ) {
 			return $err;
 		}
@@ -2129,10 +2129,10 @@ class PRE_Connector_API {
 	 * post). Send an empty object to clear all overrides.
 	 */
 	public function handle_set_post_field_visibility( WP_REST_Request $request ) {
-		$plugin  = pre();
+		$plugin  = pcptpages();
 		$post_id = (int) $this->get_url_param( $request, 'id' );
 
-		$err = $this->require_pre_post( $post_id );
+		$err = $this->require_pcptpages_post( $post_id );
 		if ( is_wp_error( $err ) ) {
 			return $err;
 		}

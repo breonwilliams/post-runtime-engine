@@ -2,13 +2,13 @@
 /**
  * Per-CPT grouping definition admin page.
  *
- * Reachable via admin.php?page=pre-groupings&cpt={slug}. Lists groupings
+ * Reachable via admin.php?page=pcptpages-groupings&cpt={slug}. Lists groupings
  * defined for the given CPT, lets the admin add/edit/remove definitions.
  * Each definition specifies: identifier (key + label), default presentation
  * (variant, position, max items), default source mode (manual / child_posts /
  * taxonomy_match-with-config), and per-item field requirements.
  *
- * All persistence goes through PRE_Grouping_Registry; this class is the
+ * All persistence goes through PCPTPages_Grouping_Registry; this class is the
  * UI layer only.
  *
  * @package PostRuntimeEngine
@@ -43,10 +43,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Grouping definition admin page.
  */
-class PRE_Admin_Groupings {
+class PCPTPages_Admin_Groupings {
 
-	const ACTION_SAVE   = 'pre_save_grouping';
-	const ACTION_DELETE = 'pre_delete_grouping';
+	const ACTION_SAVE   = 'pcptpages_save_grouping';
+	const ACTION_DELETE = 'pcptpages_delete_grouping';
 
 	/**
 	 * Form values stashed from a failed POST so render_form() can pre-fill.
@@ -74,7 +74,7 @@ class PRE_Admin_Groupings {
 	 * Handle save / delete actions before any output.
 	 */
 	public function handle_action() {
-		if ( ! PRE_Capabilities::current_user_can_manage() ) {
+		if ( ! PCPTPages_Capabilities::current_user_can_manage() ) {
 			return;
 		}
 
@@ -109,13 +109,13 @@ class PRE_Admin_Groupings {
 		echo '<div class="wrap pre-admin">';
 
 		// Confirm the CPT exists before doing anything else.
-		$plugin = pre();
+		$plugin = pcptpages();
 		$cpt    = $plugin->cpts ? $plugin->cpts->get( $this->cpt_slug ) : null;
 
 		if ( $this->cpt_slug === '' || ! $cpt ) {
 			echo '<h1>' . esc_html__( 'Manage Groupings', 'promptless-cpt-pages' ) . '</h1>';
 			echo '<p>' . esc_html__( 'No CPT specified, or that CPT is not registered. Open this page from the Post Types list.', 'promptless-cpt-pages' ) . '</p>';
-			echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_CPTS ) ) . '">';
+			echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . PCPTPages_Admin::PAGE_CPTS ) ) . '">';
 			echo esc_html__( '← Back to Post Types', 'promptless-cpt-pages' );
 			echo '</a></p>';
 			echo '</div>';
@@ -146,7 +146,7 @@ class PRE_Admin_Groupings {
 	 * @param array $cpt CPT definition.
 	 */
 	private function render_list( array $cpt ) {
-		$plugin    = pre();
+		$plugin    = pcptpages();
 		$groupings = $plugin->groupings ? $plugin->groupings->get_all( $this->cpt_slug ) : array();
 
 		?>
@@ -159,7 +159,7 @@ class PRE_Admin_Groupings {
 		<a href="<?php echo esc_url( $this->url( array( 'action' => 'new' ) ) ); ?>" class="page-title-action">
 			<?php esc_html_e( 'Add New', 'promptless-cpt-pages' ); ?>
 		</a>
-		<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PRE_Admin::PAGE_CPTS ) ); ?>" class="page-title-action">
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . PCPTPages_Admin::PAGE_CPTS ) ); ?>" class="page-title-action">
 			<?php esc_html_e( '← Post Types', 'promptless-cpt-pages' ); ?>
 		</a>
 		<hr class="wp-header-end">
@@ -256,7 +256,7 @@ class PRE_Admin_Groupings {
 	 * @param string $grouping_key The grouping key (edit mode only).
 	 */
 	private function render_form( $mode, array $cpt, $grouping_key = '' ) {
-		$plugin   = pre();
+		$plugin   = pcptpages();
 		$is_edit  = ( $mode === 'edit' );
 		$existing = null;
 
@@ -276,7 +276,7 @@ class PRE_Admin_Groupings {
 		// Form action URL preserves the page + cpt + action (and grouping key on edit)
 		// for the same reason as the CPT form: validation errors don't redirect, so
 		// the URL must already be set up for the form view to re-render.
-		$form_action_args = array( 'page' => PRE_Admin::PAGE_GROUPINGS, 'cpt' => $this->cpt_slug );
+		$form_action_args = array( 'page' => PCPTPages_Admin::PAGE_GROUPINGS, 'cpt' => $this->cpt_slug );
 		if ( $is_edit ) {
 			$form_action_args['action']   = 'edit';
 			$form_action_args['grouping'] = $grouping_key;
@@ -311,18 +311,18 @@ class PRE_Admin_Groupings {
 		<form method="post" action="<?php echo esc_url( $form_action_url ); ?>" class="pre-grouping-form">
 			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>">
 			<input type="hidden" name="mode" value="<?php echo esc_attr( $mode ); ?>">
-			<?php wp_nonce_field( self::ACTION_SAVE, 'pre_nonce' ); ?>
+			<?php wp_nonce_field( self::ACTION_SAVE, 'pcptpages_nonce' ); ?>
 
 			<h2 class="title"><?php esc_html_e( 'Identifier', 'promptless-cpt-pages' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_grouping_key"><?php esc_html_e( 'Key', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_grouping_key"><?php esc_html_e( 'Key', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_grouping_key"
+							id="pcptpages_grouping_key"
 							name="key"
 							class="regular-text code"
 							value="<?php echo esc_attr( $values['key'] ); ?>"
@@ -335,12 +335,12 @@ class PRE_Admin_Groupings {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_grouping_label"><?php esc_html_e( 'Label', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_grouping_label"><?php esc_html_e( 'Label', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_grouping_label"
+							id="pcptpages_grouping_label"
 							name="label"
 							class="regular-text"
 							value="<?php echo esc_attr( $values['label'] ); ?>"
@@ -353,11 +353,11 @@ class PRE_Admin_Groupings {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_grouping_description"><?php esc_html_e( 'Description', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_grouping_description"><?php esc_html_e( 'Description', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<textarea
-							id="pre_grouping_description"
+							id="pcptpages_grouping_description"
 							name="description"
 							class="large-text"
 							rows="2"><?php echo esc_textarea( $values['description'] ); ?></textarea>
@@ -372,10 +372,10 @@ class PRE_Admin_Groupings {
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_default_variant"><?php esc_html_e( 'Default variant', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_default_variant"><?php esc_html_e( 'Default variant', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
-						<select id="pre_default_variant" name="default_variant" required>
+						<select id="pcptpages_default_variant" name="default_variant" required>
 							<?php foreach ( $this->variants_with_labels() as $variant => $label ) : ?>
 								<option value="<?php echo esc_attr( $variant ); ?>" <?php selected( $values['default_variant'], $variant ); ?>>
 									<?php echo esc_html( $label ); ?>
@@ -389,10 +389,10 @@ class PRE_Admin_Groupings {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_default_position"><?php esc_html_e( 'Default position', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_default_position"><?php esc_html_e( 'Default position', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
-						<select id="pre_default_position" name="default_position" required>
+						<select id="pcptpages_default_position" name="default_position" required>
 							<?php foreach ( $this->positions_with_labels() as $position => $label ) : ?>
 								<option value="<?php echo esc_attr( $position ); ?>" <?php selected( $values['default_position'], $position ); ?>>
 									<?php echo esc_html( $label ); ?>
@@ -406,12 +406,12 @@ class PRE_Admin_Groupings {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="pre_max_items"><?php esc_html_e( 'Max items', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_max_items"><?php esc_html_e( 'Max items', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="number"
-							id="pre_max_items"
+							id="pcptpages_max_items"
 							name="max_items"
 							class="small-text"
 							value="<?php echo esc_attr( $values['max_items'] === null ? '' : (string) $values['max_items'] ); ?>"
@@ -428,10 +428,10 @@ class PRE_Admin_Groupings {
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="pre_source_type"><?php esc_html_e( 'Source mode', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_source_type"><?php esc_html_e( 'Source mode', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
-						<select id="pre_source_type" name="source_type">
+						<select id="pcptpages_source_type" name="source_type">
 							<option value="manual" <?php selected( $values['source_type'], 'manual' ); ?>>
 								<?php esc_html_e( 'Manual — items entered per post', 'promptless-cpt-pages' ); ?>
 							</option>
@@ -452,12 +452,12 @@ class PRE_Admin_Groupings {
 				</tr>
 				<tr class="pre-source-row pre-source-row--taxonomy">
 					<th scope="row">
-						<label for="pre_source_taxonomy"><?php esc_html_e( 'Taxonomy slug', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_source_taxonomy"><?php esc_html_e( 'Taxonomy slug', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_source_taxonomy"
+							id="pcptpages_source_taxonomy"
 							name="source_taxonomy"
 							class="regular-text code"
 							value="<?php echo esc_attr( $values['source_taxonomy'] ); ?>">
@@ -468,12 +468,12 @@ class PRE_Admin_Groupings {
 				</tr>
 				<tr class="pre-source-row pre-source-row--meta">
 					<th scope="row">
-						<label for="pre_source_meta_key"><?php esc_html_e( 'Post-meta key', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_source_meta_key"><?php esc_html_e( 'Post-meta key', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="text"
-							id="pre_source_meta_key"
+							id="pcptpages_source_meta_key"
 							name="source_meta_key"
 							class="regular-text code"
 							value="<?php echo esc_attr( $values['source_meta_key'] ); ?>"
@@ -485,12 +485,12 @@ class PRE_Admin_Groupings {
 				</tr>
 				<tr class="pre-source-row pre-source-row--auto">
 					<th scope="row">
-						<label for="pre_source_limit"><?php esc_html_e( 'Item limit', 'promptless-cpt-pages' ); ?></label>
+						<label for="pcptpages_source_limit"><?php esc_html_e( 'Item limit', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
 						<input
 							type="number"
-							id="pre_source_limit"
+							id="pcptpages_source_limit"
 							name="source_limit"
 							class="small-text"
 							value="<?php echo esc_attr( $values['source_limit'] === null ? '' : (string) $values['source_limit'] ); ?>"
@@ -550,7 +550,7 @@ class PRE_Admin_Groupings {
 		</form>
 		<?php
 		// The source-type row visibility toggle script lives in
-		// assets/js/admin-groupings.js, enqueued by PRE_Admin::enqueue_assets()
+		// assets/js/admin-groupings.js, enqueued by PCPTPages_Admin::enqueue_assets()
 		// when $current_page === PAGE_GROUPINGS. No inline <script> here per
 		// WordPress.org Plugin Check guidelines.
 	}
@@ -563,9 +563,9 @@ class PRE_Admin_Groupings {
 	 * Handle a save (new or edit) submission.
 	 */
 	private function handle_save() {
-		check_admin_referer( self::ACTION_SAVE, 'pre_nonce' );
+		check_admin_referer( self::ACTION_SAVE, 'pcptpages_nonce' );
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->groupings ) {
 			$this->queue_notice( 'error', __( 'Internal error: grouping registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
@@ -604,7 +604,7 @@ class PRE_Admin_Groupings {
 
 		check_admin_referer( self::ACTION_DELETE . '_' . $grouping_key );
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->groupings ) {
 			$this->queue_notice( 'error', __( 'Internal error: grouping registry not available.', 'promptless-cpt-pages' ) );
 			$this->redirect( $this->url() );
@@ -634,7 +634,7 @@ class PRE_Admin_Groupings {
 
 	/**
 	 * Collect and shape POSTed form values. Sanitization here is conservative —
-	 * actual validation is done by PRE_Validator on save.
+	 * actual validation is done by PCPTPages_Validator on save.
 	 *
 	 * @return array
 	 */
@@ -665,7 +665,7 @@ class PRE_Admin_Groupings {
 
 	/**
 	 * Convert form values into a grouping definition payload that
-	 * PRE_Grouping_Registry::define() expects.
+	 * PCPTPages_Grouping_Registry::define() expects.
 	 *
 	 * @param array $values Form values.
 	 * @return array
@@ -814,7 +814,7 @@ class PRE_Admin_Groupings {
 	 */
 	public function render_notice() {
 		$user_id = get_current_user_id();
-		$key     = 'pre_admin_notice_' . $user_id;
+		$key     = 'pcptpages_admin_notice_' . $user_id;
 		$notice  = get_transient( $key );
 		if ( ! $notice ) {
 			return;
@@ -840,7 +840,7 @@ class PRE_Admin_Groupings {
 	private function queue_notice( $type, $message ) {
 		$user_id = get_current_user_id();
 		set_transient(
-			'pre_admin_notice_' . $user_id,
+			'pcptpages_admin_notice_' . $user_id,
 			array( 'type' => $type, 'message' => $message ),
 			60
 		);
@@ -856,7 +856,7 @@ class PRE_Admin_Groupings {
 		return add_query_arg(
 			array_merge(
 				array(
-					'page' => PRE_Admin::PAGE_GROUPINGS,
+					'page' => PCPTPages_Admin::PAGE_GROUPINGS,
 					'cpt'  => $this->cpt_slug,
 				),
 				$args

@@ -10,7 +10,7 @@
  * resolution at render time.
  *
  * On save, all grouping data is collected from $_POST, normalized into
- * the canonical groupings shape, and persisted via PRE_Post_Data which
+ * the canonical groupings shape, and persisted via PCPTPages_Post_Data which
  * runs strict validation. Validation failures are surfaced as a queued
  * admin notice on the next page load (post still saves with the previous
  * grouping state intact via the backup mechanism).
@@ -26,7 +26,7 @@
  * wp_verify_nonce on $_POST[self::NONCE_NAME] before processing any other
  * $_POST data. Plugin Check's static analyzer flags the $_POST reads
  * because it cannot trace that verification gate. All grouping field
- * values flow through PRE_Validator before persistence (canonical
+ * values flow through PCPTPages_Validator before persistence (canonical
  * sanitization happens at the validator boundary, not at the $_POST
  * read site).
  */
@@ -39,11 +39,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Meta box renderer + save handler.
  */
-class PRE_Meta_Box {
+class PCPTPages_Meta_Box {
 
-	const META_BOX_ID  = 'pre-groupings';
-	const NONCE_NAME   = 'pre_meta_box_nonce';
-	const NONCE_ACTION = 'pre_save_groupings';
+	const META_BOX_ID  = 'pcptpages-groupings';
+	const NONCE_NAME   = 'pcptpages_meta_box_nonce';
+	const NONCE_ACTION = 'pcptpages_save_groupings';
 
 	/**
 	 * Constructor. Wires WordPress hooks.
@@ -58,7 +58,7 @@ class PRE_Meta_Box {
 	 * Register the meta box for every CPT managed by this plugin.
 	 */
 	public function register() {
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts ) {
 			return;
 		}
@@ -92,7 +92,7 @@ class PRE_Meta_Box {
 			return;
 		}
 
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post_type ) ) {
 			return;
 		}
@@ -101,20 +101,20 @@ class PRE_Meta_Box {
 		wp_enqueue_media();
 
 		wp_enqueue_style(
-			'pre-admin',
-			PRE_PLUGIN_URL . 'assets/css/admin.css',
+			'pcptpages-admin',
+			PCPTPages_PLUGIN_URL . 'assets/css/admin.css',
 			array(),
-			PRE_VERSION
+			PCPTPages_VERSION
 		);
 
 		wp_enqueue_script(
-			'pre-meta-box',
-			PRE_PLUGIN_URL . 'assets/js/meta-box.js',
+			'pcptpages-meta-box',
+			PCPTPages_PLUGIN_URL . 'assets/js/meta-box.js',
 			// jquery-ui-autocomplete is bundled with WP core; it powers the
 			// link field's post search. Listing it here pulls in the widget +
 			// its position dependency automatically.
 			array( 'jquery', 'jquery-ui-sortable', 'jquery-ui-autocomplete' ),
-			PRE_VERSION,
+			PCPTPages_VERSION,
 			true
 		);
 
@@ -127,22 +127,22 @@ class PRE_Meta_Box {
 		// honors the script_loader_tag filter so adding the attribute via
 		// wp_script_add_data() makes WP emit type="module". Bundled
 		// locally at assets/js/iconify-icon.min.js — see comment in
-		// PRE_Frontend_Assets::enqueue() for rationale.
+		// PCPTPages_Frontend_Assets::enqueue() for rationale.
 		wp_enqueue_script(
-			'pre-iconify-icon',
-			PRE_PLUGIN_URL . 'assets/js/iconify-icon.min.js',
+			'pcptpages-iconify-icon',
+			PCPTPages_PLUGIN_URL . 'assets/js/iconify-icon.min.js',
 			array(),
 			'2.1.0',
 			true
 		);
-		wp_script_add_data( 'pre-iconify-icon', 'type', 'module' );
+		wp_script_add_data( 'pcptpages-iconify-icon', 'type', 'module' );
 
 		// Localize icon SVGs, REST search endpoint, and nonce so the JS can
 		// render previews and run authenticated post-search queries without a
 		// page-roundtrip per character.
 		wp_localize_script(
-			'pre-meta-box',
-			'preMetaBox',
+			'pcptpages-meta-box',
+			'pcptpagesMetaBox',
 			array(
 				'icons'       => $this->icon_data_for_js(),
 				'mediaTitle'  => __( 'Choose Image', 'promptless-cpt-pages' ),
@@ -169,7 +169,7 @@ class PRE_Meta_Box {
 	 * @param WP_Post $post Current post.
 	 */
 	public function render( $post ) {
-		$plugin = pre();
+		$plugin = pcptpages();
 
 		// Defensive: confirm the post type is one we manage.
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
@@ -193,7 +193,7 @@ class PRE_Meta_Box {
 		if ( empty( $definitions ) ) {
 			$groupings_url = add_query_arg(
 				array(
-					'page' => PRE_Admin::PAGE_GROUPINGS,
+					'page' => PCPTPages_Admin::PAGE_GROUPINGS,
 					'cpt'  => $post->post_type,
 				),
 				admin_url( 'admin.php' )
@@ -251,7 +251,7 @@ class PRE_Meta_Box {
 		$max_items    = isset( $def['max_items'] ) ? (int) $def['max_items'] : 0; // 0 = no cap.
 		$edit_def_url = add_query_arg(
 			array(
-				'page'     => PRE_Admin::PAGE_GROUPINGS,
+				'page'     => PCPTPages_Admin::PAGE_GROUPINGS,
 				'cpt'      => $cpt_slug,
 				'action'   => 'edit',
 				'grouping' => $key,
@@ -262,7 +262,7 @@ class PRE_Meta_Box {
 		// Default variant from the grouping definition; passed to the JS layer
 		// so it can determine the *effective* variant (override or default)
 		// and toggle the icon-only-variant UI state without a roundtrip.
-		// Mirrors the same fallback chain the renderer uses (PRE_Renderer
+		// Mirrors the same fallback chain the renderer uses (PCPTPages_Renderer
 		// lines 295, 637), so the meta box state and the rendered output
 		// agree on what variant is in effect.
 		$default_variant = isset( $def['default_variant'] ) ? (string) $def['default_variant'] : 'compact-grid';
@@ -286,7 +286,7 @@ class PRE_Meta_Box {
 			<div class="pre-meta-grouping__overrides">
 				<label>
 					<?php esc_html_e( 'Position', 'promptless-cpt-pages' ); ?>
-					<select name="pre_groupings[<?php echo esc_attr( $key ); ?>][position]">
+					<select name="pcptpages_groupings[<?php echo esc_attr( $key ); ?>][position]">
 						<option value=""><?php
 							/* translators: %s: default position from grouping definition */
 							printf( esc_html__( 'Default (%s)', 'promptless-cpt-pages' ), esc_html( $def['default_position'] ?? '—' ) );
@@ -298,7 +298,7 @@ class PRE_Meta_Box {
 				</label>
 				<label>
 					<?php esc_html_e( 'Variant', 'promptless-cpt-pages' ); ?>
-					<select name="pre_groupings[<?php echo esc_attr( $key ); ?>][variant_override]">
+					<select name="pcptpages_groupings[<?php echo esc_attr( $key ); ?>][variant_override]">
 						<option value=""><?php
 							/* translators: %s: default variant from grouping definition */
 							printf( esc_html__( 'Default (%s)', 'promptless-cpt-pages' ), esc_html( $def['default_variant'] ?? '—' ) );
@@ -319,7 +319,7 @@ class PRE_Meta_Box {
 					// Grouping-level icon-only note. Shown ONCE per grouping when
 					// the effective variant (override or default) is one that
 					// drops uploaded images at render time (compact-grid or
-					// horizontal-row — PRE_Renderer::render_item line 637-645).
+					// horizontal-row — PCPTPages_Renderer::render_item line 637-645).
 					// Toggled by meta-box.js evaluateGroupingVariant() via the
 					// .is-icon-only class on the grouping wrapper. Previously
 					// this was rendered per-item, which produced 29x duplicate
@@ -398,7 +398,7 @@ class PRE_Meta_Box {
 
 		$thumb_url = $image_id > 0 ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : '';
 
-		$base = 'pre_groupings[' . $key . '][items][' . $index . ']';
+		$base = 'pcptpages_groupings[' . $key . '][items][' . $index . ']';
 
 		?>
 		<li class="pre-item">
@@ -411,8 +411,8 @@ class PRE_Meta_Box {
 					<?php
 					if ( $image_id > 0 && $thumb_url ) {
 						echo '<img src="' . esc_url( $thumb_url ) . '" alt="">';
-					} elseif ( $icon_id !== '' && PRE_Icon_Library::is_valid_id( $icon_id ) ) {
-						// PRE_Icon_Library::render() returns either a <span> wrapper
+					} elseif ( $icon_id !== '' && PCPTPages_Icon_Library::is_valid_id( $icon_id ) ) {
+						// PCPTPages_Icon_Library::render() returns either a <span> wrapper
 						// with esc_attr()'d class + plugin-curated SVG (legacy
 						// icons) OR a <iconify-icon> web component with the
 						// icon attribute esc_attr()'d (Iconify codes). The
@@ -420,7 +420,7 @@ class PRE_Meta_Box {
 						// paint time; legacy SVGs ship inline. Output is
 						// intentionally raw HTML for both paths.
 						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						echo PRE_Icon_Library::render( $icon_id );
+						echo PCPTPages_Icon_Library::render( $icon_id );
 					} else {
 						echo '<span class="pre-item__preview-empty" aria-hidden="true">+</span>';
 					}
@@ -433,7 +433,7 @@ class PRE_Meta_Box {
 					// either a legacy curated ID (`home`, `users`) or an Iconify
 					// code (`mdi:home`, `logos:wordpress`). Storage is the same
 					// field as before so existing post data continues to render.
-					// See PRE_Icon_Library::is_iconify_format() for the validation
+					// See PCPTPages_Icon_Library::is_iconify_format() for the validation
 					// pattern; meta-box.js validates the same shape client-side
 					// for instant feedback.
 					?>
@@ -477,7 +477,7 @@ class PRE_Meta_Box {
 					// preview stays in sync regardless of how the value arrived.
 					// Curated IDs render inline SVG (no network); Iconify codes
 					// typed manually render via <iconify-icon> web component.
-					$grouped_icons = PRE_Icon_Library::get_grouped_by_category();
+					$grouped_icons = PCPTPages_Icon_Library::get_grouped_by_category();
 					?>
 					<select
 						class="pre-item__icon-select"
@@ -572,7 +572,7 @@ class PRE_Meta_Box {
 		}
 
 		// Confirm this is a CPT we manage.
-		$plugin = pre();
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			return;
 		}
@@ -589,8 +589,8 @@ class PRE_Meta_Box {
 		}
 
 		// Pull the raw POSTed groupings.
-		$raw = isset( $_POST['pre_groupings'] ) && is_array( $_POST['pre_groupings'] )
-			? wp_unslash( $_POST['pre_groupings'] )
+		$raw = isset( $_POST['pcptpages_groupings'] ) && is_array( $_POST['pcptpages_groupings'] )
+			? wp_unslash( $_POST['pcptpages_groupings'] )
 			: array();
 
 		$definitions = $plugin->groupings ? $plugin->groupings->get_all( $post->post_type ) : array();
@@ -687,7 +687,7 @@ class PRE_Meta_Box {
 			$groupings[] = $out;
 		}
 
-		// Persist via PRE_Post_Data which validates strictly.
+		// Persist via PCPTPages_Post_Data which validates strictly.
 		if ( ! $plugin->post_data ) {
 			return;
 		}
@@ -697,7 +697,7 @@ class PRE_Meta_Box {
 		if ( is_wp_error( $result ) ) {
 			$user_id = get_current_user_id();
 			set_transient(
-				'pre_admin_notice_' . $user_id,
+				'pcptpages_admin_notice_' . $user_id,
 				array(
 					'type'    => 'error',
 					'message' => sprintf(
@@ -737,7 +737,7 @@ class PRE_Meta_Box {
 	 */
 	private function icon_data_for_js() {
 		$result = array();
-		foreach ( PRE_Icon_Library::get_all() as $id => $icon ) {
+		foreach ( PCPTPages_Icon_Library::get_all() as $id => $icon ) {
 			$result[ $id ] = array(
 				'label' => $icon['label'],
 				'svg'   => $icon['svg'],

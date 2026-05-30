@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.4.1
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -93,6 +93,9 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.5.0 =
+WP.org prefix compliance: pre_/PRE_ renamed to pcptpages_/PCPTPages_ (3-char prefix didn't meet WP.org's 4-char minimum). Classes, hooks, options, accessor pcptpages() all renamed. class_alias keeps Post_Runtime_Engine working. No end-user behavior change.
 
 = 0.4.1 =
 WP.org compliance pass. Main class renamed (back-compat alias preserved). Inline scripts/styles moved to enqueued assets. No data migration. No behavior change for end users.

@@ -18,7 +18,7 @@
  * compliance (no inline scripts in plugin output).
  */
 ( function () {
-    var select = document.getElementById( 'pre_source_type' );
+    var select = document.getElementById( 'pcptpages_source_type' );
     if ( ! select ) {
         return;
     }

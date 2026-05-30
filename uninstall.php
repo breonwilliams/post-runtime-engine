@@ -14,7 +14,7 @@
  *     is PRESERVED by default. Users can re-activate the plugin later and
  *     resume from where they left off.
  *   - If the user has explicitly opted into full deletion via the
- *     `pre_settings.delete_data_on_uninstall` flag, post meta is also
+ *     `pcptpages_settings.delete_data_on_uninstall` flag, post meta is also
  *     removed. This is the explicit-consent escape hatch.
  *
  * This mirrors the data-protection pattern Promptless WP and Form Runtime
@@ -42,7 +42,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 global $wpdb;
 
 // Determine whether the user opted into full deletion.
-$settings        = get_option( 'pre_settings', array() );
+$settings        = get_option( 'pcptpages_settings', array() );
 $delete_all_data = is_array( $settings ) && ! empty( $settings['delete_data_on_uninstall'] );
 
 // ---------------------------------------------------------------------------
@@ -50,37 +50,37 @@ $delete_all_data = is_array( $settings ) && ! empty( $settings['delete_data_on_u
 // ---------------------------------------------------------------------------
 
 // Read CPT slugs first so we can clean up the per-CPT grouping options.
-$cpts = get_option( 'pre_cpts', array() );
+$cpts = get_option( 'pcptpages_cpts', array() );
 if ( ! is_array( $cpts ) ) {
 	$cpts = array();
 }
 
 // Remove top-level options.
-delete_option( 'pre_cpts' );
-delete_option( 'pre_settings' );
-delete_option( 'pre_data_version' );
+delete_option( 'pcptpages_cpts' );
+delete_option( 'pcptpages_settings' );
+delete_option( 'pcptpages_data_version' );
 
-// Revoke the scoped `pre_manage_cpts` capability from every role. Mirrors the
+// Revoke the scoped `pcptpages_manage_cpts` capability from every role. Mirrors the
 // FRE / FlowMint pattern: capability lifecycle tracks plugin lifecycle so the
 // site doesn't carry orphan capability grants after uninstall. Manually
 // requires the class file because the plugin's autoloader does not run during
 // uninstall.
 require_once __DIR__ . '/includes/Core/class-pre-capabilities.php';
-PRE_Capabilities::revoke_all_capabilities();
+PCPTPages_Capabilities::revoke_all_capabilities();
 
 // Remove per-CPT grouping definition options.
 foreach ( array_keys( $cpts ) as $cpt_slug ) {
 	$cpt_slug = sanitize_key( $cpt_slug );
 	if ( $cpt_slug !== '' ) {
-		delete_option( 'pre_groupings_' . $cpt_slug );
+		delete_option( 'pcptpages_groupings_' . $cpt_slug );
 	}
 }
 
-// Belt-and-suspenders cleanup: any pre_groupings_* options that survived a
+// Belt-and-suspenders cleanup: any pcptpages_groupings_* options that survived a
 // CPT slug rename or partial cleanup should also go. Done with a direct
 // query because the option count is small and the alternative
 // (wp_load_alloptions + filter) is more expensive.
-$prefix = 'pre_groupings_';
+$prefix = 'pcptpages_groupings_';
 $rows   = $wpdb->get_col(
 	$wpdb->prepare(
 		"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
@@ -98,8 +98,8 @@ if ( is_array( $rows ) ) {
 $wpdb->query(
 	$wpdb->prepare(
 		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-		'_transient_pre_connector_rate_%',
-		'_transient_timeout_pre_connector_rate_%'
+		'_transient_pcptpages_connector_rate_%',
+		'_transient_timeout_pcptpages_connector_rate_%'
 	)
 );
 
@@ -107,8 +107,8 @@ $wpdb->query(
 $wpdb->query(
 	$wpdb->prepare(
 		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-		'_transient_pre_source_%',
-		'_transient_timeout_pre_source_%'
+		'_transient_pcptpages_source_%',
+		'_transient_timeout_pcptpages_source_%'
 	)
 );
 
@@ -120,17 +120,17 @@ if ( $delete_all_data ) {
 	// User opted into full deletion. Remove every PRE-owned post meta key
 	// across the entire site, in one query per key. This catches posts in
 	// any post status (published, draft, trash) and any post type.
-	$pre_meta_keys = array(
-		'_pre_groupings',
-		'_pre_groupings_backup',
-		'_pre_groupings_backup_time',
-		'_pre_groupings_backup_user',
-		'_pre_groupings_backup_source',
-		'_pre_position_overrides',
-		'_pre_icon',
+	$pcptpages_meta_keys = array(
+		'_pcptpages_groupings',
+		'_pcptpages_groupings_backup',
+		'_pcptpages_groupings_backup_time',
+		'_pcptpages_groupings_backup_user',
+		'_pcptpages_groupings_backup_source',
+		'_pcptpages_position_overrides',
+		'_pcptpages_icon',
 	);
 
-	foreach ( $pre_meta_keys as $meta_key ) {
+	foreach ( $pcptpages_meta_keys as $meta_key ) {
 		$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => $meta_key ) );
 	}
 }

@@ -2,7 +2,7 @@
  * Connector admin page — Generate / Revoke / Copy-Command workflow.
  *
  * Reads dynamic data (ajax URL, nonce, connector script URL, site URL,
- * translated strings) from window.preConnectorAdmin which is injected via
+ * translated strings) from window.pcptpagesConnectorAdmin which is injected via
  * wp_localize_script() in PHP. No PHP interpolation in this file —
  * Plugin Check stays happy and the file is browser-cacheable.
  *
@@ -11,7 +11,7 @@
 (function() {
     'use strict';
 
-    var data = window.preConnectorAdmin || {};
+    var data = window.pcptpagesConnectorAdmin || {};
     if ( ! data.ajaxUrl ) {
         return;
     }
@@ -114,7 +114,7 @@
             var originalLabel = genBtn.textContent;
             genBtn.disabled = true;
             genBtn.textContent = i18n.generating;
-            var r = await post( 'pre_connector_generate_password' );
+            var r = await post( 'pcptpages_connector_generate_password' );
             genBtn.disabled = false;
             if ( r.success ) {
                 var display = document.getElementById( 'pre-credential-display' );
@@ -180,7 +180,7 @@
                 return;
             }
             revokeBtn.disabled = true;
-            var r = await post( 'pre_connector_revoke_password' );
+            var r = await post( 'pcptpages_connector_revoke_password' );
             revokeBtn.disabled = false;
             if ( r.success ) {
                 window.location.reload();

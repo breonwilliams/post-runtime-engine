@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Frontend asset coordinator.
  */
-class PRE_Frontend_Assets {
+class PCPTPages_Frontend_Assets {
 
 	/**
 	 * Constructor.
@@ -33,18 +33,18 @@ class PRE_Frontend_Assets {
 	 * matching post-type archive page (so theme archive cards get the
 	 * Iconify web component + cards.css that the post fields rely on).
 	 * PostGrid sections inside Promptless pages take the late-inject
-	 * fallback path through PRE_Card_Filter_Hooks.
+	 * fallback path through PCPTPages_Card_Filter_Hooks.
 	 */
 	public function enqueue() {
-		if ( ! $this->is_pre_managed_page() ) {
+		if ( ! $this->is_pcptpages_managed_page() ) {
 			return;
 		}
 
 		wp_enqueue_style(
-			'pre-frontend',
-			PRE_PLUGIN_URL . 'assets/css/frontend.css',
+			'pcptpages-frontend',
+			PCPTPages_PLUGIN_URL . 'assets/css/frontend.css',
 			array(),
-			PRE_VERSION
+			PCPTPages_VERSION
 		);
 
 		// v1.1: post-field rendering styles. Loaded on every registered
@@ -54,10 +54,10 @@ class PRE_Frontend_Assets {
 		// archive integrations in Phase 12 will enqueue this same
 		// stylesheet from their own enqueue paths.
 		wp_enqueue_style(
-			'pre-cards',
-			PRE_PLUGIN_URL . 'assets/css/cards.css',
-			array( 'pre-frontend' ),
-			PRE_VERSION
+			'pcptpages-cards',
+			PCPTPages_PLUGIN_URL . 'assets/css/cards.css',
+			array( 'pcptpages-frontend' ),
+			PCPTPages_VERSION
 		);
 
 		// Iconify web-component bundle. Bundled locally at
@@ -71,13 +71,13 @@ class PRE_Frontend_Assets {
 		// each plugin ships its own copy so the dependency is
 		// self-contained.
 		wp_enqueue_script(
-			'pre-iconify-icon',
-			PRE_PLUGIN_URL . 'assets/js/iconify-icon.min.js',
+			'pcptpages-iconify-icon',
+			PCPTPages_PLUGIN_URL . 'assets/js/iconify-icon.min.js',
 			array(),
 			'2.1.0',
 			true
 		);
-		wp_script_add_data( 'pre-iconify-icon', 'type', 'module' );
+		wp_script_add_data( 'pcptpages-iconify-icon', 'type', 'module' );
 	}
 
 	/**
@@ -95,12 +95,12 @@ class PRE_Frontend_Assets {
 	 *
 	 * PostGrid sections living inside a Promptless page on a non-CPT URL
 	 * still get assets via the late-inject path in
-	 * PRE_Card_Filter_Hooks::maybe_enqueue_card_assets().
+	 * PCPTPages_Card_Filter_Hooks::maybe_enqueue_card_assets().
 	 *
 	 * @return bool
 	 */
-	private function is_pre_managed_page() {
-		$plugin = pre();
+	private function is_pcptpages_managed_page() {
+		$plugin = pcptpages();
 		if ( ! $plugin->cpts ) {
 			return false;
 		}

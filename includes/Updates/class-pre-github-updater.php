@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Handles checking for updates from GitHub releases and providing
  * update information to WordPress.
  */
-class PRE_GitHub_Updater {
+class PCPTPages_GitHub_Updater {
 
 	/**
 	 * Plugin slug.
@@ -65,7 +65,7 @@ class PRE_GitHub_Updater {
 	 *
 	 * @var string
 	 */
-	private $cache_key = 'pre_github_update_check';
+	private $cache_key = 'pcptpages_github_update_check';
 
 	/**
 	 * Cache expiry time in seconds (12 hours).
@@ -83,7 +83,7 @@ class PRE_GitHub_Updater {
 
 	/**
 	 * GitHub Personal Access Token for private repos. Define
-	 * `PRE_GITHUB_TOKEN` in wp-config.php to enable updates from a private
+	 * `PCPTPages_GITHUB_TOKEN` in wp-config.php to enable updates from a private
 	 * repository. Leave undefined for public repos.
 	 *
 	 * @var string
@@ -94,8 +94,8 @@ class PRE_GitHub_Updater {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->version      = defined( 'PRE_VERSION' ) ? PRE_VERSION : '0.0.0';
-		$this->github_token = defined( 'PRE_GITHUB_TOKEN' ) ? PRE_GITHUB_TOKEN : '';
+		$this->version      = defined( 'PCPTPages_VERSION' ) ? PCPTPages_VERSION : '0.0.0';
+		$this->github_token = defined( 'PCPTPages_GITHUB_TOKEN' ) ? PCPTPages_GITHUB_TOKEN : '';
 		$this->init_hooks();
 	}
 
@@ -104,7 +104,7 @@ class PRE_GitHub_Updater {
 	 */
 	private function init_hooks() {
 		// Check for updates when WordPress checks for plugin updates.
-		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'check_for_update' ) );
+		add_filter( 'pcptpages_set_site_transient_update_plugins', array( $this, 'check_for_update' ) );
 
 		// Provide plugin info for the "View Details" popup.
 		add_filter( 'plugins_api', array( $this, 'plugin_info' ), 20, 3 );
@@ -492,7 +492,7 @@ class PRE_GitHub_Updater {
 	 * Useful for debugging or forcing an update check.
 	 */
 	public static function force_check() {
-		delete_transient( 'pre_github_update_check' );
+		delete_transient( 'pcptpages_github_update_check' );
 		delete_site_transient( 'update_plugins' );
 	}
 }

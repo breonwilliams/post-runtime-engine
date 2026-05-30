@@ -84,13 +84,15 @@ fi
 # where it's invoked from.
 cd "$(dirname "$0")/.." || exit 1
 
-# Detect version from the main plugin file's PRE_VERSION constant.
+# Detect version from the main plugin file's PCPTPages_VERSION constant.
+# (Constant was renamed from PRE_VERSION in 0.5.0 as part of the
+# WordPress.org 4-char prefix compliance rename.)
 # awk splits on `'`; field 4 is the value between the second pair of
 # single quotes — i.e. the version string itself.
-VERSION=$(awk -F"'" "/define\\( 'PRE_VERSION'/{print \$4}" post-runtime-engine.php)
+VERSION=$(awk -F"'" "/define\\( 'PCPTPages_VERSION'/{print \$4}" post-runtime-engine.php)
 
 if [ -z "$VERSION" ]; then
-    echo "Error: Could not detect PRE_VERSION from post-runtime-engine.php"
+    echo "Error: Could not detect PCPTPages_VERSION from post-runtime-engine.php"
     exit 1
 fi
 

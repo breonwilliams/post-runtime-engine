@@ -387,7 +387,7 @@
 /* Grouping-level icon-only variant note — shown ONCE per grouping (above
    the items list) when the effective layout variant (compact-grid or
    horizontal-row) drops uploaded images at render time. Mirrors
-   PRE_Renderer::render_item's variant-aware media resolution so the meta
+   PCPTPages_Renderer::render_item's variant-aware media resolution so the meta
    box never silently accepts data the renderer will discard. Toggled by
    meta-box.js evaluateGroupingVariant() based on the .is-icon-only class
    on the grouping wrapper. Previously this was rendered per-item; the

@@ -21,6 +21,12 @@
  * Engine follow. The default is conservative: never destroy user content
  * silently.
  *
+ * All cleanup work is wrapped in pcptpages_run_uninstall_cleanup() so the
+ * intermediate locals ($settings, $cpts, $rows, etc.) stay function-scoped
+ * — uninstall.php runs in global scope, and PHPCS treats every top-level
+ * `$var` as an unprefixed global otherwise. Same pattern Form Runtime
+ * Engine adopted to clear WP.org Plugin Check warnings.
+ *
  * @package PostRuntimeEngine
  *
  * phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
@@ -39,104 +45,116 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-global $wpdb;
+/**
+ * Run the full uninstall cleanup. Wrapped in a function so intermediate
+ * variables are function-scoped rather than globals — uninstall.php runs
+ * in global scope, and PHPCS otherwise flags every local `$var` here as
+ * a non-prefixed global.
+ *
+ * @return void
+ */
+function pcptpages_run_uninstall_cleanup() {
+	global $wpdb;
 
-// Determine whether the user opted into full deletion.
-$settings        = get_option( 'pcptpages_settings', array() );
-$delete_all_data = is_array( $settings ) && ! empty( $settings['delete_data_on_uninstall'] );
+	// Determine whether the user opted into full deletion.
+	$settings        = get_option( 'pcptpages_settings', array() );
+	$delete_all_data = is_array( $settings ) && ! empty( $settings['delete_data_on_uninstall'] );
 
-// ---------------------------------------------------------------------------
-// Always-removed: plugin-owned site configuration.
-// ---------------------------------------------------------------------------
+	// ---------------------------------------------------------------------------
+	// Always-removed: plugin-owned site configuration.
+	// ---------------------------------------------------------------------------
 
-// Read CPT slugs first so we can clean up the per-CPT grouping options.
-$cpts = get_option( 'pcptpages_cpts', array() );
-if ( ! is_array( $cpts ) ) {
-	$cpts = array();
-}
-
-// Remove top-level options.
-delete_option( 'pcptpages_cpts' );
-delete_option( 'pcptpages_settings' );
-delete_option( 'pcptpages_data_version' );
-
-// Revoke the scoped `pcptpages_manage_cpts` capability from every role. Mirrors the
-// FRE / FlowMint pattern: capability lifecycle tracks plugin lifecycle so the
-// site doesn't carry orphan capability grants after uninstall. Manually
-// requires the class file because the plugin's autoloader does not run during
-// uninstall.
-require_once __DIR__ . '/includes/Core/class-pre-capabilities.php';
-PCPTPages_Capabilities::revoke_all_capabilities();
-
-// Remove per-CPT grouping definition options.
-foreach ( array_keys( $cpts ) as $cpt_slug ) {
-	$cpt_slug = sanitize_key( $cpt_slug );
-	if ( $cpt_slug !== '' ) {
-		delete_option( 'pcptpages_groupings_' . $cpt_slug );
+	// Read CPT slugs first so we can clean up the per-CPT grouping options.
+	$cpts = get_option( 'pcptpages_cpts', array() );
+	if ( ! is_array( $cpts ) ) {
+		$cpts = array();
 	}
-}
 
-// Belt-and-suspenders cleanup: any pcptpages_groupings_* options that survived a
-// CPT slug rename or partial cleanup should also go. Done with a direct
-// query because the option count is small and the alternative
-// (wp_load_alloptions + filter) is more expensive.
-$prefix = 'pcptpages_groupings_';
-$rows   = $wpdb->get_col(
-	$wpdb->prepare(
-		"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
-		$wpdb->esc_like( $prefix ) . '%'
-	)
-);
-if ( is_array( $rows ) ) {
-	foreach ( $rows as $row ) {
-		delete_option( $row );
+	// Remove top-level options.
+	delete_option( 'pcptpages_cpts' );
+	delete_option( 'pcptpages_settings' );
+	delete_option( 'pcptpages_data_version' );
+
+	// Revoke the scoped `pcptpages_manage_cpts` capability from every role. Mirrors the
+	// FRE / FlowMint pattern: capability lifecycle tracks plugin lifecycle so the
+	// site doesn't carry orphan capability grants after uninstall. Manually
+	// requires the class file because the plugin's autoloader does not run during
+	// uninstall.
+	require_once __DIR__ . '/includes/Core/class-pre-capabilities.php';
+	PCPTPages_Capabilities::revoke_all_capabilities();
+
+	// Remove per-CPT grouping definition options.
+	foreach ( array_keys( $cpts ) as $cpt_slug ) {
+		$cpt_slug = sanitize_key( $cpt_slug );
+		if ( '' !== $cpt_slug ) {
+			delete_option( 'pcptpages_groupings_' . $cpt_slug );
+		}
 	}
-}
 
-// Connector rate-limit transients (added in Phase 3+; cleaning here is
-// future-proof and harmless if no transients exist).
-$wpdb->query(
-	$wpdb->prepare(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-		'_transient_pcptpages_connector_rate_%',
-		'_transient_timeout_pcptpages_connector_rate_%'
-	)
-);
+	// Belt-and-suspenders cleanup: any pcptpages_groupings_* options that survived a
+	// CPT slug rename or partial cleanup should also go. Done with a direct
+	// query because the option count is small and the alternative
+	// (wp_load_alloptions + filter) is more expensive.
+	$option_prefix = 'pcptpages_groupings_';
+	$option_rows   = $wpdb->get_col(
+		$wpdb->prepare(
+			"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
+			$wpdb->esc_like( $option_prefix ) . '%'
+		)
+	);
+	if ( is_array( $option_rows ) ) {
+		foreach ( $option_rows as $option_row ) {
+			delete_option( $option_row );
+		}
+	}
 
-// Source-resolver caches (added in Phase 2+).
-$wpdb->query(
-	$wpdb->prepare(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-		'_transient_pcptpages_source_%',
-		'_transient_timeout_pcptpages_source_%'
-	)
-);
-
-// ---------------------------------------------------------------------------
-// Conditional removal: per-post groupings.
-// ---------------------------------------------------------------------------
-
-if ( $delete_all_data ) {
-	// User opted into full deletion. Remove every PRE-owned post meta key
-	// across the entire site, in one query per key. This catches posts in
-	// any post status (published, draft, trash) and any post type.
-	$pcptpages_meta_keys = array(
-		'_pcptpages_groupings',
-		'_pcptpages_groupings_backup',
-		'_pcptpages_groupings_backup_time',
-		'_pcptpages_groupings_backup_user',
-		'_pcptpages_groupings_backup_source',
-		'_pcptpages_position_overrides',
-		'_pcptpages_icon',
+	// Connector rate-limit transients (added in Phase 3+; cleaning here is
+	// future-proof and harmless if no transients exist).
+	$wpdb->query(
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+			'_transient_pcptpages_connector_rate_%',
+			'_transient_timeout_pcptpages_connector_rate_%'
+		)
 	);
 
-	foreach ( $pcptpages_meta_keys as $meta_key ) {
-		$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => $meta_key ) );
+	// Source-resolver caches (added in Phase 2+).
+	$wpdb->query(
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+			'_transient_pcptpages_source_%',
+			'_transient_timeout_pcptpages_source_%'
+		)
+	);
+
+	// ---------------------------------------------------------------------------
+	// Conditional removal: per-post groupings.
+	// ---------------------------------------------------------------------------
+
+	if ( $delete_all_data ) {
+		// User opted into full deletion. Remove every PRE-owned post meta key
+		// across the entire site, in one query per key. This catches posts in
+		// any post status (published, draft, trash) and any post type.
+		$pcptpages_meta_keys = array(
+			'_pcptpages_groupings',
+			'_pcptpages_groupings_backup',
+			'_pcptpages_groupings_backup_time',
+			'_pcptpages_groupings_backup_user',
+			'_pcptpages_groupings_backup_source',
+			'_pcptpages_position_overrides',
+			'_pcptpages_icon',
+		);
+
+		foreach ( $pcptpages_meta_keys as $pcptpages_meta_key ) {
+			$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => $pcptpages_meta_key ) );
+		}
 	}
+
+	// Note: We deliberately do NOT delete the posts that belonged to registered
+	// CPTs. Those posts contain user content (titles, main-editor body, etc.)
+	// independent of this plugin. If the user wants to delete the posts, they
+	// can do so through the WordPress admin — destroying user content during
+	// uninstall is never the right default.
 }
 
-// Note: We deliberately do NOT delete the posts that belonged to registered
-// CPTs. Those posts contain user content (titles, main-editor body, etc.)
-// independent of this plugin. If the user wants to delete the posts, they
-// can do so through the WordPress admin — destroying user content during
-// uninstall is never the right default.
+pcptpages_run_uninstall_cleanup();

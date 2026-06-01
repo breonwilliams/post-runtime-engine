@@ -165,6 +165,87 @@ fi
 # Copy production files using the assembled exclude list.
 rsync -av --exclude-from="${EXCLUDE_FILE}" . "${TEMP_DIR}/" >/dev/null
 
+# WP.org-only source-level strip. Removes ANY code block fenced with
+# `BUILD:STRIP-FOR-WPORG-START` / `BUILD:STRIP-FOR-WPORG-END` markers
+# from the staged copy, including the markers themselves. Used to fully
+# excise references to the GitHub auto-updater (autoloader class_map
+# entry + bootstrap call) so the WP.org distribution carries zero traces
+# of an alternative update mechanism. The GitHub build leaves the
+# markers in source and ships the wrapped code untouched.
+if [ "$BUILD_TARGET" = "wporg" ]; then
+    # In-place strip via awk + temp file. Chose awk over `sed -i` because
+    # `-i` has BSD-vs-GNU flag-flavor differences (BSD needs `-i ''`, GNU
+    # rejects the empty string) and threading that through bash arrays +
+    # find -exec is fragile. Awk's text-processing semantics are
+    # POSIX-standard and behave identically on macOS and Linux, so the
+    # build is reproducible from either Local's Site Shell or a native
+    # macOS Terminal.
+    #
+    # The awk program lives in a temp file (not an inline string) to
+    # avoid any nested-quoting issues with bash 3.2 on macOS, where the
+    # interaction between heredoc/process-substitution, `set -e`, and
+    # `while read` loops has historically been brittle. Dispatching one
+    # awk invocation per file via find -exec gives each file a fresh
+    # awk process — `skip` always starts at 0, no state leaks across
+    # files even if a marker pair is malformed.
+    AWK_STRIP_SCRIPT="$(mktemp -t pre-strip.XXXXXX)"
+    cat > "${AWK_STRIP_SCRIPT}" <<'AWK_PROGRAM'
+/BUILD:STRIP-FOR-WPORG-START/ { skip = 1; next }
+/BUILD:STRIP-FOR-WPORG-END/   { skip = 0; next }
+!skip
+AWK_PROGRAM
+
+    # Tear the awk script down on any script exit (success or failure).
+    # We already have a trap on EXCLUDE_FILE earlier; rather than
+    # overwriting it, build a combined cleanup.
+    trap "rm -f ${EXCLUDE_FILE} ${AWK_STRIP_SCRIPT}" EXIT
+
+    # Count staged PHP files first — if find returns zero, something
+    # went wrong with the rsync step and we want to fail loud rather
+    # than silently "succeed" by not stripping anything.
+    STAGED_PHP_COUNT=$(find "${TEMP_DIR}" -type f -name '*.php' | wc -l | tr -d ' ')
+    echo "Stripping BUILD:STRIP-FOR-WPORG-* blocks from ${STAGED_PHP_COUNT} staged PHP files..."
+
+    if [ "${STAGED_PHP_COUNT}" = "0" ]; then
+        echo "Error: No PHP files found in ${TEMP_DIR} — rsync stage likely failed." >&2
+        exit 1
+    fi
+
+    # Run awk per file via find -exec. This is the most portable
+    # dispatch — no process substitution, no herestring, no while-read
+    # subshell semantics. Each file is rewritten via temp-file-then-mv
+    # so a partial awk run can't truncate the source.
+    find "${TEMP_DIR}" -type f -name '*.php' -exec sh -c '
+        awk_script="$1"
+        shift
+        for f in "$@"; do
+            awk -f "${awk_script}" "${f}" > "${f}.tmp" && mv "${f}.tmp" "${f}"
+        done
+    ' _ "${AWK_STRIP_SCRIPT}" {} +
+
+    echo "Strip pass complete."
+
+    # Sanity: confirm no marker leaked through (would indicate a malformed
+    # pair somewhere) AND no PCPTPages_GitHub_Updater reference survived.
+    # Restricted to PHP files because the markers and class name appear
+    # *as documentation* in CHANGELOG.md and the developer-facing comments
+    # in build-release.sh itself. The strip step only operates on PHP,
+    # so the sanity check only validates PHP — checking docs would
+    # produce a false positive every time the changelog describes what
+    # the markers do.
+    if grep -rl --include='*.php' 'BUILD:STRIP-FOR-WPORG-' "${TEMP_DIR}" >/dev/null; then
+        echo "Error: BUILD:STRIP-FOR-WPORG-* marker survived strip in a PHP file — check for unbalanced markers in source." >&2
+        echo "Surviving PHP markers (file:line):" >&2
+        grep -rn --include='*.php' 'BUILD:STRIP-FOR-WPORG-' "${TEMP_DIR}" >&2
+        exit 1
+    fi
+    if grep -rl --include='*.php' 'PCPTPages_GitHub_Updater' "${TEMP_DIR}" >/dev/null; then
+        echo "Error: PCPTPages_GitHub_Updater reference survived WP.org strip in a PHP file — check that all references are wrapped in BUILD:STRIP-FOR-WPORG-* markers." >&2
+        grep -rn --include='*.php' 'PCPTPages_GitHub_Updater' "${TEMP_DIR}" >&2
+        exit 1
+    fi
+fi
+
 # Sanity-check that essential files made it through. The REQUIRED list
 # branches by target — the GitHub updater is required for GitHub builds
 # but intentionally absent from WP.org builds.

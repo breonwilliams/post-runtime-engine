@@ -3,7 +3,7 @@
  * Plugin Name: Promptless CPT Pages
  * Plugin URI: https://promptlesswp.com
  * Description: Render CPT single pages with structured data display, layout variants, and admin or AI population. Works standalone or with Promptless WP.
- * Version: 0.5.0
+ * Version: 0.5.1
  * Requires at least: 5.0
  * Requires PHP: 7.4
  * Author: Promptless WP
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin version. Bumped on every meaningful release.
-define( 'PCPTPages_VERSION', '0.5.0' );
+define( 'PCPTPages_VERSION', '0.5.1' );
 
 // Minimum data-storage schema version. Bumped when option / post-meta shapes
 // change in a way that requires migration, or when a new capability needs to
@@ -239,22 +239,17 @@ final class Promptless_CPT_Pages {
 			$this->connector_admin = new PCPTPages_Connector_Admin();
 			$this->connector_admin->init();
 
-			// GitHub auto-updater. Checks GitHub Releases for newer tags
-			// on the standard update-plugins transient cycle and surfaces
-			// them in the WP admin's Updates page. No external library —
-			// see includes/Updates/class-pre-github-updater.php for the
-			// repo it targets and the optional PCPTPages_GITHUB_TOKEN constant
-			// for private-repo support.
-			//
-			// The class_exists() guard makes this conditional: the WP.org
-			// distribution build excludes includes/Updates/ entirely (per
-			// WP.org guideline 8 — plugins must use WordPress's update
-			// mechanism, not override it), so the GitHub build still
-			// auto-updates from this repo while the WP.org build is
-			// auto-updated by WordPress core through the directory.
+			// BUILD:STRIP-FOR-WPORG-START — entire block stripped from the
+			// WP.org distribution by bin/build-release.sh. WordPress.org
+			// guideline 8 prohibits plugins from overriding the core update
+			// mechanism, so the WP.org build ships no auto-updater code at
+			// all. The GitHub build keeps this block and auto-updates from
+			// GitHub Releases via the standard update-plugins transient
+			// cycle, surfaced in the WP admin's Updates page.
 			if ( class_exists( 'PCPTPages_GitHub_Updater' ) ) {
 				new PCPTPages_GitHub_Updater();
 			}
+			// BUILD:STRIP-FOR-WPORG-END
 		}
 
 		// Frontend rendering — instantiated regardless of context because

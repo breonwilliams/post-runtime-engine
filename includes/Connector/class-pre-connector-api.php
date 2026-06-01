@@ -1268,6 +1268,34 @@ class PCPTPages_Connector_API {
 					422
 				);
 			}
+
+			// Authorization: transitioning a post to a publicly-visible
+			// state (publish / future / private) requires the publish_posts
+			// capability on the post's post-type, not just edit_post on the
+			// target. build_per_post_callback already verified edit_post via
+			// the permission_callback; this is the additional gate the
+			// WP.org reviewer specifically called out as missing.
+			$publish_states = array( 'publish', 'future', 'private' );
+			if ( in_array( $status, $publish_states, true ) ) {
+				$post_obj = get_post( $post_id );
+				if ( ! $post_obj ) {
+					return $this->error_response( 'pcptpages_post_not_found', __( 'Post not found.', 'promptless-cpt-pages' ), 404 );
+				}
+				$pt_obj = get_post_type_object( $post_obj->post_type );
+				$publish_cap = ( $pt_obj && isset( $pt_obj->cap->publish_posts ) ) ? $pt_obj->cap->publish_posts : 'publish_posts';
+				if ( ! current_user_can( $publish_cap, $post_id ) ) {
+					return $this->error_response(
+						'pcptpages_publish_forbidden',
+						sprintf(
+							/* translators: %s: target post status */
+							__( 'You do not have permission to set post_status to %s on this post.', 'promptless-cpt-pages' ),
+							$status
+						),
+						403
+					);
+				}
+			}
+
 			$update_args['post_status'] = $status;
 		}
 

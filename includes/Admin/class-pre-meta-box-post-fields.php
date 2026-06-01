@@ -484,9 +484,11 @@ class PCPTPages_Meta_Box_Post_Fields {
 
 		// Nonce — gated on this meta box's specific nonce so we don't
 		// process when only the groupings meta box was submitted.
+		// sanitize_text_field is required because wp_verify_nonce is
+		// pluggable per WP.org guidelines.
 		if (
 			! isset( $_POST[ self::NONCE_NAME ] )
-			|| ! wp_verify_nonce( wp_unslash( $_POST[ self::NONCE_NAME ] ), self::NONCE_ACTION )
+			|| ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::NONCE_NAME ] ) ), self::NONCE_ACTION )
 		) {
 			return;
 		}
@@ -501,10 +503,40 @@ class PCPTPages_Meta_Box_Post_Fields {
 			? wp_unslash( $_POST['pcptpages_field_values'] )
 			: array();
 
-		// Normalize composite-type shapes so set_field_values gets the
-		// array form it expects.
+		// Normalize composite-type shapes AND sanitize every scalar at the
+		// admin boundary so set_field_values receives values WordPress
+		// considers safe. The downstream registry still re-validates
+		// shape/format (length caps, enum membership, numeric ranges) —
+		// this pass just ensures no NUL bytes, unfiltered HTML, or invalid
+		// UTF-8 enter the storage pipeline.
 		$normalized = array();
 		$field_defs = $plugin->post_fields ? $plugin->post_fields->get_all( $post->post_type ) : array();
+
+		// Per-display-type sanitizer. Scalars are sanitized at the boundary;
+		// composite types (rating, progress) get their numeric components
+		// floatval'd. Anything not explicitly listed falls back to
+		// sanitize_text_field as the safe default.
+		$sanitize_scalar = static function ( $value, $display_type ) {
+			if ( is_array( $value ) || is_object( $value ) ) {
+				return ''; // Wrong shape for a scalar field — drop.
+			}
+			$value = (string) $value;
+			switch ( $display_type ) {
+				case 'currency':
+				case 'number_with_label':
+					// Numeric values: cast on the registry side, but
+					// neutralize unexpected text now.
+					return sanitize_text_field( $value );
+				case 'date':
+					return sanitize_text_field( $value );
+				case 'badge':
+				case 'multi_badge':
+				case 'meta_pair':
+				case 'text':
+				default:
+					return sanitize_text_field( $value );
+			}
+		};
 
 		foreach ( $field_defs as $key => $def ) {
 			if ( ! array_key_exists( $key, $raw_values ) ) {
@@ -515,18 +547,18 @@ class PCPTPages_Meta_Box_Post_Fields {
 
 			if ( in_array( $display_type, array( 'rating', 'progress' ), true ) ) {
 				if ( ! is_array( $raw ) ) {
-					$normalized[ $key ] = $raw;
+					$normalized[ $key ] = $sanitize_scalar( $raw, $display_type );
 					continue;
 				}
-				$primary = $raw['value'] ?? '';
+				$primary = isset( $raw['value'] ) ? $raw['value'] : '';
 				$secondary_key = ( $display_type === 'rating' ) ? 'count' : 'goal';
-				$secondary = $raw[ $secondary_key ] ?? '';
+				$secondary = isset( $raw[ $secondary_key ] ) ? $raw[ $secondary_key ] : '';
 				$normalized[ $key ] = array(
-					'value'           => $primary,
-					$secondary_key    => $secondary,
+					'value'           => is_scalar( $primary ) ? sanitize_text_field( (string) $primary ) : '',
+					$secondary_key    => is_scalar( $secondary ) ? sanitize_text_field( (string) $secondary ) : '',
 				);
 			} else {
-				$normalized[ $key ] = $raw;
+				$normalized[ $key ] = $sanitize_scalar( $raw, $display_type );
 			}
 		}
 

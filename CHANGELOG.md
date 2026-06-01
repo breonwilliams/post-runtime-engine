@@ -4,6 +4,64 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.5.1] — 2026-06-01
+
+WordPress.org plugin directory review — round 1 fixes. The 0.5.0 build
+was flagged on a small number of specific items by the review team; this
+release addresses every one without changing end-user behavior.
+
+### Security
+- **Nonce sanitization**: `class-pre-meta-box.php` and
+  `class-pre-meta-box-post-fields.php` now wrap nonces in
+  `sanitize_text_field( wp_unslash( … ) )` before `wp_verify_nonce()`.
+  WordPress's `wp_verify_nonce()` is pluggable, so per the WP.org
+  guideline the value must be sanitized at the call site even though
+  the core implementation accepts arbitrary input.
+- **Field-input sanitization at admin boundary**: post-fields admin
+  (`options_json` now goes through `sanitize_textarea_field`) and the
+  post-fields meta-box (`pcptpages_field_values` array now sanitized
+  per-display-type before normalization). The downstream registry
+  validators still re-validate shape and format — this pass ensures the
+  scalar values are WordPress-safe at the input boundary, satisfying
+  Plugin Check's input-sanitization checks.
+- **Authorization on REST `update_post`**: when the caller sends a
+  `post_status` that transitions the post to a publicly-visible state
+  (`publish`, `future`, `private`), the handler now requires the
+  post-type's `publish_posts` capability in addition to the `edit_post`
+  check the per-post permission_callback already performed. Reviewer
+  flagged this as a real authorization gap. Returns 403
+  `pcptpages_publish_forbidden` if the calling user lacks the cap.
+
+### Changed
+- **GitHub auto-updater fully stripped from the WP.org build.** Round 1
+  reviewer specifically flagged the autoloader entry and bootstrap call
+  for the updater even though they were `class_exists`-gated. The build
+  script now removes any code block wrapped in
+  `BUILD:STRIP-FOR-WPORG-START` / `…-END` markers from `--wporg` builds,
+  and the autoloader class_map entry + the admin bootstrap call are
+  both wrapped. After this change the WP.org distribution contains zero
+  references to `PCPTPages_GitHub_Updater`. The GitHub distribution build
+  leaves the markers in source and ships the wrapped code untouched,
+  so self-hosted sites continue to auto-update from GitHub Releases.
+
+### Documentation
+- **External Services section added to readme**. Documents the Iconify
+  Web Component bundled at `assets/js/iconify-icon.min.js`. When a
+  grouping item, post field, or card references an Iconify-format icon
+  code (e.g. `mdi:home`), the component fetches the SVG markup from
+  `api.iconify.design` (with `api.simplesvg.com` and `api.unisvg.com`
+  as automatic fallbacks). Reviewer flagged the lack of an External
+  Services disclosure for these endpoints. The plugin's built-in
+  53-icon library is rendered inline and does NOT contact Iconify.
+
+### Compliance status
+- Plugin Check passes with zero errors after these changes.
+- The `permission_callback` flags on `build_callback` /
+  `build_per_post_callback` REST routes are the same closure-from-method
+  false positives that Promptless Forms cleared at round 3 — the static
+  analyzer can't trace the 5-step permission stack through a
+  closure-returning method.
+
 ## [0.5.0] — 2026-05-30
 
 WordPress.org plugin directory compliance release — final round. The

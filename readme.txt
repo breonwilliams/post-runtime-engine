@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.5.0
+Stable tag: 0.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,6 +47,23 @@ Not in this version. Promptless CPT Pages owns its own field model end-to-end vi
 = Where is the data stored? =
 
 Per-post grouping values live in WordPress post meta. CPT and grouping definitions live in `wp_options`. No custom database tables.
+
+== External Services ==
+
+This plugin uses one third-party service. It is loaded passively (no API key, no account, no opt-in dialog) so it can render Iconify icons on demand.
+
+**Iconify API** (when grouping items or post fields reference an Iconify icon code):
+
+The plugin bundles the `iconify-icon` web component (`assets/js/iconify-icon.min.js`). When a CPT single-page, card, or post-field icon references an Iconify-format identifier such as `mdi:home` or `material-symbols:business-outline`, the web component fetches the matching SVG markup from the Iconify CDN at render time. Curated icons from the plugin's built-in library are rendered inline and do NOT contact Iconify — only items whose `icon_id` uses the `collection:name` format do.
+
+* What data is sent: the icon prefix and name (e.g. `mdi:home`). No user data, no site identifier, no personally identifiable information.
+* When sent: at page-render time, only when an Iconify-format icon is actually present on the page.
+* Endpoints: `https://api.iconify.design`, with `https://api.simplesvg.com` and `https://api.unisvg.com` as automatic fallbacks.
+* Provider: Iconify (open-source icon framework).
+* Terms of Use: [https://iconify.design/docs/api/](https://iconify.design/docs/api/)
+* Privacy Policy: [https://iconify.design/](https://iconify.design/) — see the project's footer links for current privacy documentation.
+
+If you don't use Iconify-format icons, the API is never contacted. The plugin's built-in 53-icon library covers most common use cases and ships inline.
 
 == Screenshots ==
 
@@ -93,6 +110,9 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.5.1 =
+WP.org review round 1 fixes: nonce sanitization, options_json + field_values sanitized at admin boundary, publish_posts cap check on update_post REST, Iconify documented as external service, GitHub auto-updater stripped from WP.org build. No end-user behavior change.
 
 = 0.5.0 =
 WP.org prefix compliance: pre_/PRE_ renamed to pcptpages_/PCPTPages_ (3-char prefix didn't meet WP.org's 4-char minimum). Classes, hooks, options, accessor pcptpages() all renamed. class_alias keeps Post_Runtime_Engine working. No end-user behavior change.

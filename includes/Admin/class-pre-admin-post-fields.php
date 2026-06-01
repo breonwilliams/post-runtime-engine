@@ -817,7 +817,12 @@ class PCPTPages_Admin_Post_Fields {
 			'single_position'    => isset( $_POST['single_position'] ) ? sanitize_key( wp_unslash( $_POST['single_position'] ) ) : 'meta_strip',
 			'color_intent'       => isset( $_POST['color_intent'] ) ? sanitize_key( wp_unslash( $_POST['color_intent'] ) ) : 'neutral',
 			'icon'               => isset( $_POST['icon'] ) ? sanitize_text_field( wp_unslash( $_POST['icon'] ) ) : '',
-			'options_json'       => isset( $_POST['options_json'] ) ? trim( wp_unslash( $_POST['options_json'] ) ) : '',
+			// options_json: sanitize at boundary as multi-line text. The
+			// downstream PCPTPages_Post_Field_Registry validator decodes +
+			// structurally validates the JSON shape (keys, value types,
+			// per-key sanitization on labels); this initial pass ensures
+			// no NUL bytes or invalid UTF-8 reach storage.
+			'options_json'       => isset( $_POST['options_json'] ) ? trim( sanitize_textarea_field( wp_unslash( $_POST['options_json'] ) ) ) : '',
 			'date_format'        => isset( $_POST['date_format'] ) ? sanitize_key( wp_unslash( $_POST['date_format'] ) ) : 'absolute',
 			'date_format_string' => isset( $_POST['date_format_string'] ) ? sanitize_text_field( wp_unslash( $_POST['date_format_string'] ) ) : '',
 			'currency_code'      => isset( $_POST['currency_code'] ) ? strtoupper( sanitize_key( wp_unslash( $_POST['currency_code'] ) ) ) : '',

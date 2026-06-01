@@ -577,9 +577,11 @@ class PCPTPages_Meta_Box {
 			return;
 		}
 
-		// Verify nonce.
+		// Verify nonce. wp_verify_nonce is pluggable in WordPress core, so
+		// the value MUST be sanitized (sanitize_text_field) before being
+		// passed — wp_unslash alone isn't enough per WP.org guidelines.
 		if ( ! isset( $_POST[ self::NONCE_NAME ] )
-			|| ! wp_verify_nonce( wp_unslash( $_POST[ self::NONCE_NAME ] ), self::NONCE_ACTION ) ) {
+			|| ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::NONCE_NAME ] ) ), self::NONCE_ACTION ) ) {
 			return;
 		}
 

@@ -4,6 +4,16 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.5.2] — 2026-06-02
+
+### Fixed
+- **PostGrid card rendering**: post fields (image_overlay badges, headline values, subtitle, meta_strip, footer_meta) now render on Promptless WP's PostGrid section cards as designed. The bug: five `function_exists( 'pre' )` guards in production code still checked for the legacy plugin accessor name that was renamed to `pcptpages()` during the v0.5.0 rename. Every guarded code path returned `null` for the plugin instance and silently no-op'd, including the entire `aisb_postgrid_card_section` hook handler. The handler was correctly subscribed and Promptless WP was correctly firing the action — the stale check inside the handler killed it. Fixed in `class-pre-card-filter-hooks.php` (2 instances), `class-pre-card-renderer.php` (2 instances), and `class-pre-post-data.php` (1 instance). Also affects the theme's archive card hook (`promptless_archive_card_section`) and post-data registry resolution. Test files still reference the old guard pattern — they're excluded from the build and will be cleaned up in a future pass.
+
+### Notes
+- No data migration required. `pcptpages_data_version` unchanged at 0.4.0.
+- No new capabilities granted; no schema changes.
+- This is a behavior fix on the existing v0.5.1 surface — anyone running 0.5.1 with PostGrid + a registered CPT was affected and should upgrade.
+
 ## [0.5.1] — 2026-06-01
 
 WordPress.org plugin directory review — round 1 fixes. The 0.5.0 build

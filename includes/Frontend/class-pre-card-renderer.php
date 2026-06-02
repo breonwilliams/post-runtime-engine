@@ -875,7 +875,7 @@ class PCPTPages_Card_Renderer {
 		if ( $this->post_fields instanceof PCPTPages_Post_Field_Registry ) {
 			return $this->post_fields;
 		}
-		if ( function_exists( 'pre' ) ) {
+		if ( function_exists( 'pcptpages' ) ) {
 			$plugin = pcptpages();
 			if ( $plugin && isset( $plugin->post_fields ) && $plugin->post_fields instanceof PCPTPages_Post_Field_Registry ) {
 				$this->post_fields = $plugin->post_fields;
@@ -895,7 +895,7 @@ class PCPTPages_Card_Renderer {
 		if ( $this->post_data instanceof PCPTPages_Post_Data ) {
 			return $this->post_data;
 		}
-		if ( function_exists( 'pre' ) ) {
+		if ( function_exists( 'pcptpages' ) ) {
 			$plugin = pcptpages();
 			if ( $plugin && isset( $plugin->post_data ) && $plugin->post_data instanceof PCPTPages_Post_Data ) {
 				$this->post_data = $plugin->post_data;

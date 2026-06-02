@@ -131,7 +131,7 @@ class PCPTPages_Post_Data {
 		}
 
 		// Resolve through the global plugin instance when available.
-		if ( function_exists( 'pre' ) ) {
+		if ( function_exists( 'pcptpages' ) ) {
 			$plugin = pcptpages();
 			if ( $plugin && isset( $plugin->post_fields ) && $plugin->post_fields instanceof PCPTPages_Post_Field_Registry ) {
 				$this->post_fields = $plugin->post_fields;

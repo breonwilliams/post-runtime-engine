@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.5.1
+Stable tag: 0.5.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -110,6 +110,9 @@ If you don't use Iconify-format icons, the API is never contacted. The plugin's 
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.5.2 =
+Bug fix: post fields (image_overlay, headline, meta_strip, footer_meta) now render correctly on Promptless WP PostGrid cards. Stale function_exists guard from the v0.5.0 rename was silently breaking the entire card hook handler. Recommended for any site using PostGrid with a PCPTPages CPT.
 
 = 0.5.1 =
 WP.org review round 1 fixes: nonce sanitization, options_json + field_values sanitized at admin boundary, publish_posts cap check on update_post REST, Iconify documented as external service, GitHub auto-updater stripped from WP.org build. No end-user behavior change.

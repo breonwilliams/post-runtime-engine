@@ -116,7 +116,7 @@ class PCPTPages_Card_Filter_Hooks {
 		if ( ! ( $post instanceof WP_Post ) ) {
 			return $show;
 		}
-		$plugin = function_exists( 'pre' ) ? pcptpages() : null;
+		$plugin = function_exists( 'pcptpages' ) ? pcptpages() : null;
 		if ( ! $plugin || ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			// Not a PRE-managed CPT — defer to the theme's decision.
 			return $show;
@@ -169,7 +169,7 @@ class PCPTPages_Card_Filter_Hooks {
 
 		// Silently no-op when the post type isn't one we manage. Avoids
 		// any output on non-PRE cards even though the action fired.
-		$plugin = function_exists( 'pre' ) ? pcptpages() : null;
+		$plugin = function_exists( 'pcptpages' ) ? pcptpages() : null;
 		if ( ! $plugin || ! $plugin->cpts || ! $plugin->cpts->exists( $post->post_type ) ) {
 			return;
 		}

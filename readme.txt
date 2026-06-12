@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.5.2
+Stable tag: 0.5.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -50,20 +50,23 @@ Per-post grouping values live in WordPress post meta. CPT and grouping definitio
 
 == External Services ==
 
-This plugin uses one third-party service. It is loaded passively (no API key, no account, no opt-in dialog) so it can render Iconify icons on demand.
+This plugin connects to one third-party service: the Iconify API. It is used solely to display icons that you choose to use, and only when you opt into using them. If you do not use Iconify icons, no external service is ever contacted.
 
-**Iconify API** (when grouping items or post fields reference an Iconify icon code):
+= Iconify API =
 
-The plugin bundles the `iconify-icon` web component (`assets/js/iconify-icon.min.js`). When a CPT single-page, card, or post-field icon references an Iconify-format identifier such as `mdi:home` or `material-symbols:business-outline`, the web component fetches the matching SVG markup from the Iconify CDN at render time. Curated icons from the plugin's built-in library are rendered inline and do NOT contact Iconify — only items whose `icon_id` uses the `collection:name` format do.
+What it is and what it is for: the plugin bundles the open-source `iconify-icon` web component locally (`assets/js/iconify-icon.min.js` — it is shipped inside the plugin and is NOT loaded from any CDN). When a CPT single page, archive card, grouping item, or post field uses an Iconify-format icon identifier written in `collection:name` form (for example `mdi:home` or `material-symbols:business-outline`), the web component requests that single icon's SVG path data from the Iconify API at render time so the icon can be displayed. This is what makes 200,000+ open-source icons available without bundling them all into the plugin.
 
-* What data is sent: the icon prefix and name (e.g. `mdi:home`). No user data, no site identifier, no personally identifiable information.
-* When sent: at page-render time, only when an Iconify-format icon is actually present on the page.
-* Endpoints: `https://api.iconify.design`, with `https://api.simplesvg.com` and `https://api.unisvg.com` as automatic fallbacks.
-* Provider: Iconify (open-source icon framework).
-* Terms of Use: [https://iconify.design/docs/api/](https://iconify.design/docs/api/)
-* Privacy Policy: [https://iconify.design/](https://iconify.design/) — see the project's footer links for current privacy documentation.
+What data is sent, and when: only the icon identifier you chose to use (for example `mdi:home`) is sent, as part of the request URL, at the moment a page containing that icon is viewed in a visitor's browser. The request is made by the visitor's browser — not by your server. No personal data, no user content, no site URL, and no identifiers of any kind are transmitted.
 
-If you don't use Iconify-format icons, the API is never contacted. The plugin's built-in 53-icon library covers most common use cases and ships inline.
+When it is NOT contacted: the plugin also ships a built-in library of 53 icons that render inline as SVG with zero network requests. If you use only those built-in icons — or no icons at all — the Iconify API is never contacted.
+
+Service provider: Iconify (Iconify OÜ).
+
+Endpoints contacted: https://api.iconify.design (primary), with https://api.simplesvg.com and https://api.unisvg.com as automatic fallbacks used only if the primary endpoint is unreachable.
+
+Terms of use: https://iconify.design/docs/api/ — the Iconify API is a free, open-source public service released under the Apache 2.0 License; the "Public API" section documents the terms of use.
+
+Privacy policy: https://iconify.design/privacy/
 
 == Screenshots ==
 
@@ -74,6 +77,18 @@ If you don't use Iconify-format icons, the API is never contacted. The plugin's 
 5. Claude Cowork connector setup — opt-in App Password generation, default-disabled kill switch
 
 == Changelog ==
+
+= 0.5.3 =
+* WordPress.org review round 2: rewrote the Iconify External Services disclosure with a direct privacy-policy link (https://iconify.design/privacy/), a clearer terms-of-use link, an explicit note that the icon web component is bundled locally (not loaded from a CDN), and a precise data / when / endpoints breakdown. Also synced this changelog with the full version history. No code or behavior change.
+
+= 0.5.2 =
+* Fixed: post fields (image_overlay, headline, subtitle, meta_strip, footer_meta) now render correctly on Promptless WP PostGrid cards. A stale `function_exists( 'pre' )` guard left over from the v0.5.0 accessor rename was silently no-op'ing the entire card hook handler. No data migration.
+
+= 0.5.1 =
+* WordPress.org review round 1 fixes: nonce sanitization before wp_verify_nonce(), options_json and field_values sanitized at the admin boundary, a publish_posts capability check on the update_post REST handler, Iconify documented as an external service, and the GitHub auto-updater fully stripped from the WordPress.org build. No end-user behavior change.
+
+= 0.5.0 =
+* WordPress.org prefix-compliance rename: the 3-character `pre_` / `PRE_` prefix (below WP.org's 4-character minimum) was re-prefixed to `pcptpages_` / `PCPTPages_` across classes, hooks, options, the `pcptpages()` accessor, script handles and admin page slugs. `class_alias` keeps the old main-class name working. No data migration; no end-user behavior change.
 
 = 0.4.1 =
 * WordPress.org compliance pass. Class `Post_Runtime_Engine` renamed to `Promptless_CPT_Pages` (`class_alias` preserves backward compatibility for the old name). GitHub auto-updater instantiation gated by `class_exists` so the WP.org build (which excludes the updater) doesn't fatal. All inline `<script>` / `<style>` blocks moved to enqueued asset files (`assets/css/connector-admin.css`, `assets/js/connector-admin.js`, `assets/js/admin-groupings.js`), gated to their own admin pages. `esc_url_raw` → `esc_url` in one JS output context. Plugin URI, contributors username, and dev-internal markdown file exclusions corrected for the WP.org build. No data migration. No behavior change for end users.
@@ -110,6 +125,9 @@ If you don't use Iconify-format icons, the API is never contacted. The plugin's 
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.5.3 =
+Documentation-only update: the External Services disclosure for the Iconify icon API now meets WordPress.org guidelines — a direct privacy-policy link, a clearer terms-of-use link, and an explicit note that the icon component is bundled locally rather than loaded from a CDN. No functional change.
 
 = 0.5.2 =
 Bug fix: post fields (image_overlay, headline, meta_strip, footer_meta) now render correctly on Promptless WP PostGrid cards. Stale function_exists guard from the v0.5.0 rename was silently breaking the entire card hook handler. Recommended for any site using PostGrid with a PCPTPages CPT.

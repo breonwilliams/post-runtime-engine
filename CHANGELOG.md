@@ -4,6 +4,15 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.5.3] — 2026-06-08
+
+### Documentation
+- **External Services disclosure rewritten for WordPress.org review round 2.** The round-1 disclosure listed the Iconify API but linked the project homepage ("see footer links") as the privacy policy and the API docs as terms; the review team flagged the links as insufficient. The section now links Iconify's dedicated privacy policy (https://iconify.design/privacy/ — verified live) and the public-API terms-of-use section (https://iconify.design/docs/api/), states explicitly that the `iconify-icon` web component is **bundled locally** at `assets/js/iconify-icon.min.js` (NOT loaded from any CDN — older changelog references to a jsDelivr CDN describe behavior since removed, confirmed by the current `wp_register_script` call using `PCPTPages_PLUGIN_URL`), and gives a precise breakdown: what is sent (only the `prefix:name` icon code, in the request URL), when (at render time, by the visitor's browser, only when an Iconify-format icon is present), the three endpoints (`api.iconify.design` primary + `api.simplesvg.com` / `api.unisvg.com` fallbacks), and the no-contact path (the built-in 53-icon inline SVG library).
+- **Synced `readme.txt` changelog with full version history.** The readme Changelog section was missing the 0.5.0–0.5.2 entries (present in CHANGELOG.md and the Upgrade Notice but not the readme Changelog). Added so the stable tag always has a matching changelog entry.
+
+### Notes
+- Documentation only. No code changes, no data migration. `pcptpages_data_version` unchanged at 0.4.0.
+
 ## [0.5.2] — 2026-06-02
 
 ### Fixed

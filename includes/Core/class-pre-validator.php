@@ -231,6 +231,44 @@ class PCPTPages_Validator {
 	);
 
 	/**
+	 * Allowed semantic roles for post fields (events vertical, v1.2).
+	 *
+	 * ADDITIVE attribute — does NOT change the closed DISPLAY_TYPES /
+	 * FIELD_POSITIONS / COLOR_INTENTS enums, which remain frozen. A
+	 * semantic_role tags a field with the meaning the events query + schema
+	 * layers read (e.g. which date is the start, which badge is the status).
+	 * Closed, events-scoped enum. Full contract: docs/EVENTS_VERTICAL_DESIGN.md § 5.2.
+	 *
+	 * Each role pairs with exactly one display_type (see ROLE_DISPLAY_TYPES)
+	 * and may be mapped at most once per CPT (uniqueness enforced in
+	 * PCPTPages_Post_Field_Registry::define()).
+	 */
+	const SEMANTIC_ROLES = array(
+		'event_start',
+		'event_end',
+		'event_status',
+		'event_location',
+		'event_offers',
+		'event_attendance_mode',
+	);
+
+	/**
+	 * Required display_type for each semantic role. A role declared on a
+	 * field whose display_type doesn't match is rejected at save time so the
+	 * downstream query + schema layers can rely on the pairing.
+	 *
+	 * @var array<string,string>
+	 */
+	const ROLE_DISPLAY_TYPES = array(
+		'event_start'           => 'date',
+		'event_end'             => 'date',
+		'event_status'          => 'badge',
+		'event_location'        => 'text',
+		'event_offers'          => 'currency',
+		'event_attendance_mode' => 'badge',
+	);
+
+	/**
 	 * Soft warning threshold for post fields per CPT. Cards display best
 	 * with 8 or fewer; beyond this the admin UI surfaces a warning banner.
 	 */
@@ -1459,6 +1497,69 @@ class PCPTPages_Validator {
 				'pcptpages_invalid_field_max',
 				__( 'Post field max must be a number.', 'promptless-cpt-pages' )
 			);
+		}
+
+		// ----- Events vertical (v1.2) additive attributes -----
+		// These tag a field for the events query + schema layers. They do
+		// NOT alter the closed display-type / position / color-intent enums.
+		// See docs/EVENTS_VERTICAL_DESIGN.md § 5 and § 7.
+
+		// all_day — optional boolean. Only meaningful for the `date` display
+		// type; validated regardless to surface typos early.
+		if ( isset( $definition['all_day'] ) && ! is_bool( $definition['all_day'] ) ) {
+			return new WP_Error(
+				'pcptpages_invalid_all_day',
+				__( 'Post field all_day must be true or false.', 'promptless-cpt-pages' )
+			);
+		}
+
+		// event_timezone — optional IANA timezone id (e.g. America/New_York).
+		// Empty means "use the site timezone." Only meaningful for date fields.
+		if ( ! empty( $definition['event_timezone'] ) ) {
+			if ( ! is_string( $definition['event_timezone'] )
+				|| ! in_array( $definition['event_timezone'], timezone_identifiers_list(), true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_event_timezone',
+					sprintf(
+						/* translators: %s: the rejected timezone */
+						__( 'Post field event_timezone %s is not a valid IANA timezone identifier.', 'promptless-cpt-pages' ),
+						is_string( $definition['event_timezone'] ) ? $definition['event_timezone'] : 'non-string'
+					)
+				);
+			}
+		}
+
+		// semantic_role — optional; must be in SEMANTIC_ROLES and must pair
+		// with the role's required display_type. CPT-level uniqueness (a role
+		// mapped at most once) is enforced in the registry, which has the
+		// full field set in scope.
+		if ( ! empty( $definition['semantic_role'] ) ) {
+			if ( ! is_string( $definition['semantic_role'] )
+				|| ! in_array( $definition['semantic_role'], self::SEMANTIC_ROLES, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_semantic_role',
+					sprintf(
+						/* translators: %1$s: invalid role, %2$s: list of allowed roles */
+						__( 'Post field semantic_role %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+						is_string( $definition['semantic_role'] ) ? $definition['semantic_role'] : 'non-string',
+						implode( ', ', self::SEMANTIC_ROLES )
+					)
+				);
+			}
+
+			$required_type = self::ROLE_DISPLAY_TYPES[ $definition['semantic_role'] ];
+			if ( ( $definition['display_type'] ?? '' ) !== $required_type ) {
+				return new WP_Error(
+					'pcptpages_role_display_type_mismatch',
+					sprintf(
+						/* translators: %1$s: role, %2$s: required display type, %3$s: actual display type */
+						__( 'Post field semantic_role %1$s requires display_type %2$s, got %3$s.', 'promptless-cpt-pages' ),
+						$definition['semantic_role'],
+						$required_type,
+						is_string( $definition['display_type'] ?? null ) ? $definition['display_type'] : 'missing'
+					)
+				);
+			}
 		}
 
 		// value_suffix — optional string appended after the formatted value.

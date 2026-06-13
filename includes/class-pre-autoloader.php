@@ -38,6 +38,8 @@ class PCPTPages_Autoloader {
 		'PCPTPages_Post_Field_Registry' => 'Core/class-pre-post-field-registry.php',
 		'PCPTPages_Post_Data'           => 'Core/class-pre-post-data.php',
 		'PCPTPages_Capabilities'        => 'Core/class-pre-capabilities.php',
+		// Events vertical (v1.2): date-status query helper.
+		'PCPTPages_Event_Query'         => 'Core/class-pre-event-query.php',
 
 		// Phase 2 frontend rendering.
 		'PCPTPages_Template_Router' => 'Core/class-pre-template-router.php',
@@ -50,6 +52,10 @@ class PCPTPages_Autoloader {
 
 		// Phase 12 (v1.1) AISB PostGrid + theme archive integration.
 		'PCPTPages_Card_Filter_Hooks'  => 'Frontend/class-pre-card-filter-hooks.php',
+		// Events vertical (v1.2): Schema.org Event JSON-LD emitter.
+		'PCPTPages_Event_Schema'       => 'Frontend/class-pre-event-schema.php',
+		// PostGrid editor-preview parity (v1.2.x): batched card-HTML endpoint.
+		'PCPTPages_Editor_Preview_API' => 'Frontend/class-pre-editor-preview-api.php',
 
 		// Phase 3: Connector REST + admin.
 		// One API class owns all 18 routes (FRE pattern); auth + settings

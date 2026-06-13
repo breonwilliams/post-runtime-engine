@@ -305,20 +305,33 @@ class PCPTPages_Meta_Box_Post_Fields {
 				break;
 
 			case 'date':
-				$date_value = '';
+				// Events vertical (v1.2): a date field tagged with a semantic
+				// role and NOT all-day carries a time too, so use a
+				// datetime-local input. Plain dates keep the date picker.
+				$is_event_time = ! empty( $def['semantic_role'] ) && empty( $def['all_day'] );
+				$ts = '';
 				if ( $primary !== '' ) {
 					$ts = is_numeric( $primary ) ? (int) $primary : strtotime( (string) $primary );
-					if ( $ts !== false ) {
-						$date_value = gmdate( 'Y-m-d', $ts );
-					}
 				}
-				?>
-				<input
-					type="date"
-					id="<?php echo esc_attr( $base_id ); ?>"
-					name="<?php echo esc_attr( $name_primary ); ?>"
-					value="<?php echo esc_attr( $date_value ); ?>">
-				<?php
+				if ( $is_event_time ) {
+					$dt_value = ( $ts !== '' && $ts !== false ) ? gmdate( 'Y-m-d\TH:i', $ts ) : '';
+					?>
+					<input
+						type="datetime-local"
+						id="<?php echo esc_attr( $base_id ); ?>"
+						name="<?php echo esc_attr( $name_primary ); ?>"
+						value="<?php echo esc_attr( $dt_value ); ?>">
+					<?php
+				} else {
+					$date_value = ( $ts !== '' && $ts !== false ) ? gmdate( 'Y-m-d', $ts ) : '';
+					?>
+					<input
+						type="date"
+						id="<?php echo esc_attr( $base_id ); ?>"
+						name="<?php echo esc_attr( $name_primary ); ?>"
+						value="<?php echo esc_attr( $date_value ); ?>">
+					<?php
+				}
 				break;
 
 			case 'meta_pair':

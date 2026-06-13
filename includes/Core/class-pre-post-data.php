@@ -67,6 +67,22 @@ class PCPTPages_Post_Data {
 	const FIELD_VISIBILITY_META_KEY = '_pcptpages_field_visibility';
 
 	/**
+	 * Suffixes for the normalized date companion meta written for event
+	 * date fields (display_type === 'date' AND a non-empty semantic_role).
+	 * Events vertical, v1.2 — see docs/EVENTS_VERTICAL_DESIGN.md § 5.3.
+	 *
+	 *   {key}__sort — numeric YYYYMMDDHHMMSS (site-local wall clock) for
+	 *                 range/sort meta_query without parsing the display value.
+	 *   {key}__utc  — unix UTC timestamp (tz-aware) for future viewer-local
+	 *                 rendering. Stored now; not used for v1 rendering.
+	 *
+	 * Double underscore avoids collision with the single-underscore
+	 * composite secondaries (`_count` / `_goal`).
+	 */
+	const FIELD_SORT_SUFFIX = '__sort';
+	const FIELD_UTC_SUFFIX  = '__utc';
+
+	/**
 	 * CPT registry dependency.
 	 *
 	 * @var PCPTPages_CPT_Registry
@@ -798,6 +814,71 @@ class PCPTPages_Post_Data {
 	}
 
 	/**
+	 * Compute the normalized sort + UTC companion values for an event date.
+	 *
+	 * Pure function (no WordPress calls) so it is unit-testable in isolation.
+	 * `$value` is the normalized stored value ('Y-m-d' or 'Y-m-d H:i:s').
+	 *
+	 *   - 'sort' is the site-local wall-clock as a numeric YYYYMMDDHHMMSS,
+	 *     matching how the value renders. Used for range/sort meta_query.
+	 *   - 'utc'  is the true unix timestamp, interpreting the wall-clock in
+	 *     the event timezone (or the site timezone when none is set). Stored
+	 *     for future viewer-local rendering; not used for v1 rendering.
+	 *
+	 * For all-day fields the time is forced to 00:00:00. Returns null/null
+	 * for empty or unparseable input (caller deletes the companions).
+	 *
+	 * @param string $value    Normalized date string ('Y-m-d' or 'Y-m-d H:i:s').
+	 * @param bool   $all_day  Whether the field is an all-day event date.
+	 * @param string $event_tz IANA timezone id, or '' for the site timezone.
+	 * @param string $site_tz  IANA timezone id for the site (caller passes wp_timezone()->getName()).
+	 * @return array{sort:?int,utc:?int}
+	 */
+	public static function compute_date_sort_keys( $value, $all_day, $event_tz, $site_tz ) {
+		$value = trim( (string) $value );
+		if ( $value === '' ) {
+			return array( 'sort' => null, 'utc' => null );
+		}
+
+		$date_part = substr( $value, 0, 10 );
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date_part ) ) {
+			return array( 'sort' => null, 'utc' => null );
+		}
+
+		// Reduce to a canonical 'Y-m-d H:i:s' wall-clock string.
+		if ( $all_day ) {
+			$wall = $date_part . ' 00:00:00';
+		} elseif ( strlen( $value ) > 10 && preg_match( '/\d{1,2}:\d{2}/', $value ) ) {
+			$time_part = trim( substr( $value, 10 ) );
+			if ( preg_match( '/^\d{1,2}:\d{2}$/', $time_part ) ) {
+				$time_part .= ':00';
+			}
+			$wall = $date_part . ' ' . $time_part;
+		} else {
+			$wall = $date_part . ' 00:00:00';
+		}
+
+		// Sort key: digits of the wall-clock value (site-local), no tz math.
+		$sort = (int) preg_replace( '/\D/', '', $wall );
+
+		// UTC: interpret the wall-clock in the resolved timezone (DST-safe
+		// because DateTimeZone applies the correct offset for the date).
+		$tz_name = ( is_string( $event_tz ) && $event_tz !== '' ) ? $event_tz : (string) $site_tz;
+		$utc     = null;
+		try {
+			$tz = new DateTimeZone( $tz_name );
+			$dt = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', $wall, $tz );
+			if ( $dt instanceof DateTimeImmutable ) {
+				$utc = $dt->getTimestamp();
+			}
+		} catch ( \Exception $e ) {
+			$utc = null;
+		}
+
+		return array( 'sort' => $sort, 'utc' => $utc );
+	}
+
+	/**
 	 * Internal: read a field's raw value from post meta, returning the
 	 * scalar OR the composite-shape array depending on display type.
 	 *
@@ -881,6 +962,9 @@ class PCPTPages_Post_Data {
 		if ( $primary === null || $primary === '' ) {
 			delete_post_meta( $post_id, $primary_meta_key );
 			delete_post_meta( $post_id, $secondary_meta_key );
+			// Events vertical (v1.2): clear the date companions too.
+			delete_post_meta( $post_id, $primary_meta_key . self::FIELD_SORT_SUFFIX );
+			delete_post_meta( $post_id, $primary_meta_key . self::FIELD_UTC_SUFFIX );
 			return true;
 		}
 
@@ -923,6 +1007,33 @@ class PCPTPages_Post_Data {
 		}
 
 		update_post_meta( $post_id, $primary_meta_key, $primary );
+
+		// Events vertical (v1.2): for date fields tagged with a semantic
+		// role, write normalized sort + UTC companions so the query layer
+		// can range/sort efficiently without parsing the display value.
+		// Non-event date fields and all other types are untouched.
+		if ( $display_type === 'date' && ! empty( $field_def['semantic_role'] ) ) {
+			$sort_key   = $primary_meta_key . self::FIELD_SORT_SUFFIX;
+			$utc_key    = $primary_meta_key . self::FIELD_UTC_SUFFIX;
+			$companions = self::compute_date_sort_keys(
+				$primary,
+				! empty( $field_def['all_day'] ),
+				isset( $field_def['event_timezone'] ) ? (string) $field_def['event_timezone'] : '',
+				wp_timezone()->getName()
+			);
+
+			if ( $companions['sort'] !== null ) {
+				update_post_meta( $post_id, $sort_key, $companions['sort'] );
+			} else {
+				delete_post_meta( $post_id, $sort_key );
+			}
+
+			if ( $companions['utc'] !== null ) {
+				update_post_meta( $post_id, $utc_key, $companions['utc'] );
+			} else {
+				delete_post_meta( $post_id, $utc_key );
+			}
+		}
 
 		// Persist or clear the secondary value for composite types.
 		if ( in_array( $display_type, array( 'rating', 'progress' ), true ) ) {

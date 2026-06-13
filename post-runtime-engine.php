@@ -266,6 +266,16 @@ final class Promptless_CPT_Pages {
 		// and this listener stays silent — no overhead, no dependency.
 		( new PCPTPages_Card_Filter_Hooks() )->init();
 
+		// Events vertical (v1.2): Schema.org Event JSON-LD on CPT singles
+		// that map an event_start role. Self-contained — no Promptless
+		// dependency; defers to Promptless on _aisb_enabled pages.
+		( new PCPTPages_Event_Schema() )->init();
+
+		// PostGrid editor-preview parity (v1.2.x): REST endpoint that returns
+		// batched, position-keyed card-field HTML so Promptless WP's React
+		// canvas preview can render the same metadata the front end shows.
+		( new PCPTPages_Editor_Preview_API() )->init();
+
 		// Wire render-cache invalidation hooks. Static — no instance
 		// state required. The renderer caches output per-post via a
 		// transient and busts the cache on save_post / before_delete_post

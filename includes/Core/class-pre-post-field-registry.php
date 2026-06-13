@@ -167,6 +167,29 @@ class PCPTPages_Post_Field_Registry {
 		$all      = $this->get_all( $cpt_slug );
 		$existing = isset( $all[ $field_key ] ) ? $all[ $field_key ] : null;
 
+		// Semantic-role uniqueness (events vertical, v1.2). A given event
+		// role (event_start, event_end, etc.) may be mapped at most once per
+		// CPT so the query + schema layers can resolve it unambiguously.
+		// Re-saving the SAME field that already holds the role is fine.
+		if ( ! empty( $definition['semantic_role'] ) ) {
+			foreach ( $all as $other_key => $other_def ) {
+				if ( $other_key === $field_key ) {
+					continue;
+				}
+				if ( ( $other_def['semantic_role'] ?? '' ) === $definition['semantic_role'] ) {
+					return new WP_Error(
+						'pcptpages_duplicate_semantic_role',
+						sprintf(
+							/* translators: %1$s: role, %2$s: field key already holding it */
+							__( 'Semantic role %1$s is already mapped to field %2$s on this CPT. Each role may be mapped once.', 'promptless-cpt-pages' ),
+							$definition['semantic_role'],
+							$other_key
+						)
+					);
+				}
+			}
+		}
+
 		// Field count cap enforcement. Only applies when ADDING a new
 		// field — updating an existing field doesn't change the count.
 		if ( $existing === null ) {
@@ -410,6 +433,11 @@ class PCPTPages_Post_Field_Registry {
 			'value_suffix'       => '',
 			'max'                => 0,
 			'unit_label'         => '',
+			// Events vertical (v1.2) additive attributes. Defaults keep
+			// non-event fields byte-identical to pre-v1.2 behavior.
+			'all_day'            => false,
+			'event_timezone'     => '',
+			'semantic_role'      => '',
 		);
 
 		// sanitize_key on the field key (validator already verified safety;

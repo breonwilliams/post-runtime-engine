@@ -71,6 +71,8 @@ The constraint is what makes this AI-legible. Cowork sees a small enumerated set
 - **ACF / MetaBox / Pods migration tooling.** PRE still owns the field model end-to-end. v1.1 does not change that.
 - **Custom display types via filter.** v1.1 ships a closed enum. Extension via filter is a v1.2 conversation that requires a thoughtful contract for what a third-party display type may and may not do.
 
+> **v1.2 forward-note (events slice, added 2026-06-13).** The first two deferred items above — facet filtering (narrow events-only slice) and automatic `Event` schema.org emission — are now being implemented as the **events vertical**, specified in [`EVENTS_VERTICAL_DESIGN.md`](EVENTS_VERTICAL_DESIGN.md). Per the field-type guardrail ("do not extend the post-field enums without updating the contract first"), note that the events slice introduces three **additive field-definition attributes** — `all_day` and `event_timezone` (on the `date` display type) and `semantic_role` (a closed, events-scoped role enum) — plus a normalized sortable date companion meta (`_pcptpages_field_{key}__sort` / `__utc`). These are **attributes and companion storage, not changes to the closed `DISPLAY_TYPES`, `FIELD_POSITIONS`, or `COLOR_INTENTS` enums**, which remain frozen. The events contract is the authoritative spec for those additions. (Naming: that doc uses the shipped `pcptpages_*` conventions; the `_pre_*` examples in this document predate the slug rename.)
+
 ## 4. Architectural decisions (locked)
 
 These were settled during planning. Disagreements resolved by editing this doc.

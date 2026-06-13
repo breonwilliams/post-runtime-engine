@@ -589,6 +589,60 @@ class PCPTPages_Admin_Post_Fields {
 				</table>
 			</div>
 
+			<!-- Conditional: events — timing (date roles, v1.2) -->
+			<div class="pre-field-cond pre-field-cond-event-timing" data-shown-when="date">
+				<h2><?php esc_html_e( 'Event timing', 'promptless-cpt-pages' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'All-day', 'promptless-cpt-pages' ); ?></th>
+							<td>
+								<label>
+									<input type="checkbox" name="all_day" value="1" <?php checked( ! empty( $values['all_day'] ) ); ?>>
+									<?php esc_html_e( 'No specific time (all-day / multi-day event)', 'promptless-cpt-pages' ); ?>
+								</label>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="pre-field-event-timezone"><?php esc_html_e( 'Event time zone', 'promptless-cpt-pages' ); ?></label></th>
+							<td>
+								<select id="pre-field-event-timezone" name="event_timezone">
+									<option value=""><?php esc_html_e( '— Use site time zone —', 'promptless-cpt-pages' ); ?></option>
+									<?php
+									// wp_timezone_choice() returns pre-escaped <option> markup.
+									echo wp_timezone_choice( $values['event_timezone'] ?? '' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+									?>
+								</select>
+								<p class="description"><?php esc_html_e( 'Only used for event dates. Leave on the site time zone for single-location sites.', 'promptless-cpt-pages' ); ?></p>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Conditional: events — semantic role (v1.2) -->
+			<div class="pre-field-cond pre-field-cond-event-role" data-shown-when="date,badge,text,currency">
+				<h2><?php esc_html_e( 'Event role', 'promptless-cpt-pages' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row"><label for="pre-field-semantic-role"><?php esc_html_e( 'Semantic role', 'promptless-cpt-pages' ); ?></label></th>
+							<td>
+								<select id="pre-field-semantic-role" name="semantic_role">
+									<option value=""><?php esc_html_e( '— None —', 'promptless-cpt-pages' ); ?></option>
+									<?php foreach ( PCPTPages_Validator::SEMANTIC_ROLES as $role ) : ?>
+										<option value="<?php echo esc_attr( $role ); ?>" <?php selected( $values['semantic_role'] ?? '', $role ); ?>>
+											<?php echo esc_html( $this->semantic_role_label( $role ) ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<p class="description"><?php esc_html_e( 'Tags this field for event archive filtering and Schema.org markup. Start/End need a Date field; Status & Attendance a Badge; Location a Text; Price a Currency.', 'promptless-cpt-pages' ); ?></p>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
 			<!-- Conditional: currency — currency code -->
 			<div class="pre-field-cond pre-field-cond-currency" data-shown-when="currency,progress">
 				<h2><?php esc_html_e( 'Currency', 'promptless-cpt-pages' ); ?></h2>
@@ -829,6 +883,10 @@ class PCPTPages_Admin_Post_Fields {
 			'value_suffix'       => isset( $_POST['value_suffix'] ) ? sanitize_text_field( wp_unslash( $_POST['value_suffix'] ) ) : '',
 			'max'                => isset( $_POST['max'] ) && $_POST['max'] !== '' ? (float) $_POST['max'] : 0,
 			'unit_label'         => isset( $_POST['unit_label'] ) ? sanitize_text_field( wp_unslash( $_POST['unit_label'] ) ) : '',
+			// Events vertical (v1.2) additive attributes.
+			'all_day'            => ! empty( $_POST['all_day'] ),
+			'event_timezone'     => isset( $_POST['event_timezone'] ) ? sanitize_text_field( wp_unslash( $_POST['event_timezone'] ) ) : '',
+			'semantic_role'      => isset( $_POST['semantic_role'] ) ? sanitize_key( wp_unslash( $_POST['semantic_role'] ) ) : '',
 			'required'           => ! empty( $_POST['required'] ),
 		);
 	}
@@ -856,6 +914,9 @@ class PCPTPages_Admin_Post_Fields {
 			'value_suffix'       => $values['value_suffix'] ?? '',
 			'max'                => $values['max'],
 			'unit_label'         => $values['unit_label'],
+			'all_day'            => ! empty( $values['all_day'] ),
+			'event_timezone'     => $values['event_timezone'] ?? '',
+			'semantic_role'      => $values['semantic_role'] ?? '',
 			'required'           => (bool) $values['required'],
 			'options'            => array(),
 		);
@@ -883,13 +944,14 @@ class PCPTPages_Admin_Post_Fields {
 	private function definition_to_form_values( array $definition ) {
 		$values = $this->default_form_values();
 
-		foreach ( array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'unit_label' ) as $key ) {
+		foreach ( array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'unit_label', 'event_timezone', 'semantic_role' ) as $key ) {
 			if ( isset( $definition[ $key ] ) ) {
 				$values[ $key ] = $definition[ $key ];
 			}
 		}
 
 		$values['required'] = ! empty( $definition['required'] );
+		$values['all_day']  = ! empty( $definition['all_day'] );
 		$values['max']      = isset( $definition['max'] ) ? (float) $definition['max'] : 0;
 		$values['options_json'] = ! empty( $definition['options'] ) && is_array( $definition['options'] )
 			? wp_json_encode( $definition['options'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES )
@@ -920,8 +982,29 @@ class PCPTPages_Admin_Post_Fields {
 			'value_suffix'       => '',
 			'max'                => 0,
 			'unit_label'         => '',
+			'all_day'            => false,
+			'event_timezone'     => '',
+			'semantic_role'      => '',
 			'required'           => false,
 		);
+	}
+
+	/**
+	 * Human label for a semantic-role enum value (events vertical, v1.2).
+	 *
+	 * @param string $role Semantic role.
+	 * @return string
+	 */
+	private function semantic_role_label( $role ) {
+		$labels = array(
+			'event_start'           => __( 'Event start date', 'promptless-cpt-pages' ),
+			'event_end'             => __( 'Event end date', 'promptless-cpt-pages' ),
+			'event_status'          => __( 'Event status', 'promptless-cpt-pages' ),
+			'event_location'        => __( 'Event location', 'promptless-cpt-pages' ),
+			'event_offers'          => __( 'Event price / offers', 'promptless-cpt-pages' ),
+			'event_attendance_mode' => __( 'Event attendance mode', 'promptless-cpt-pages' ),
+		);
+		return $labels[ $role ] ?? $role;
 	}
 
 	/**

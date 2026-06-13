@@ -76,6 +76,99 @@ class PCPTPages_Card_Filter_Hooks {
 		// Non-PRE CPTs are unaffected (filter returns the incoming value).
 		add_filter( 'promptless_archive_card_show_date', array( $this, 'filter_archive_show_date' ), 10, 2 );
 		add_filter( 'promptless_archive_card_show_author', array( $this, 'filter_archive_show_author' ), 10, 2 );
+
+		// Events vertical (v1.2): decoupled PostGrid query shaping. Promptless
+		// WP's PostGrid exposes its assembled WP_Query args via this generic
+		// filter; PRE injects an event date-status meta_query + ordering when
+		// the queried CPT is event-shaped. AISB stays zero-knowledge of PRE.
+		add_filter( 'aisb_postgrid_query_args', array( $this, 'filter_postgrid_query_args' ), 10, 3 );
+	}
+
+	/**
+	 * Filter callback for `aisb_postgrid_query_args`.
+	 *
+	 * When the PostGrid section requests an event date status
+	 * (`$content['event_status']` = upcoming|happening|past) and the queried
+	 * post type is a PRE event-shaped CPT, merge in the date-status
+	 * meta_query and (unless disabled) order by event date. Otherwise the
+	 * args pass through untouched — including for every non-PRE post type.
+	 *
+	 * @param array $query_args      Assembled WP_Query args from PostGrid.
+	 * @param array $content         The PostGrid section content/settings.
+	 * @param int   $section_post_id The post the section is rendered on (unused).
+	 * @return array
+	 */
+	public function filter_postgrid_query_args( $query_args, $content = array(), $section_post_id = 0 ) {
+		if ( ! is_array( $query_args ) ) {
+			return $query_args;
+		}
+
+		$content = is_array( $content ) ? $content : array();
+		$status  = isset( $content['event_status'] ) ? sanitize_key( $content['event_status'] ) : '';
+		if ( ! in_array( $status, PCPTPages_Event_Query::STATUSES, true ) ) {
+			// '', 'none', or anything unrecognized — no event filtering.
+			return $query_args;
+		}
+
+		// Resolve the queried post type (string or first of an array).
+		$post_type = isset( $query_args['post_type'] ) ? $query_args['post_type'] : '';
+		if ( is_array( $post_type ) ) {
+			$post_type = reset( $post_type );
+		}
+		if ( ! is_string( $post_type ) || $post_type === '' ) {
+			return $query_args;
+		}
+
+		// Only act on PRE event-shaped CPTs.
+		if ( ! PCPTPages_Event_Query::is_event_cpt( $post_type ) ) {
+			return $query_args;
+		}
+
+		$status_group = PCPTPages_Event_Query::status_meta_query( $post_type, $status );
+		if ( empty( $status_group ) ) {
+			return $query_args;
+		}
+
+		$query_args = self::merge_meta_query( $query_args, $status_group );
+
+		// Order by event date unless explicitly disabled.
+		$requested_sort = isset( $content['event_sort'] ) ? sanitize_key( $content['event_sort'] ) : 'auto';
+		if ( $requested_sort !== 'none' ) {
+			$direction = PCPTPages_Event_Query::resolve_sort_direction( $status, $requested_sort );
+			$sort_args = PCPTPages_Event_Query::sort_args( $post_type, $direction );
+			if ( ! empty( $sort_args ) ) {
+				$query_args['meta_key'] = $sort_args['meta_key'];
+				$query_args['orderby']  = $sort_args['orderby'];
+				$query_args['order']    = $sort_args['order'];
+			}
+		}
+
+		return $query_args;
+	}
+
+	/**
+	 * Merge an additional meta_query group into existing WP_Query args
+	 * without clobbering any meta_query the caller already set. When one is
+	 * present, the two groups are ANDed; otherwise the new group is used
+	 * directly.
+	 *
+	 * @param array $query_args  WP_Query args.
+	 * @param array $new_group   A meta_query group to add.
+	 * @return array
+	 */
+	private static function merge_meta_query( $query_args, $new_group ) {
+		if ( empty( $query_args['meta_query'] ) || ! is_array( $query_args['meta_query'] ) ) {
+			$query_args['meta_query'] = $new_group;
+			return $query_args;
+		}
+
+		$query_args['meta_query'] = array(
+			'relation' => 'AND',
+			$query_args['meta_query'],
+			$new_group,
+		);
+
+		return $query_args;
 	}
 
 	/**

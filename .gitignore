@@ -115,3 +115,5 @@ clover.xml
 # -----------------------------------------------------------------------------
 wp-cli.local.yml
 .htaccess.local
+.claude/
+.claude/

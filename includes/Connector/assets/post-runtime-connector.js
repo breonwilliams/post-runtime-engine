@@ -416,7 +416,7 @@ const TOOLS = [
   {
     name: "postruntime_define_post_field",
     description:
-      "Define a new post field on a CPT. Up to 12 fields per CPT enforced server-side (HARD_FIELD_COUNT_LIMIT); soft warning at 8. After definition, populate per-post values via postruntime_set_post_field_values. See preflight.field_name_hints.post_field_definition for the accepted-keys list and preflight.post_field_enums for closed enums. Examples by display_type — currency: { key:'price', label:'Price', display_type:'currency', card_position:'headline', single_position:'headline', currency_code:'USD', value_suffix:'+' }. badge: { key:'status', label:'Status', display_type:'badge', card_position:'image_overlay', single_position:'image_overlay', options:{ for_sale:{ label:'For sale', color_intent:'primary' }, sold:{ label:'Sold', color_intent:'neutral' } } }. meta_pair: { key:'beds', label:'Beds', display_type:'meta_pair', card_position:'meta_strip', single_position:'meta_strip', icon:'mdi:bed-outline' }. rating: { key:'reviews', label:'Reviews', display_type:'rating', card_position:'meta_strip', single_position:'meta_strip', max:5 }. progress: { key:'capacity', label:'Capacity', display_type:'progress', card_position:'meta_strip', single_position:'meta_strip' }. date: { key:'event_date', label:'Event date', display_type:'date', card_position:'headline', single_position:'headline', date_format:'custom', date_format_string:'F j · g:i A' }. multi_badge: { key:'topics', label:'Topics', display_type:'multi_badge', card_position:'footer_meta', single_position:'footer_meta', color_intent:'neutral' }. number_with_label: { key:'duration', label:'Duration', display_type:'number_with_label', card_position:'meta_strip', single_position:'meta_strip', unit_label:'min' }. Use card_position:'hidden' or single_position:'hidden' to opt out of one context.",
+      "Define a new post field on a CPT. Up to 12 fields per CPT enforced server-side (HARD_FIELD_COUNT_LIMIT); soft warning at 8. After definition, populate per-post values via postruntime_set_post_field_values. See preflight.field_name_hints.post_field_definition for the accepted-keys list and preflight.post_field_enums for closed enums. Examples by display_type — currency: { key:'price', label:'Price', display_type:'currency', card_position:'headline', single_position:'headline', currency_code:'USD', value_suffix:'+' }. badge: { key:'status', label:'Status', display_type:'badge', card_position:'image_overlay', single_position:'image_overlay', options:{ for_sale:{ label:'For sale', color_intent:'primary' }, sold:{ label:'Sold', color_intent:'neutral' } } }. meta_pair: { key:'beds', label:'Beds', display_type:'meta_pair', card_position:'meta_strip', single_position:'meta_strip', icon:'mdi:bed-outline' }. rating: { key:'reviews', label:'Reviews', display_type:'rating', card_position:'meta_strip', single_position:'meta_strip', max:5 }. progress: { key:'capacity', label:'Capacity', display_type:'progress', card_position:'meta_strip', single_position:'meta_strip' }. date: { key:'event_date', label:'Event date', display_type:'date', card_position:'headline', single_position:'headline', date_format:'custom', date_format_string:'F j · g:i A' }. multi_badge: { key:'topics', label:'Topics', display_type:'multi_badge', card_position:'footer_meta', single_position:'footer_meta', color_intent:'neutral' }. number_with_label: { key:'duration', label:'Duration', display_type:'number_with_label', card_position:'meta_strip', single_position:'meta_strip', unit_label:'min' }. Use card_position:'hidden' or single_position:'hidden' to opt out of one context. EVENTS ARCHIVE SETUP: to make a CPT event-shaped, define two date fields with semantic_role event_start and event_end — e.g. { key:'starts', label:'Starts', display_type:'date', semantic_role:'event_start', all_day:false, card_position:'headline', single_position:'meta_strip', date_format:'custom', date_format_string:'M j, Y · g:i A' } and the same for 'ends' with semantic_role:'event_end'; optionally add a badge event_status (options scheduled/cancelled/postponed), a text event_location, a currency event_offers, and a badge event_attendance_mode (in_person/online/mixed). Then build a Promptless WP PostGrid section over that CPT with content.event_status:'upcoming' (or happening/past) and content.event_sort:'soonest' to render the filtered, sorted archive; single pages auto-emit Schema.org Event JSON-LD.",
     inputSchema: {
       type: "object",
       properties: {
@@ -450,6 +450,13 @@ const TOOLS = [
         value_suffix: { type: "string", description: "For currency — appended after the formatted amount ('+', '/mo', '/night', etc.)" },
         max: { type: "number", description: "For rating (defaults to 5), progress, or number_with_label" },
         unit_label: { type: "string", description: "For number_with_label — unit suffix (sqft, mi, hrs, min, etc.)" },
+        semantic_role: {
+          type: "string",
+          enum: ["event_start", "event_end", "event_status", "event_location", "event_offers", "event_attendance_mode"],
+          description: "EVENTS: tags this field for event archive date-filtering + Schema.org Event markup. Pairs with a specific display_type — event_start/event_end require display_type:date; event_status/event_attendance_mode require badge; event_location requires text; event_offers requires currency. Each role may be mapped only once per CPT.",
+        },
+        all_day: { type: "boolean", description: "For date fields: true = all-day / multi-day (date-only, no time). Affects Event schema output and date-status filtering." },
+        event_timezone: { type: "string", description: "For date fields: optional IANA timezone (e.g. America/New_York). Empty = site timezone." },
       },
       required: ["slug", "key", "label", "display_type", "card_position", "single_position"],
     },
@@ -499,6 +506,13 @@ const TOOLS = [
         value_suffix: { type: "string" },
         max: { type: "number" },
         unit_label: { type: "string" },
+        semantic_role: {
+          type: "string",
+          enum: ["event_start", "event_end", "event_status", "event_location", "event_offers", "event_attendance_mode"],
+          description: "EVENTS role (see define_post_field). One role per CPT; pairs with its required display_type.",
+        },
+        all_day: { type: "boolean", description: "For date fields: all-day / multi-day (date-only)." },
+        event_timezone: { type: "string", description: "For date fields: optional IANA timezone; empty = site timezone." },
       },
       required: ["slug", "key", "connector_version"],
     },
@@ -1002,6 +1016,9 @@ async function handleTool(name, args) {
         "value_suffix",
         "max",
         "unit_label",
+        "semantic_role",
+        "all_day",
+        "event_timezone",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
@@ -1042,6 +1059,9 @@ async function handleTool(name, args) {
         "value_suffix",
         "max",
         "unit_label",
+        "semantic_role",
+        "all_day",
+        "event_timezone",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });

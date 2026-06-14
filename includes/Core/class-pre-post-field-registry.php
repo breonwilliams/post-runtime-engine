@@ -438,6 +438,13 @@ class PCPTPages_Post_Field_Registry {
 			'all_day'            => false,
 			'event_timezone'     => '',
 			'semantic_role'      => '',
+			// Schema-driven filters (v1.2) additive attributes. Default
+			// off — a field only participates in the filter/sort UI when
+			// explicitly opted in. '' filter_widget = use the display_type
+			// default mapping. Non-filtered fields are byte-identical to before.
+			'filterable'         => false,
+			'sortable'           => false,
+			'filter_widget'      => '',
 		);
 
 		// sanitize_key on the field key (validator already verified safety;

@@ -457,6 +457,9 @@ const TOOLS = [
         },
         all_day: { type: "boolean", description: "For date fields: true = all-day / multi-day (date-only, no time). Affects Event schema output and date-status filtering." },
         event_timezone: { type: "string", description: "For date fields: optional IANA timezone (e.g. America/New_York). Empty = site timezone." },
+        filterable: { type: "boolean", description: "FILTERS: true = visitors can filter the archive by this field. The filter widget is auto-chosen from display_type (range slider for currency/number/progress, stepper for rating, single-select for badge, checkboxes for multi_badge, upcoming/past toggle for event dates, search box for text). meta_pair cannot be filterable." },
+        sortable: { type: "boolean", description: "FILTERS: true = offer this field as an archive sort option (e.g. price low-to-high, rating high-to-low). meta_pair cannot be sortable." },
+        filter_widget: { type: "string", enum: ["range", "stepper", "pill_select", "checkbox_group", "date_toggle", "date_range", "text_search"], description: "FILTERS (advanced, optional): override the auto-chosen widget. Must be compatible with display_type — number_with_label/rating accept range or stepper; badge accepts pill_select or checkbox_group; date accepts date_toggle or date_range. Omit to use the display_type default." },
       },
       required: ["slug", "key", "label", "display_type", "card_position", "single_position"],
     },
@@ -513,6 +516,9 @@ const TOOLS = [
         },
         all_day: { type: "boolean", description: "For date fields: all-day / multi-day (date-only)." },
         event_timezone: { type: "string", description: "For date fields: optional IANA timezone; empty = site timezone." },
+        filterable: { type: "boolean", description: "FILTERS: true = visitors can filter the archive by this field (widget auto-chosen from display_type). meta_pair cannot be filterable." },
+        sortable: { type: "boolean", description: "FILTERS: true = offer this field as an archive sort option. meta_pair cannot be sortable." },
+        filter_widget: { type: "string", enum: ["range", "stepper", "pill_select", "checkbox_group", "date_toggle", "date_range", "text_search"], description: "FILTERS (advanced, optional): override the auto-chosen widget; must be compatible with display_type. Omit to use the default." },
       },
       required: ["slug", "key", "connector_version"],
     },
@@ -1019,6 +1025,9 @@ async function handleTool(name, args) {
         "semantic_role",
         "all_day",
         "event_timezone",
+        "filterable",
+        "sortable",
+        "filter_widget",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
@@ -1062,6 +1071,9 @@ async function handleTool(name, args) {
         "semantic_role",
         "all_day",
         "event_timezone",
+        "filterable",
+        "sortable",
+        "filter_widget",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });

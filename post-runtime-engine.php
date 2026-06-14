@@ -276,6 +276,13 @@ final class Promptless_CPT_Pages {
 		// canvas preview can render the same metadata the front end shows.
 		( new PCPTPages_Editor_Preview_API() )->init();
 
+		// Schema-driven filters (v1.2): filter-descriptor provider. Supplies
+		// the `aisb_postgrid_available_filters` PHP hook (front-end render)
+		// and the `/editor/post-type-filters/{slug}` REST route (editor JS),
+		// mapping filterable post fields + taxonomies to Promptless's generic
+		// widget vocabulary. Decoupled — Promptless never learns a PRE type.
+		( new PCPTPages_Filter_Descriptors() )->init();
+
 		// Wire render-cache invalidation hooks. Static — no instance
 		// state required. The renderer caches output per-post via a
 		// transient and busts the cache on save_post / before_delete_post

@@ -269,6 +269,57 @@ class PCPTPages_Validator {
 	);
 
 	/**
+	 * Generic filter-widget vocabulary (schema-driven filters, v1.2).
+	 *
+	 * CLOSED, Promptless-shared contract. PRE maps each filterable post
+	 * field's display_type to one of these generic widgets in its filter
+	 * descriptor (Phase 2); Promptless WP renders purely from this vocabulary
+	 * and never learns PRE's display_type names. The `filter_widget` attribute
+	 * on a field definition overrides the default mapping with one of these.
+	 *
+	 * Full contract: ai-section-builder-modern/docs/development/SCHEMA_DRIVEN_FILTERS_DESIGN.md § 4.
+	 */
+	const FILTER_WIDGETS = array(
+		'range',
+		'stepper',
+		'pill_select',
+		'checkbox_group',
+		'date_toggle',
+		'date_range',
+		'text_search',
+	);
+
+	/**
+	 * Allowed filter widgets per display_type. The FIRST entry is the DEFAULT
+	 * widget the descriptor emits when `filter_widget` is null; a non-null
+	 * `filter_widget` override must be a member of the field's list here.
+	 *
+	 * `meta_pair` is intentionally absent — it is display-only and cannot be
+	 * marked filterable. Taxonomies (not a display_type) map to checkbox_group
+	 * in the descriptor layer (Phase 2), not here.
+	 */
+	const DISPLAY_TYPE_FILTER_WIDGETS = array(
+		'currency'          => array( 'range' ),
+		'number_with_label' => array( 'range', 'stepper' ),
+		'rating'            => array( 'stepper', 'range' ),
+		'progress'          => array( 'range' ),
+		'date'              => array( 'date_toggle', 'date_range' ),
+		'badge'             => array( 'pill_select', 'checkbox_group' ),
+		'multi_badge'       => array( 'checkbox_group' ),
+		'text'              => array( 'text_search' ),
+	);
+
+	/**
+	 * Reserved URL-param suffixes + standalone params owned by the filter
+	 * engine's URL-state schema (SCHEMA_DRIVEN_FILTERS_DESIGN.md § 5). A field
+	 * that opts into filtering/sorting may not have a key that collides with
+	 * these, or its generated query params would be ambiguous. Enforced only
+	 * when a field opts in, so existing non-filtered fields are unaffected.
+	 */
+	const RESERVED_FILTER_SUFFIXES = array( '_min', '_max', '_when', '_after', '_before', '_q' );
+	const RESERVED_FILTER_PARAMS   = array( 'sort', 'paged' );
+
+	/**
 	 * Soft warning threshold for post fields per CPT. Cards display best
 	 * with 8 or fewer; beyond this the admin UI surfaces a warning banner.
 	 */
@@ -1581,6 +1632,91 @@ class PCPTPages_Validator {
 						/* translators: %d: max length */
 						__( 'Post field value_suffix must be %d characters or fewer.', 'promptless-cpt-pages' ),
 						self::MAX_VALUE_SUFFIX_LEN
+					)
+				);
+			}
+		}
+
+		// ----- Schema-driven filters (v1.2) additive attributes -----
+		// Declarative opt-in for the filter/sort UI. The filter widget follows
+		// from display_type (DISPLAY_TYPE_FILTER_WIDGETS); these attributes only
+		// say "participate" and optionally override the widget. They do NOT
+		// alter the closed display-type / position / color-intent enums. Full
+		// contract: ai-section-builder-modern/docs/development/SCHEMA_DRIVEN_FILTERS_DESIGN.md § 3.
+
+		// filterable / sortable — optional booleans.
+		foreach ( array( 'filterable', 'sortable' ) as $flag ) {
+			if ( isset( $definition[ $flag ] ) && ! is_bool( $definition[ $flag ] ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_filter_flag',
+					sprintf(
+						/* translators: %s: the attribute key */
+						__( 'Post field %s must be true or false.', 'promptless-cpt-pages' ),
+						$flag
+					)
+				);
+			}
+		}
+
+		$display_type  = $definition['display_type'] ?? '';
+		$is_filterable = ! empty( $definition['filterable'] );
+		$is_sortable   = ! empty( $definition['sortable'] );
+
+		// meta_pair is display-only — it cannot be filtered or sorted.
+		if ( ( $is_filterable || $is_sortable ) && $display_type === 'meta_pair' ) {
+			return new WP_Error(
+				'pcptpages_meta_pair_not_filterable',
+				__( 'The meta_pair display type is display-only and cannot be marked filterable or sortable.', 'promptless-cpt-pages' )
+			);
+		}
+
+		// A filterable/sortable field's key must not collide with the filter
+		// engine's reserved URL params/suffixes, or its generated query params
+		// would be ambiguous. Enforced only on opt-in, so existing non-filtered
+		// fields are never affected.
+		if ( $is_filterable || $is_sortable ) {
+			$key = $definition['key'];
+			if ( in_array( $key, self::RESERVED_FILTER_PARAMS, true ) ) {
+				return new WP_Error(
+					'pcptpages_field_key_reserved_param',
+					sprintf(
+						/* translators: %1$s: field key, %2$s: reserved params */
+						__( 'Filterable/sortable field key %1$s collides with a reserved filter param (%2$s). Rename the field.', 'promptless-cpt-pages' ),
+						$key,
+						implode( ', ', self::RESERVED_FILTER_PARAMS )
+					)
+				);
+			}
+			foreach ( self::RESERVED_FILTER_SUFFIXES as $suffix ) {
+				if ( substr( $key, -strlen( $suffix ) ) === $suffix ) {
+					return new WP_Error(
+						'pcptpages_field_key_reserved_suffix',
+						sprintf(
+							/* translators: %1$s: field key, %2$s: reserved suffix */
+							__( 'Filterable/sortable field key %1$s ends with the reserved filter suffix %2$s. Rename the field.', 'promptless-cpt-pages' ),
+							$key,
+							$suffix
+						)
+					);
+				}
+			}
+		}
+
+		// filter_widget — optional override of the default widget. null / empty
+		// means "use the display_type default." When set, must be a widget
+		// allowed for this field's display_type.
+		if ( isset( $definition['filter_widget'] ) && $definition['filter_widget'] !== null && $definition['filter_widget'] !== '' ) {
+			$widget  = $definition['filter_widget'];
+			$allowed = self::DISPLAY_TYPE_FILTER_WIDGETS[ $display_type ] ?? array();
+			if ( ! is_string( $widget ) || ! in_array( $widget, $allowed, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_filter_widget',
+					sprintf(
+						/* translators: %1$s: widget, %2$s: display type, %3$s: allowed widgets */
+						__( 'Post field filter_widget %1$s is not valid for display_type %2$s. Allowed: %3$s', 'promptless-cpt-pages' ),
+						is_string( $widget ) ? $widget : 'non-string',
+						$display_type,
+						$allowed ? implode( ', ', $allowed ) : '(this display type is not filterable)'
 					)
 				);
 			}

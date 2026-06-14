@@ -82,6 +82,79 @@ class PCPTPages_Card_Filter_Hooks {
 		// filter; PRE injects an event date-status meta_query + ordering when
 		// the queried CPT is event-shaped. AISB stays zero-knowledge of PRE.
 		add_filter( 'aisb_postgrid_query_args', array( $this, 'filter_postgrid_query_args' ), 10, 3 );
+
+		// Schema-driven filters (v1.2): the visitor-facing event date_toggle
+		// facet is provider-handled — Promptless can't build the end-anchored
+		// upcoming/happening/past meta_query, so its filter engine delegates it
+		// here via aisb_postfilter_query_args. PRE owns the event logic, reused
+		// verbatim from the events vertical. Generic facets (range, checkbox,
+		// text, taxonomy) Promptless builds itself and never reach this hook.
+		add_filter( 'aisb_postfilter_query_args', array( $this, 'filter_postfilter_query_args' ), 10, 2 );
+	}
+
+	/**
+	 * Filter callback for `aisb_postfilter_query_args` (provider-handled facets).
+	 *
+	 * Scans the descriptors for an active `event_status` (date_toggle) facet and,
+	 * when its `{key}_when` param holds a valid status, merges the end-anchored
+	 * status meta_query into the filter fragment. Everything else passes through
+	 * — including every non-event facet and non-PRE post type.
+	 *
+	 * @param array $fragment The filter query fragment from PostFilterQuery.
+	 * @param array $context  { post_type, params, descriptors }.
+	 * @return array
+	 */
+	public function filter_postfilter_query_args( $fragment, $context = array() ) {
+		if ( ! is_array( $fragment ) ) {
+			return $fragment;
+		}
+
+		$context     = is_array( $context ) ? $context : array();
+		$params      = ( isset( $context['params'] ) && is_array( $context['params'] ) ) ? $context['params'] : array();
+		$descriptors = ( isset( $context['descriptors'] ) && is_array( $context['descriptors'] ) ) ? $context['descriptors'] : array();
+
+		foreach ( $descriptors as $desc ) {
+			if ( ! is_array( $desc ) ) {
+				continue;
+			}
+			$query = ( isset( $desc['query'] ) && is_array( $desc['query'] ) ) ? $desc['query'] : array();
+			if ( ( $query['handler'] ?? '' ) !== 'provider' || ( $query['mode'] ?? '' ) !== 'event_status' ) {
+				continue;
+			}
+
+			$when_param = $desc['params']['when'] ?? '';
+			if ( $when_param === '' || ! isset( $params[ $when_param ] ) ) {
+				continue;
+			}
+
+			$raw    = is_array( $params[ $when_param ] ) ? reset( $params[ $when_param ] ) : $params[ $when_param ];
+			$status = sanitize_key( (string) $raw );
+			if ( ! in_array( $status, PCPTPages_Event_Query::STATUSES, true ) ) {
+				// 'all' or anything unrecognized — no date constraint.
+				continue;
+			}
+
+			$cpt = $query['cpt'] ?? '';
+			if ( $cpt === '' || ! PCPTPages_Event_Query::is_event_cpt( $cpt ) ) {
+				continue;
+			}
+
+			$status_group = PCPTPages_Event_Query::status_meta_query( $cpt, $status );
+			if ( empty( $status_group ) ) {
+				continue;
+			}
+
+			if ( empty( $fragment['meta_query'] ) || ! is_array( $fragment['meta_query'] ) ) {
+				$fragment['meta_query'] = array( 'relation' => 'AND', $status_group );
+			} else {
+				if ( empty( $fragment['meta_query']['relation'] ) ) {
+					$fragment['meta_query']['relation'] = 'AND';
+				}
+				$fragment['meta_query'][] = $status_group;
+			}
+		}
+
+		return $fragment;
 	}
 
 	/**

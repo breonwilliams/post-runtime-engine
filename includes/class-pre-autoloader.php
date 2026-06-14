@@ -56,6 +56,8 @@ class PCPTPages_Autoloader {
 		'PCPTPages_Event_Schema'       => 'Frontend/class-pre-event-schema.php',
 		// PostGrid editor-preview parity (v1.2.x): batched card-HTML endpoint.
 		'PCPTPages_Editor_Preview_API' => 'Frontend/class-pre-editor-preview-api.php',
+		// Schema-driven filters (v1.2): filter-descriptor provider (hook + REST).
+		'PCPTPages_Filter_Descriptors' => 'Frontend/class-pre-filter-descriptors.php',
 
 		// Phase 3: Connector REST + admin.
 		// One API class owns all 18 routes (FRE pattern); auth + settings

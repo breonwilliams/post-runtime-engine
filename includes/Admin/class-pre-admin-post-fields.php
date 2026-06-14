@@ -643,6 +643,54 @@ class PCPTPages_Admin_Post_Fields {
 				</table>
 			</div>
 
+			<!-- Conditional: schema-driven filters — filterable/sortable (v1.2) -->
+			<div class="pre-field-cond pre-field-cond-filtering" data-shown-when="currency,number_with_label,badge,date,text,rating,progress,multi_badge">
+				<h2><?php esc_html_e( 'Filtering & sorting', 'promptless-cpt-pages' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Filterable', 'promptless-cpt-pages' ); ?></th>
+							<td>
+								<label>
+									<input type="checkbox" name="filterable" value="1" <?php checked( ! empty( $values['filterable'] ) ); ?>>
+									<?php esc_html_e( 'Let visitors filter the archive by this field', 'promptless-cpt-pages' ); ?>
+								</label>
+								<p class="description"><?php esc_html_e( 'The filter control is chosen automatically from the display type — a range slider for numbers and prices, checkboxes for badges, a date toggle for event dates, a search box for text.', 'promptless-cpt-pages' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Sortable', 'promptless-cpt-pages' ); ?></th>
+							<td>
+								<label>
+									<input type="checkbox" name="sortable" value="1" <?php checked( ! empty( $values['sortable'] ) ); ?>>
+									<?php esc_html_e( 'Offer this field as a sort option (e.g. price: low to high)', 'promptless-cpt-pages' ); ?>
+								</label>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Conditional: schema-driven filters — widget override (v1.2) -->
+			<div class="pre-field-cond pre-field-cond-filter-widget" data-shown-when="number_with_label,rating">
+				<h2><?php esc_html_e( 'Filter widget (advanced)', 'promptless-cpt-pages' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row"><label for="pre-field-filter-widget"><?php esc_html_e( 'Widget style', 'promptless-cpt-pages' ); ?></label></th>
+							<td>
+								<select id="pre-field-filter-widget" name="filter_widget">
+									<option value=""><?php esc_html_e( '— Default (range slider) —', 'promptless-cpt-pages' ); ?></option>
+									<option value="range" <?php selected( $values['filter_widget'] ?? '', 'range' ); ?>><?php esc_html_e( 'Range slider', 'promptless-cpt-pages' ); ?></option>
+									<option value="stepper" <?php selected( $values['filter_widget'] ?? '', 'stepper' ); ?>><?php esc_html_e( 'Stepper (1+, 2+, 3+ buttons)', 'promptless-cpt-pages' ); ?></option>
+								</select>
+								<p class="description"><?php esc_html_e( 'Only applies when Filterable is on. A stepper suits whole-number counts like bedrooms or a minimum rating; a range slider suits prices and continuous values.', 'promptless-cpt-pages' ); ?></p>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
 			<!-- Conditional: currency — currency code -->
 			<div class="pre-field-cond pre-field-cond-currency" data-shown-when="currency,progress">
 				<h2><?php esc_html_e( 'Currency', 'promptless-cpt-pages' ); ?></h2>
@@ -887,6 +935,10 @@ class PCPTPages_Admin_Post_Fields {
 			'all_day'            => ! empty( $_POST['all_day'] ),
 			'event_timezone'     => isset( $_POST['event_timezone'] ) ? sanitize_text_field( wp_unslash( $_POST['event_timezone'] ) ) : '',
 			'semantic_role'      => isset( $_POST['semantic_role'] ) ? sanitize_key( wp_unslash( $_POST['semantic_role'] ) ) : '',
+			// Schema-driven filters (v1.2) additive attributes.
+			'filterable'         => ! empty( $_POST['filterable'] ),
+			'sortable'           => ! empty( $_POST['sortable'] ),
+			'filter_widget'      => isset( $_POST['filter_widget'] ) ? sanitize_key( wp_unslash( $_POST['filter_widget'] ) ) : '',
 			'required'           => ! empty( $_POST['required'] ),
 		);
 	}
@@ -917,6 +969,9 @@ class PCPTPages_Admin_Post_Fields {
 			'all_day'            => ! empty( $values['all_day'] ),
 			'event_timezone'     => $values['event_timezone'] ?? '',
 			'semantic_role'      => $values['semantic_role'] ?? '',
+			'filterable'         => ! empty( $values['filterable'] ),
+			'sortable'           => ! empty( $values['sortable'] ),
+			'filter_widget'      => $values['filter_widget'] ?? '',
 			'required'           => (bool) $values['required'],
 			'options'            => array(),
 		);
@@ -944,14 +999,16 @@ class PCPTPages_Admin_Post_Fields {
 	private function definition_to_form_values( array $definition ) {
 		$values = $this->default_form_values();
 
-		foreach ( array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'unit_label', 'event_timezone', 'semantic_role' ) as $key ) {
+		foreach ( array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'unit_label', 'event_timezone', 'semantic_role', 'filter_widget' ) as $key ) {
 			if ( isset( $definition[ $key ] ) ) {
 				$values[ $key ] = $definition[ $key ];
 			}
 		}
 
-		$values['required'] = ! empty( $definition['required'] );
-		$values['all_day']  = ! empty( $definition['all_day'] );
+		$values['required']   = ! empty( $definition['required'] );
+		$values['all_day']    = ! empty( $definition['all_day'] );
+		$values['filterable'] = ! empty( $definition['filterable'] );
+		$values['sortable']   = ! empty( $definition['sortable'] );
 		$values['max']      = isset( $definition['max'] ) ? (float) $definition['max'] : 0;
 		$values['options_json'] = ! empty( $definition['options'] ) && is_array( $definition['options'] )
 			? wp_json_encode( $definition['options'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES )
@@ -985,6 +1042,9 @@ class PCPTPages_Admin_Post_Fields {
 			'all_day'            => false,
 			'event_timezone'     => '',
 			'semantic_role'      => '',
+			'filterable'         => false,
+			'sortable'           => false,
+			'filter_widget'      => '',
 			'required'           => false,
 		);
 	}

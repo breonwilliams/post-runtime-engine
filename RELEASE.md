@@ -6,26 +6,29 @@
 
 ## Distribution model
 
-PRE ships via **GitHub Releases** (not the WordPress.org plugin directory). Unlike its sister plugin FRE, PRE does **not** currently bundle a GitHub auto-updater — users install and update manually by downloading the ZIP from the GitHub release page and uploading via WP Admin → Plugins → Add New → Upload Plugin.
+PRE (plugin slug **`promptless-cpt-pages`**) ships **exclusively through the WordPress.org plugin directory**. Updates are delivered by WordPress core's built-in update system — the plugin bundles **no auto-updater of its own** (WordPress.org guideline #8 prohibits plugins from overriding the core update mechanism).
 
-If you add an auto-updater in a future release, copy FRE's `FRE_GitHub_Updater` pattern and update this section.
+- Public page: https://wordpress.org/plugins/promptless-cpt-pages
+- SVN repo: https://plugins.svn.wordpress.org/promptless-cpt-pages
+
+> The GitHub auto-updater and the old dual GitHub/WP.org build flavors were **retired** when the plugin was accepted into the directory. Do not reintroduce an updater — `bin/build-release.sh` fails the build if a `PCPTPages_GitHub_Updater` reference reappears.
 
 ---
 
 ## Version-stamp locations
 
-Every release must update the version number in **every** location below. Mismatches between the plugin header, the `PRE_VERSION` constant, the `readme.txt` Stable tag, and the GitHub tag cause confusion at install time.
+Every release must update the version number in **every** location below. Mismatches between the plugin header, the `PCPTPages_VERSION` constant, the `readme.txt` Stable tag, and the SVN tag cause confusion at install time (and Plugin Check fails if the header and Stable tag disagree).
 
 | File | Line / location | Format |
 |------|----------------|--------|
-| `post-runtime-engine.php` | Header `Version:` comment (~line 6) | `Version: 0.4.0` |
-| `post-runtime-engine.php` | `PRE_VERSION` constant (~line 24) | `define( 'PRE_VERSION', '0.4.0' );` |
-| `readme.txt` | `Stable tag:` (~line 7) | `Stable tag: 0.4.0` |
+| `post-runtime-engine.php` | Header `Version:` comment (~line 6) | `Version: 0.5.4` |
+| `post-runtime-engine.php` | `PCPTPages_VERSION` constant (~line 24) | `define( 'PCPTPages_VERSION', '0.5.4' );` |
+| `readme.txt` | `Stable tag:` (~line 7) | `Stable tag: 0.5.4` |
 | `readme.txt` | `== Upgrade Notice ==` section | Add an entry for the new version |
-| `CHANGELOG.md` | Move `[Unreleased]` content under a new heading | `## [0.4.0] — 2026-05-11` |
-| Git tag | After commit | `v0.4.0` (with `v` prefix) |
+| `CHANGELOG.md` | Move `[Unreleased]` content under a new heading | `## [0.5.4] — 2026-06-15` |
+| SVN tag | During publish | `tags/0.5.4` (no `v` prefix — WP.org convention) |
 
-> If schema-affecting changes were made: also bump the database schema version constant in `class-fmw-schema.php` equivalent for PRE (whichever migration version PRE uses).
+> If schema-affecting changes were made, also bump the plugin's DB schema/migration version constant so the upgrade routine runs.
 
 ---
 
@@ -33,58 +36,70 @@ Every release must update the version number in **every** location below. Mismat
 
 - [ ] All code changes are committed and pushed to `main`
 - [ ] `CHANGELOG.md` has a populated `[Unreleased]` section (move it under the new version heading during release)
-- [ ] All five version-stamp locations updated to the new version
-- [ ] `readme.txt` `Stable tag` matches the plugin header version exactly (Plugin Check will fail if not)
-- [ ] Plugin Check run locally returns clean (no errors)
+- [ ] All version-stamp locations updated to the new version
+- [ ] `readme.txt` `Stable tag` matches the plugin header version exactly (Plugin Check fails if not)
+- [ ] **Plugin Check returns clean** against the staged build (`build/promptless-cpt-pages/`) — no errors
 - [ ] No PHP errors in `debug.log` on a smoke-test install
 - [ ] Spot-check at least one registered CPT renders correctly on the frontend
 
 ---
 
-## Release commands (copy/paste-ready)
+## Build + publish (copy/paste-ready)
 
-Replace `0.4.0` with the actual version. Run from the plugin root.
+Replace `0.5.4` with the actual version. Run from the plugin root.
 
 ```bash
-# 1. Verify version-stamp consistency before tagging.
-grep -E "^ \* Version:|PRE_VERSION|Stable tag:" post-runtime-engine.php readme.txt
+# 1. Verify version-stamp consistency before publishing.
+grep -E "^ \* Version:|PCPTPages_VERSION|Stable tag:" post-runtime-engine.php readme.txt
 
-# 2. Commit the version bump.
+# 2. Commit the version bump on main.
 git add -A
-git commit -m "Release v0.4.0"
+git commit -m "Release 0.5.4"
+git push origin main
 
-# 3. Tag with v prefix.
-git tag v0.4.0
-
-# 4. Push branch and tag to GitHub.
-git push origin main --tags
-
-# 5. Build the release ZIP.
+# 3. Build the WordPress.org-compliant ZIP + staged tree.
+#    Output: build/promptless-cpt-pages.zip and build/promptless-cpt-pages/
 ./bin/build-release.sh
 
-# 6. Create the GitHub Release and attach the ZIP.
-gh release create v0.4.0 build/post-runtime-engine.zip \
-    --title "v0.4.0" \
-    --notes-file CHANGELOG.md
+# 4. Verify the STAGED build with Plugin Check before it goes near SVN.
+wp plugin check build/promptless-cpt-pages --format=table
 ```
 
-Alternative `--notes` form (focused summary instead of dumping the full CHANGELOG):
+### Publish to the WordPress.org SVN repo
+
+SVN is a *release* system, not a dev VCS — only commit ready-to-ship versions. Your SVN username is your WordPress.org username; the SVN password is set separately under profiles.wordpress.org → Account & Security.
 
 ```bash
-gh release create v0.4.0 build/post-runtime-engine.zip \
-    --title "v0.4.0" \
-    --notes "Connector hardening + Plugin Check compliance. See CHANGELOG.md for details."
+# One-time: check out the SVN repo somewhere OUTSIDE this git repo.
+svn co https://plugins.svn.wordpress.org/promptless-cpt-pages svn-promptless-cpt-pages
+cd svn-promptless-cpt-pages
+
+# 5. Sync the freshly staged build into trunk (mirror exactly — add new files,
+#    remove deleted ones). Point rsync at the staged tree from step 3.
+rsync -av --delete \
+  --exclude='.svn' \
+  "/path/to/post-runtime-engine/build/promptless-cpt-pages/" trunk/
+svn add --force trunk
+svn status | grep '^!' | awk '{print $2}' | xargs -r svn rm   # stage deletions
+
+# 6. Tag the release by copying trunk -> tags/<version>.
+svn cp trunk "tags/0.5.4"
+
+# 7. Confirm trunk/readme.txt "Stable tag: 0.5.4" points at the new tag.
+
+# 8. Commit trunk + tag together.
+svn ci -m "Release 0.5.4"
 ```
 
-**Critical:** Always attach `build/post-runtime-engine.zip` (the build script's output). The build also produces a versioned copy at `build/post-runtime-engine-v0.4.0.zip` — both contain the same contents but the unversioned name is what WordPress's update flow expects.
+> Plugin banners, icons, and screenshots live in the SVN repo's top-level `assets/` directory (a sibling of `trunk/` and `tags/`), **not** inside `trunk/`. They only need committing when the artwork changes.
 
 ---
 
 ## Post-release verification
 
-1. Open the GitHub release page. Confirm the ZIP asset is attached.
-2. On a test WordPress site, install the new ZIP via **Plugins → Add New → Upload Plugin → Replace current with uploaded** (since there's no auto-updater yet).
-3. Activate without errors.
+1. Wait a few minutes, then open https://wordpress.org/plugins/promptless-cpt-pages and confirm the new version number shows.
+2. On a test WordPress site already running the previous version, go to **Dashboard → Updates** and confirm the update is offered by core (no manual ZIP needed).
+3. Update, activate without errors.
 4. Visit **Post Runtime → CPTs** and confirm registered post types are intact.
 5. Visit a single-post page for a registered CPT and confirm groupings render correctly.
 
@@ -97,13 +112,16 @@ Follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/):
 ```markdown
 ## [Unreleased]
 
-## [0.4.0] — 2026-05-11
+## [0.5.4] — 2026-06-15
 
 ### Added
 - New feature
 
 ### Changed
 - Modified behavior
+
+### Removed
+- Retired capability
 
 ### Fixed
 - Bug fix
@@ -121,24 +139,24 @@ Allowed sections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Securit
 - **MINOR** — new features, backward compatible
 - **PATCH** — bug fixes only, no API changes
 
-Note: PRE is currently in the `0.x` series. Bumping to `1.0.0` is reserved for the first version Breon considers customer-ready for general distribution.
+Note: PRE is currently in the `0.x` series. Bumping to `1.0.0` is reserved for the first version considered customer-ready for general distribution.
 
 ---
 
 ## Plugin Check expectations
 
-The current Plugin Check report should return **fully clean** — PRE has no known false-positives or accepted warnings. If any error appears, fix it before tagging.
+The Plugin Check report against the **staged build** (`build/promptless-cpt-pages/`) must return **fully clean** — WordPress.org re-scans automatically and may close the plugin if a guideline or security issue is flagged. Run it before every publish. If any error appears, fix it before tagging.
 
 ---
 
 ## Emergency rollback
 
-If a bad release ships:
+WordPress.org serves whatever version `trunk/readme.txt`'s `Stable tag` points at. If a bad release ships:
 
-1. **Immediately tag a fix**: bump the patch version, fix the issue, and follow the full release flow above with the new version.
-2. **Don't delete the bad tag** — manual installers may already have the bad version, but forcing them backwards is harder than rolling forward.
+1. **Roll forward, don't delete the tag.** Bump the patch version, fix the issue, and run the full release flow with the new version.
+2. If you must revert immediately, point `Stable tag` in `trunk/readme.txt` back at the last-good tag and `svn ci` — the directory will serve that version again.
 3. Note the regression in `CHANGELOG.md` under the new version's `Fixed` section.
 
 ---
 
-**Last updated:** 2026-05-11
+**Last updated:** 2026-06-15

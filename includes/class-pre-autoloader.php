@@ -77,13 +77,6 @@ class PCPTPages_Autoloader {
 		// Pending in next pass:
 		// 'PCPTPages_Settings'        => 'Admin/class-pre-settings.php',
 
-		// GitHub auto-updater. Loaded only inside wp-admin (see main
-		// plugin file) so frontend requests don't incur its overhead.
-		// BUILD:STRIP-FOR-WPORG-START — bin/build-release.sh removes this
-		// entry from the WP.org build (WP.org plugins must use the core
-		// update mechanism, not override it). The GitHub build keeps it.
-		'PCPTPages_GitHub_Updater'         => 'Updates/class-pre-github-updater.php',
-		// BUILD:STRIP-FOR-WPORG-END
 	);
 
 	/**

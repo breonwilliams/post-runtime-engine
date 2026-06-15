@@ -1,7 +1,7 @@
 === Promptless CPT Pages ===
 Contributors: promptlesswp
 Tags: custom post types, post template, structured content, custom fields, single page
-Requires at least: 5.0
+Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
 Stable tag: 0.5.3

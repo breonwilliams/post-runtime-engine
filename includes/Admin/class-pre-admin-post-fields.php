@@ -777,6 +777,26 @@ class PCPTPages_Admin_Post_Fields {
 								</p>
 							</td>
 						</tr>
+
+						<tr>
+							<th scope="row">
+								<?php esc_html_e( 'Thousands separator', 'promptless-cpt-pages' ); ?>
+							</th>
+							<td>
+								<label for="pre-field-number-grouping">
+									<input
+										type="checkbox"
+										id="pre-field-number-grouping"
+										name="number_grouping"
+										value="1"
+										<?php checked( ! empty( $values['number_grouping'] ) ); ?>>
+									<?php esc_html_e( 'Group large numbers with separators (3,200)', 'promptless-cpt-pages' ); ?>
+								</label>
+								<p class="description">
+									<?php esc_html_e( 'For number_with_label. On by default for quantities (3,200 sqft). Uncheck for identifier-like numbers that should not be grouped — year built (2019, not 2,019), model year, unit/lot numbers, IDs.', 'promptless-cpt-pages' ); ?>
+								</p>
+							</td>
+						</tr>
 					</tbody>
 				</table>
 			</div>
@@ -931,6 +951,8 @@ class PCPTPages_Admin_Post_Fields {
 			'value_suffix'       => isset( $_POST['value_suffix'] ) ? sanitize_text_field( wp_unslash( $_POST['value_suffix'] ) ) : '',
 			'max'                => isset( $_POST['max'] ) && $_POST['max'] !== '' ? (float) $_POST['max'] : 0,
 			'unit_label'         => isset( $_POST['unit_label'] ) ? sanitize_text_field( wp_unslash( $_POST['unit_label'] ) ) : '',
+			// number_with_label thousands grouping (default on; unchecked = off).
+			'number_grouping'    => ! empty( $_POST['number_grouping'] ),
 			// Events vertical (v1.2) additive attributes.
 			'all_day'            => ! empty( $_POST['all_day'] ),
 			'event_timezone'     => isset( $_POST['event_timezone'] ) ? sanitize_text_field( wp_unslash( $_POST['event_timezone'] ) ) : '',
@@ -966,6 +988,7 @@ class PCPTPages_Admin_Post_Fields {
 			'value_suffix'       => $values['value_suffix'] ?? '',
 			'max'                => $values['max'],
 			'unit_label'         => $values['unit_label'],
+			'number_grouping'    => ! empty( $values['number_grouping'] ),
 			'all_day'            => ! empty( $values['all_day'] ),
 			'event_timezone'     => $values['event_timezone'] ?? '',
 			'semantic_role'      => $values['semantic_role'] ?? '',
@@ -1009,6 +1032,9 @@ class PCPTPages_Admin_Post_Fields {
 		$values['all_day']    = ! empty( $definition['all_day'] );
 		$values['filterable'] = ! empty( $definition['filterable'] );
 		$values['sortable']   = ! empty( $definition['sortable'] );
+		// Absent key = legacy field created before number_grouping existed;
+		// default to grouped (checked) so its rendering is unchanged.
+		$values['number_grouping'] = ! array_key_exists( 'number_grouping', $definition ) || ! empty( $definition['number_grouping'] );
 		$values['max']      = isset( $definition['max'] ) ? (float) $definition['max'] : 0;
 		$values['options_json'] = ! empty( $definition['options'] ) && is_array( $definition['options'] )
 			? wp_json_encode( $definition['options'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES )
@@ -1039,6 +1065,7 @@ class PCPTPages_Admin_Post_Fields {
 			'value_suffix'       => '',
 			'max'                => 0,
 			'unit_label'         => '',
+			'number_grouping'    => true,
 			'all_day'            => false,
 			'event_timezone'     => '',
 			'semantic_role'      => '',

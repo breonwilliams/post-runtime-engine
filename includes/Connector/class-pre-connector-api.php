@@ -572,6 +572,7 @@ class PCPTPages_Connector_API {
 		return array(
 			'post_content_is_gutenberg_blocks' => 'post_content should be sent as Gutenberg block-format markup so the WP editor opens with discrete editable blocks instead of a single Classic / Freeform wrapper. Each block is wrapped in HTML comment delimiters: <!-- wp:heading --><h2 class="wp-block-heading">Title</h2><!-- /wp:heading --> for headings, <!-- wp:paragraph --><p>Body text.</p><!-- /wp:paragraph --> for paragraphs, <!-- wp:list --><ul class="wp-block-list"><li>...</li></ul><!-- /wp:list --> for lists (add {"ordered":true} for ordered lists: <!-- wp:list {"ordered":true} -->), <!-- wp:quote --><blockquote class="wp-block-quote">...</blockquote><!-- /wp:quote --> for quotes, <!-- wp:separator --><hr class="wp-block-separator has-alpha-channel-opacity"/><!-- /wp:separator --> for horizontal rules. Heading levels other than h2 carry a level attribute: <!-- wp:heading {"level":3} --><h3 class="wp-block-heading">…</h3><!-- /wp:heading -->. The connector ships a defense-in-depth converter that wraps raw HTML in block delimiters automatically and emits a "post_content_block_conversion_applied" warning when it fires — treat that as a safety net, not a feature, because the converter has to guess block-level attributes (heading levels, list types) that you control precisely when you send blocks directly. Do NOT wrap content in <![CDATA[...]]> — that XML idiom belongs to SOAP and importer XML; in JSON-typed connector parameters it is stored verbatim and leaks into the rendered body. The connector also strips a leading <![CDATA[ and trailing ]]> as a defensive net and adds a "post_content_cdata_stripped" warning when it fires.',
 			'groupings_creation_pattern'   => 'Two ways to populate groupings on a post: (1) pass `groupings` inline with create_post for atomic creation in a single call; (2) call set_post_groupings after a bare create_post. Both work. set_post_groupings fully replaces all groupings — to update one grouping without touching others, use the read-modify-write pattern (get_post_groupings → modify → set_post_groupings). update_post also accepts a groupings field for atomic edits.',
+			'taxonomy_term_assignment'     => 'To assign taxonomy terms (categories / tags / any taxonomy registered for the CPT) pass a `taxonomies` map to create_post or update_post: {"category": ["Downtown", "Waterfront District"]}. Terms may be names, slugs, or IDs; names that don\'t exist yet are created automatically. On update_post it is a REPLACE per taxonomy supplied (omitted taxonomies untouched; empty list clears). PREREQUISITE: the taxonomy must already be attached to the CPT via the CPT\'s `taxonomies` list at register_cpt time (e.g. taxonomies:["category"]). This connector attaches EXISTING taxonomies (built-in category/post_tag, or any custom taxonomy another plugin/theme registered) — it does not itself register brand-new custom taxonomies. Assigning terms is what powers taxonomy-based archive facets (a PostGrid filter auto-generates a checkbox group per public taxonomy attached to the CPT) and the taxonomy_match grouping source mode. Term problems are non-fatal and surface in the response `warnings`.',
 			'cross_cpt_item_icons'         => 'When a grouping item links to another CPT via link_post_id, set per-item icon_id explicitly to reflect what the item IS (e.g. icon_id:"user" on a Lead Architect featured-card item that links to an architect post). The renderer\'s default_icon fallback is link-aware: when link_post_id is set, it tries the LINKED post\'s CPT default_icon first, then falls back to the host post\'s default_icon. Setting icon_id explicitly bypasses both fallbacks.',
 			'compact_grid_strips_image'    => 'compact-grid and horizontal-row are icon-only variants by design. Any image_id on an item in these variants is dropped at render time — set icon_id on each item, or rely on the linked-CPT / host-CPT default_icon fallback chain. card-grid and featured-card variants accept either icon_id OR image_id (mutually exclusive; validator rejects both being set on the same item).',
 			'link_post_id_canonical'       => 'For internal links to same-site posts, prefer link_post_id over a literal URL. The renderer resolves it via get_permalink() at render time, which makes stored data domain-portable across staging → production migrations and after permalink-structure changes. The literal `link` field is preserved as a fallback when the referenced post has been trashed/deleted.',
@@ -610,8 +611,8 @@ class PCPTPages_Connector_API {
 			),
 			'cpt_definition'       => array( 'slug', 'label_singular', 'label_plural', 'supports', 'public', 'has_archive', 'show_in_rest', 'show_in_menu', 'menu_position', 'menu_icon', 'taxonomies', 'capability_type', 'description', 'rewrite', 'hero_layout', 'hero_image_position', 'hero_image_aspect', 'default_icon', 'archive_show_post_date', 'archive_show_post_author' ),
 			'grouping_definition'  => array( 'key', 'label', 'description', 'default_variant', 'default_position', 'default_source', 'max_items', 'heading_required', 'supporting_text_required', 'link_required', 'icon_or_image_required' ),
-			'post_field_definition' => array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'options', 'required', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'max', 'unit_label', 'semantic_role', 'all_day', 'event_timezone', 'filterable', 'sortable', 'filter_widget' ),
-			'notes'                => 'icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails). Post field definition fields not in post_field_definition above are silently dropped on write by PCPTPages_Validator; conditional fields (color_intent, options for badge; icon for meta_pair; date_format / date_format_string for date; currency_code for currency; max + unit_label for rating / progress / number_with_label) are only meaningful when paired with the right display_type. EVENTS: semantic_role (see post_field_enums.semantic_roles) tags a field for the event archive filter + Event schema; all_day and event_timezone apply to date fields (see post_field_enums.date_field_event_attributes). See critical_rules.events_archive_setup for the full workflow. FILTERS: set filterable:true to let visitors filter the archive by this field (the widget is auto-chosen from display_type) and sortable:true to offer it as a sort option; filter_widget optionally overrides the widget (see post_field_enums.filter_widgets). meta_pair cannot be filterable/sortable. See critical_rules.filterable_archive_setup for the full two-plugin workflow (declare filterable fields here, then enable_filters on a Promptless PostGrid).',
+			'post_field_definition' => array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'options', 'required', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'max', 'unit_label', 'number_grouping', 'semantic_role', 'all_day', 'event_timezone', 'filterable', 'sortable', 'filter_widget' ),
+			'notes'                => 'icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails). Post field definition fields not in post_field_definition above are silently dropped on write by PCPTPages_Validator; conditional fields (color_intent, options for badge; icon for meta_pair; date_format / date_format_string for date; currency_code for currency; max + unit_label for rating / progress / number_with_label; number_grouping for number_with_label) are only meaningful when paired with the right display_type. EVENTS: semantic_role (see post_field_enums.semantic_roles) tags a field for the event archive filter + Event schema; all_day and event_timezone apply to date fields (see post_field_enums.date_field_event_attributes). See critical_rules.events_archive_setup for the full workflow. FILTERS: set filterable:true to let visitors filter the archive by this field (the widget is auto-chosen from display_type) and sortable:true to offer it as a sort option; filter_widget optionally overrides the widget (see post_field_enums.filter_widgets). meta_pair cannot be filterable/sortable. See critical_rules.filterable_archive_setup for the full two-plugin workflow (declare filterable fields here, then enable_filters on a Promptless PostGrid).',
 		);
 	}
 
@@ -629,7 +630,7 @@ class PCPTPages_Connector_API {
 			// the admin-UI dropdown so AI agents and humans see the same hints.
 			'display_types' => array(
 				array( 'value' => 'currency',          'label' => 'Currency ($1,250,000)',           'description' => 'Locale-formatted currency value. Currency code resolves via field currency_code → AISB Business Identity → pcptpages_currency option → USD. Optional value_suffix is appended after the formatted amount: "+" for starting-at pricing ($2,328+), "/mo" for subscriptions ($45/mo), "/night" for hotels.' ),
-				array( 'value' => 'number_with_label', 'label' => 'Number with unit (1,800 sqft)',   'description' => 'Numeric value with a unit suffix from unit_label. Designed for meta_strip cells.' ),
+				array( 'value' => 'number_with_label', 'label' => 'Number with unit (1,800 sqft)',   'description' => 'Numeric value with a unit suffix from unit_label. Designed for meta_strip cells. Thousands grouping is ON by default (3,200 sqft). For identifier-like numbers that must NOT be grouped — year built (2019, not 2,019), model year, unit/lot numbers, IDs — set number_grouping:false.' ),
 				array( 'value' => 'badge',             'label' => 'Badge (For sale)',                'description' => 'Single pill with color intent. Define options to constrain the value to a curated list with per-value intent overrides.' ),
 				array( 'value' => 'meta_pair',         'label' => 'Icon + value (🛏 3)',             'description' => 'Designed for meta_strip. Pulls icon from PCPTPages_Icon_Library via the icon attribute. Pairs an icon glyph with a short numeric or string value.' ),
 				array( 'value' => 'date',              'label' => 'Date (May 20, 2026)',             'description' => 'Date display. date_format picks one of: absolute (May 20, 2026), relative (2 days ago), custom (uses date_format_string).' ),
@@ -1216,6 +1217,13 @@ class PCPTPages_Connector_API {
 			}
 		}
 
+		// Taxonomy terms (categories, tags, or any taxonomy registered for the
+		// CPT). Non-fatal: term-level problems are surfaced as warnings rather
+		// than failing the whole create, since the post itself is valid.
+		if ( isset( $body['taxonomies'] ) ) {
+			$this->apply_taxonomies( $post_id, $post_type, $body['taxonomies'], $warnings );
+		}
+
 		return new WP_REST_Response(
 			array(
 				'post_id'   => $post_id,
@@ -1362,12 +1370,122 @@ class PCPTPages_Connector_API {
 			}
 		}
 
+		// Taxonomy terms — full replace per taxonomy supplied. Omitted
+		// taxonomies are left untouched; a supplied taxonomy with an empty
+		// list clears that taxonomy's terms for the post.
+		if ( array_key_exists( 'taxonomies', $body ) ) {
+			$this->apply_taxonomies( $post_id, get_post_type( $post_id ), $body['taxonomies'], $warnings );
+		}
+
 		return rest_ensure_response( array(
 			'post_id'   => $post_id,
 			'permalink' => get_permalink( $post_id ),
 			'edit_url'  => get_edit_post_link( $post_id, 'raw' ),
 			'warnings'  => $warnings,
 		) );
+	}
+
+	/**
+	 * Assign taxonomy terms to a post from a connector `taxonomies` map.
+	 *
+	 * Shape: { taxonomy_slug: [ "Term A", "term-b", 123 ], ... }. Each list
+	 * entry may be a term name, slug, or term ID. Names/slugs that don't yet
+	 * exist are created (this is greenfield CPT setup — the AI agent declares
+	 * the neighborhoods/regions/etc. as it populates posts). Assignment is a
+	 * REPLACE per taxonomy (mirrors wp_set_object_terms with append=false), so
+	 * the supplied list becomes the post's complete term set for that taxonomy.
+	 *
+	 * Non-fatal by design: an unregistered taxonomy or a single bad term is
+	 * surfaced as a warning, never a hard failure — the post itself is valid
+	 * and the author can correct terms in a follow-up call.
+	 *
+	 * @param int          $post_id    Target post.
+	 * @param string       $post_type  Post type (to validate taxonomy attachment).
+	 * @param mixed        $taxonomies The connector `taxonomies` value.
+	 * @param array        $warnings   Warnings accumulator (by reference).
+	 * @return void
+	 */
+	private function apply_taxonomies( $post_id, $post_type, $taxonomies, array &$warnings ) {
+		if ( ! is_array( $taxonomies ) ) {
+			$warnings[] = 'taxonomies must be an object mapping a taxonomy slug to a list of terms; ignored.';
+			return;
+		}
+
+		$registered = get_object_taxonomies( $post_type );
+
+		foreach ( $taxonomies as $tax_slug => $terms ) {
+			$tax_slug = sanitize_key( (string) $tax_slug );
+			if ( $tax_slug === '' ) {
+				continue;
+			}
+
+			if ( ! taxonomy_exists( $tax_slug ) || ! in_array( $tax_slug, $registered, true ) ) {
+				$warnings[] = sprintf(
+					'taxonomy "%s" is not registered for post type "%s"; skipped. Available: %s. (Register it via the CPT\'s `taxonomies` list first.)',
+					$tax_slug,
+					$post_type,
+					$registered ? implode( ', ', $registered ) : '(none)'
+				);
+				continue;
+			}
+
+			// Accept an array OR a comma-separated string of terms.
+			if ( is_string( $terms ) ) {
+				$terms = array_map( 'trim', explode( ',', $terms ) );
+			}
+			if ( ! is_array( $terms ) ) {
+				$warnings[] = sprintf( 'terms for taxonomy "%s" must be an array or comma-separated string; skipped.', $tax_slug );
+				continue;
+			}
+
+			$term_ids = array();
+			foreach ( $terms as $term ) {
+				if ( ! is_scalar( $term ) ) {
+					continue;
+				}
+				$term = trim( (string) $term );
+				if ( $term === '' ) {
+					continue;
+				}
+
+				// Numeric entries are treated as existing term IDs.
+				if ( ctype_digit( $term ) ) {
+					$maybe = get_term( (int) $term, $tax_slug );
+					if ( $maybe && ! is_wp_error( $maybe ) ) {
+						$term_ids[] = (int) $maybe->term_id;
+						continue;
+					}
+				}
+
+				// Resolve by name/slug; create if missing.
+				$existing = term_exists( $term, $tax_slug );
+				if ( $existing ) {
+					$term_ids[] = (int) ( is_array( $existing ) ? $existing['term_id'] : $existing );
+					continue;
+				}
+
+				$created = wp_insert_term( $term, $tax_slug );
+				if ( is_wp_error( $created ) ) {
+					$warnings[] = sprintf(
+						'term "%s" in taxonomy "%s" could not be created: %s',
+						$term,
+						$tax_slug,
+						$created->get_error_message()
+					);
+					continue;
+				}
+				$term_ids[] = (int) $created['term_id'];
+			}
+
+			$set = wp_set_object_terms( $post_id, $term_ids, $tax_slug, false );
+			if ( is_wp_error( $set ) ) {
+				$warnings[] = sprintf(
+					'failed to assign terms for taxonomy "%s": %s',
+					$tax_slug,
+					$set->get_error_message()
+				);
+			}
+		}
 	}
 
 	public function handle_preview_post( WP_REST_Request $request ) {
@@ -2000,6 +2118,17 @@ class PCPTPages_Connector_API {
 		);
 		if ( is_wp_error( $version_check ) ) {
 			return $version_check;
+		}
+
+		// Partial update: merge the incoming body INTO the existing definition
+		// before re-defining, so a caller can touch one attribute (e.g.
+		// `filterable: true`) without resending the whole field — and without
+		// the absent keys being clobbered back to defaults by merge_defaults.
+		// Mirrors handle_update_cpt's read-merge pattern.
+		$existing = $plugin->post_fields->get( $slug, $key );
+		if ( is_array( $existing ) ) {
+			unset( $existing['connector_version'], $existing['created_at'], $existing['updated_at'] );
+			$body = array_merge( $existing, $body );
 		}
 
 		// URL key wins.

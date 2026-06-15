@@ -1550,6 +1550,17 @@ class PCPTPages_Validator {
 			);
 		}
 
+		// number_grouping — optional boolean. Controls thousands separators on
+		// the number_with_label display type. Default true (grouped). Set false
+		// for identifier-like numbers (years, model years, unit/lot numbers,
+		// IDs) so they render ungrouped: 2019, not 2,019.
+		if ( isset( $definition['number_grouping'] ) && ! is_bool( $definition['number_grouping'] ) ) {
+			return new WP_Error(
+				'pcptpages_invalid_number_grouping',
+				__( 'Post field number_grouping must be true or false.', 'promptless-cpt-pages' )
+			);
+		}
+
 		// ----- Events vertical (v1.2) additive attributes -----
 		// These tag a field for the events query + schema layers. They do
 		// NOT alter the closed display-type / position / color-intent enums.

@@ -161,7 +161,7 @@ Why per-field meta keys rather than a single serialized array: native WP queryab
 | Type | Renders as | Typical position | Notes |
 |------|-----------|------------------|-------|
 | `currency` | Formatted currency value, e.g. `$1,250,000` | headline | Locale-aware formatting via `number_format_i18n()`; currency symbol from CPT-level or sitewide setting |
-| `number_with_label` | Number + unit, e.g. `1,800 sqft` or `3 BR` | meta_strip | Label is part of the field definition; value comes from post meta |
+| `number_with_label` | Number + unit, e.g. `1,800 sqft` or `3 BR` | meta_strip | Label is part of the field definition; value comes from post meta. Thousands grouping defaults on (`3,200 sqft`); set `number_grouping:false` for identifier-like numbers (year built → `2019`, model year, unit/lot numbers, IDs) — see §5.3.1 |
 | `badge` | Pill / chip with color_intent | image_overlay or subtitle | color_intent: `success` / `warning` / `danger` / `info` / `neutral`. Optional `options` array of predefined choices |
 | `meta_pair` | Icon + value, inline | meta_strip | Icon from `PRE_Icon_Library`; value from post meta |
 | `date` | Formatted date or relative time | footer_meta or subtitle | Format selectable: `absolute` (`May 20, 2026`) or `relative` (`2 days ago`) |
@@ -169,6 +169,17 @@ Why per-field meta keys rather than a single serialized array: native WP queryab
 | `rating` | Composite rating: stars + count | meta_strip | Two underlying values: `_pre_field_{key}` (rating value) + `_pre_field_{key}_count` (review count) |
 | `progress` | Progress bar with percentage label | meta_strip or subtitle | Two underlying values: `_pre_field_{key}` (current) + `_pre_field_{key}_goal` (target) |
 | `multi_badge` | Multiple pills in one slot | meta_strip | Value is comma-separated; renderer splits and pills each. Useful for "Vegan, GF, Quick" |
+
+#### 5.3.1 `number_grouping` — formatting attribute (additive, v1.2.x)
+
+The display-type enum stays closed at 9. `number_grouping` is an **additive boolean formatting attribute** on `number_with_label` (parallel to `unit_label`, `value_suffix`, `currency_code`), not a new display type — so it does not touch the closed enum.
+
+- **Default `true`** — `number_format_i18n()` grouping, correct for quantities: `3,200 sqft`, `12,500 attendees`. Existing fields (no key stored) are treated as `true`, so rendering is byte-identical to pre-v1.2.x.
+- **`false`** — renders the number ungrouped. Correct for identifier-like numbers where a thousands separator misreads as a quantity: **year built (`2019`, not `2,019`)**, model year, unit / lot / MLS numbers, IDs.
+
+There is deliberately **no value-sniffing heuristic** (per the "No Magic" rule): a 4-digit value can legitimately be a grouped quantity (`1,800 sqft`) or an ungrouped identifier (`2019`), so the field declares its intent explicitly. Surfaced in the connector (`define_post_field` / `update_post_field`), preflight (`post_field_definition` allow-list + the `number_with_label` display-type hint), and the admin "Numeric attributes" panel as a "Thousands separator" checkbox.
+
+> **Note (real-estate / bare years in a meta strip):** for a standalone year in a stats row, the `text` display type (renders just `2019`, no appended label) often reads better than `number_with_label` + `number_grouping:false` (which renders `2019 Year Built`). Use `number_grouping:false` when you want the label/unit kept but ungrouped (e.g. `Unit 1024`, `Model 2019`).
 
 ### 5.4 Positions (closed enum, 5 + hidden)
 

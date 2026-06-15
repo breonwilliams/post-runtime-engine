@@ -357,6 +357,7 @@ const TOOLS = [
         post_excerpt: { type: "string" },
         featured_image_id: { type: "integer", description: "Attachment ID for the hero image" },
         groupings: { type: "array", description: "Optional initial grouping data" },
+        taxonomies: { type: "object", description: "Optional. Map of taxonomy slug → list of terms to assign, e.g. {\"category\": [\"Downtown\", \"Waterfront District\"]}. Terms may be names, slugs, or term IDs; names/slugs that don't exist yet are created. The taxonomy must be registered for the CPT (declare it in the CPT's `taxonomies` list at registration). Drives taxonomy-based archive facets and taxonomy_match groupings. Non-fatal: bad terms/taxonomies surface in the response `warnings`." },
       },
       required: ["post_type", "post_title"],
     },
@@ -375,6 +376,7 @@ const TOOLS = [
         post_status: { type: "string", enum: ["publish", "draft", "pending", "private", "future"] },
         featured_image_id: { type: "integer", description: "Attachment ID; pass 0 to remove the existing thumbnail" },
         groupings: { type: "array", description: "Optional. Full replace — same semantics as set_post_groupings." },
+        taxonomies: { type: "object", description: "Optional. Map of taxonomy slug → list of terms (names, slugs, or IDs). REPLACE per taxonomy supplied — omitted taxonomies are untouched; an empty list clears that taxonomy's terms. Terms that don't exist are created. e.g. {\"category\": [\"Downtown\"]}. Non-fatal: issues surface in `warnings`." },
       },
       required: ["id"],
     },
@@ -450,6 +452,7 @@ const TOOLS = [
         value_suffix: { type: "string", description: "For currency — appended after the formatted amount ('+', '/mo', '/night', etc.)" },
         max: { type: "number", description: "For rating (defaults to 5), progress, or number_with_label" },
         unit_label: { type: "string", description: "For number_with_label — unit suffix (sqft, mi, hrs, min, etc.)" },
+        number_grouping: { type: "boolean", description: "For number_with_label — thousands separators. Default true (3,200 sqft). Set false for identifier-like numbers that must NOT be grouped: year built (2019, not 2,019), model year, unit/lot numbers, IDs." },
         semantic_role: {
           type: "string",
           enum: ["event_start", "event_end", "event_status", "event_location", "event_offers", "event_attendance_mode"],
@@ -509,6 +512,7 @@ const TOOLS = [
         value_suffix: { type: "string" },
         max: { type: "number" },
         unit_label: { type: "string" },
+        number_grouping: { type: "boolean", description: "For number_with_label — thousands separators (default true). False = ungrouped (years/IDs)." },
         semantic_role: {
           type: "string",
           enum: ["event_start", "event_end", "event_status", "event_location", "event_offers", "event_attendance_mode"],
@@ -954,12 +958,18 @@ async function handleTool(name, args) {
         "post_excerpt",
         "featured_image_id",
         "groupings",
+        "taxonomies",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
       // MCP framework workaround — see normalizeGroupingsArray header.
       if ("groupings" in payload) {
         payload.groupings = normalizeGroupingsArray(payload.groupings);
+      }
+      // taxonomies may arrive as a JSON string when the model emits a nested
+      // object; pre-parse so the REST handler sees a real map.
+      if ("taxonomies" in payload) {
+        payload.taxonomies = maybeParseJsonObjectString(payload.taxonomies);
       }
       return await makeRequest("POST", "/posts", payload);
     }
@@ -973,12 +983,16 @@ async function handleTool(name, args) {
         "post_status",
         "featured_image_id",
         "groupings",
+        "taxonomies",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
       // MCP framework workaround — see normalizeGroupingsArray header.
       if ("groupings" in payload) {
         payload.groupings = normalizeGroupingsArray(payload.groupings);
+      }
+      if ("taxonomies" in payload) {
+        payload.taxonomies = maybeParseJsonObjectString(payload.taxonomies);
       }
       return await makeRequest(
         "PUT",
@@ -1022,6 +1036,7 @@ async function handleTool(name, args) {
         "value_suffix",
         "max",
         "unit_label",
+        "number_grouping",
         "semantic_role",
         "all_day",
         "event_timezone",
@@ -1068,6 +1083,7 @@ async function handleTool(name, args) {
         "value_suffix",
         "max",
         "unit_label",
+        "number_grouping",
         "semantic_role",
         "all_day",
         "event_timezone",

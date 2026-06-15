@@ -4,7 +4,7 @@
  * Plugin URI: https://promptlesswp.com
  * Description: Render CPT single pages with structured data display, layout variants, and admin or AI population. Works standalone or with Promptless WP.
  * Version: 0.5.3
- * Requires at least: 5.0
+ * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: Promptless WP
  * License: GPL-2.0-or-later
@@ -238,18 +238,6 @@ final class Promptless_CPT_Pages {
 			$this->admin           = new PCPTPages_Admin();
 			$this->connector_admin = new PCPTPages_Connector_Admin();
 			$this->connector_admin->init();
-
-			// BUILD:STRIP-FOR-WPORG-START — entire block stripped from the
-			// WP.org distribution by bin/build-release.sh. WordPress.org
-			// guideline 8 prohibits plugins from overriding the core update
-			// mechanism, so the WP.org build ships no auto-updater code at
-			// all. The GitHub build keeps this block and auto-updates from
-			// GitHub Releases via the standard update-plugins transient
-			// cycle, surfaced in the WP admin's Updates page.
-			if ( class_exists( 'PCPTPages_GitHub_Updater' ) ) {
-				new PCPTPages_GitHub_Updater();
-			}
-			// BUILD:STRIP-FOR-WPORG-END
 		}
 
 		// Frontend rendering — instantiated regardless of context because

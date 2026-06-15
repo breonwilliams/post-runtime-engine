@@ -4,6 +4,23 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [Unreleased]
+
+### Added
+- **`number_grouping` option for the `number_with_label` display type** (default `true`). Set `false` to render identifier-like numbers without thousands separators — year built `2019`, not `2,019`; model years, unit/lot numbers, IDs — while keeping the field label. Wired through the card renderer, registry defaults, validator, the admin "Thousands separator" toggle, the connector schema + hints, and `docs/POST_FIELDS_V1_1_DESIGN.md`.
+- **Taxonomy-term assignment via the connector.** `create_post` / `update_post` accept a `taxonomies` map (e.g. `{"category": ["Downtown"]}`); terms may be names, slugs, or IDs and missing terms are created. Validated against the CPT's registered taxonomies; non-fatal issues surface in the response `warnings`. Powers taxonomy-based archive facets and `taxonomy_match` groupings.
+
+### Changed
+- **Minimum WordPress version raised to 5.6** (header + `readme.txt`). The connector requires Application Passwords (WP 5.6) and the events layer uses `wp_date()` / `wp_timezone()` (WP 5.3), so 5.6 is the true floor. Resolves Plugin Check `wp_function_not_compatible_with_requires_wp` errors.
+- **Taxonomy filter facets hide empty terms** so the UI never offers a dead-end option that returns zero results.
+
+### Removed
+- **GitHub auto-updater retired.** Now that the plugin is hosted in the WordPress.org directory, updates are delivered by WordPress core — bundling a self-updater violates guideline #8. Removed the updater class, its autoloader entry, and its bootstrap call, and collapsed the dual GitHub/WP.org build in `bin/build-release.sh` to a single WP.org-compliant build (with a safety net that fails the build if an updater reference reappears). Resolves Plugin Check `plugin_updater_detected`. `RELEASE.md` rewritten for the WordPress.org SVN release workflow.
+
+### Fixed
+- **`multi_badge` neutral pills were invisible on cards.** The neutral fill resolved to the card surface token, so feature tags showed only their padding (reading as indented text). They now render as outline chips — surface fill plus an ink-mixed hairline border — and every color token carries a literal fallback so a pill still renders correctly if placed outside a card.
+- **Meta-strip separator mojibake.** The `·` separator rendered as `Â·` when the stylesheet was served without an explicit charset; replaced the literal byte with the encoding-proof CSS escape `\00B7`.
+
 ## [0.5.3] — 2026-06-08
 
 ### Documentation

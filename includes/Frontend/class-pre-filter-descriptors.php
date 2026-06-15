@@ -410,10 +410,19 @@ class PCPTPages_Filter_Descriptors {
 	 */
 	private static function build_taxonomy_descriptor( $tax ) {
 		$slug  = $tax->name;
+		// hide_empty: a facet should never offer a dead-end option. A term
+		// with zero published posts returns nothing when selected, so it is
+		// excluded. With the intended greenfield model — a dedicated taxonomy
+		// owned by the CPT (e.g. a `neighborhood` taxonomy used only by
+		// `property`) — this is exactly the CPT-scoped behavior the facet
+		// wants. (Shared built-in taxonomies like `category` count posts across
+		// all post types; a category used only by blog posts could still
+		// surface here. CPT-scoped term counting is a deliberate future
+		// enhancement — the architecture steers toward per-CPT taxonomies.)
 		$terms = get_terms(
 			array(
 				'taxonomy'   => $slug,
-				'hide_empty' => false,
+				'hide_empty' => true,
 				'number'     => self::MAX_TERM_OPTIONS,
 			)
 		);

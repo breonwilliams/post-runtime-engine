@@ -173,9 +173,14 @@
 /* Visible separator between meta_strip items. The :not(:last-child) pseudo
  * means we never paint a trailing separator. */
 .pre-card-fields__position--meta-strip > .pre-field:not(:last-child)::after {
-	content: "·";
+	/* Use the ASCII unicode escape for the middot (U+00B7) rather than a literal
+	   "·" byte. When this stylesheet is served without an explicit charset, some
+	   browsers decode the raw UTF-8 bytes as Latin-1 and render "Â·" mojibake.
+	   The escape is pure ASCII, so it is encoding-proof. */
+	content: "\00B7";
 	margin-left: 0.85em;
-	color: var(--pre-color-text-muted);
+	/* Fallback so the separator stays muted even outside the card token scope. */
+	color: var(--pre-color-text-muted, #6b7280);
 	opacity: 0.6;
 }
 
@@ -604,33 +609,58 @@
 	line-height: 1.4;
 	letter-spacing: 0.01em;
 	white-space: nowrap;
-	background: var(--pre-color-neutral-bg);
-	color: var(--pre-color-neutral-text);
+	/* Every token carries a literal fallback so a multi_badge still renders as a
+	   proper chip even if it lands OUTSIDE the card wrapper that defines the
+	   --pre-color-* tokens (inside a card it inherits the brand palette as
+	   normal; outside it degrades to these sane defaults instead of bare text). */
+	background: var(--pre-color-neutral-bg, #f9fafb);
+	color: var(--pre-color-neutral-text, #4b5563);
 }
 
 .pre-field__multi-badge-pill--success {
-	background: var(--pre-color-success-bg);
-	color: var(--pre-color-success-text);
+	background: var(--pre-color-success-bg, rgba(16, 185, 129, 0.12));
+	color: var(--pre-color-success-text, #047857);
 }
 
 .pre-field__multi-badge-pill--warning {
-	background: var(--pre-color-warning-bg);
-	color: var(--pre-color-warning-text);
+	background: var(--pre-color-warning-bg, rgba(245, 158, 11, 0.14));
+	color: var(--pre-color-warning-text, #b45309);
 }
 
 .pre-field__multi-badge-pill--danger {
-	background: var(--pre-color-danger-bg);
-	color: var(--pre-color-danger-text);
+	background: var(--pre-color-danger-bg, rgba(239, 68, 68, 0.12));
+	color: var(--pre-color-danger-text, #b91c1c);
 }
 
 .pre-field__multi-badge-pill--info {
-	background: var(--pre-color-info-bg);
-	color: var(--pre-color-info-text);
+	background: var(--pre-color-info-bg, rgba(59, 130, 246, 0.12));
+	color: var(--pre-color-info-text, #1d4ed8);
 }
 
 .pre-field__multi-badge-pill--neutral {
-	background: var(--pre-color-neutral-bg);
-	color: var(--pre-color-neutral-text);
+	/* `--pre-color-neutral-bg` resolves to the SURFACE token, so a neutral pill
+	   on a card (whose background IS that surface) rendered invisible — only the
+	   padding showed, which read as oddly-indented text. The fix is an OUTLINE
+	   tag: keep the surface fill (so the label sits on the same background as
+	   the rest of the card — no contrast loss, fully on the design system) and
+	   define the pill with a hairline border. The border is mixed off the ink
+	   colour rather than --pre-color-border, because on some palettes the border
+	   token is nearly identical to the surface (which is exactly why the pill
+	   was invisible before); the ink mix guarantees a visible outline on any
+	   surface, light or dark. */
+	background: var(--pre-color-surface, #f9fafb);
+	color: var(--pre-color-neutral-text, #4b5563);
+	border: 1px solid color-mix(in srgb, var(--pre-color-text, #1f2937) 20%, var(--pre-color-surface, #f9fafb));
+}
+
+/* color-mix fallback (older browsers): surface fill + a translucent ink border
+   so the outline stays visible regardless of how close the border token is to
+   the surface. */
+@supports not (background: color-mix(in srgb, red, blue)) {
+	.pre-field__multi-badge-pill--neutral {
+		background: var(--pre-color-surface);
+		border-color: rgba(0, 0, 0, 0.18);
+	}
 }
 
 .pre-field__multi-badge-pill--primary {

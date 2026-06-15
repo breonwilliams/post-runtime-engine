@@ -433,6 +433,11 @@ class PCPTPages_Post_Field_Registry {
 			'value_suffix'       => '',
 			'max'                => 0,
 			'unit_label'         => '',
+			// Number formatting (v1.2.x). Thousands grouping defaults ON so
+			// existing number_with_label fields (sqft, counts) are unchanged;
+			// set false for identifier-like numbers (year built, model year,
+			// unit/lot numbers, IDs) so they render ungrouped: 2019, not 2,019.
+			'number_grouping'    => true,
 			// Events vertical (v1.2) additive attributes. Defaults keep
 			// non-event fields byte-identical to pre-v1.2 behavior.
 			'all_day'            => false,

@@ -376,7 +376,27 @@ class PCPTPages_Card_Renderer {
 	 * render just the number.
 	 */
 	private function render_number_with_label( array $field_def, $value, $position, $context ) {
-		$number = is_numeric( $value ) ? number_format_i18n( (float) $value ) : (string) $value;
+		if ( is_numeric( $value ) ) {
+			// Thousands grouping is ON by default — correct for quantities
+			// (sqft, counts, distances): "3,200 sqft". It is WRONG for
+			// identifier-like numbers — years (2019, not 2,019), model years,
+			// unit/lot numbers, IDs — where a separator misreads as a quantity.
+			// The field opts out explicitly via `number_grouping=false`; there
+			// is deliberately no value-sniffing heuristic (see CLAUDE.md "No
+			// Magic"). Absence of the key preserves the historical grouped
+			// behaviour, so existing fields are unaffected.
+			$grouping = ! array_key_exists( 'number_grouping', $field_def ) || ! empty( $field_def['number_grouping'] );
+			if ( $grouping ) {
+				$number = number_format_i18n( (float) $value );
+			} else {
+				$as_float = (float) $value;
+				$number   = ( floor( $as_float ) === $as_float )
+					? (string) (int) $as_float
+					: (string) $as_float;
+			}
+		} else {
+			$number = (string) $value;
+		}
 		// Trim the label so a stored " sessions" (with leading space, often
 		// authored that way to add a "natural" separator) doesn't produce
 		// a double space when the renderer inserts its own separator.

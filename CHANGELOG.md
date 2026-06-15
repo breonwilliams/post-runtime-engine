@@ -4,7 +4,7 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
-## [Unreleased]
+## [0.6.0] — 2026-06-15
 
 ### Added
 - **`number_grouping` option for the `number_with_label` display type** (default `true`). Set `false` to render identifier-like numbers without thousands separators — year built `2019`, not `2,019`; model years, unit/lot numbers, IDs — while keeping the field label. Wired through the card renderer, registry defaults, validator, the admin "Thousands separator" toggle, the connector schema + hints, and `docs/POST_FIELDS_V1_1_DESIGN.md`.

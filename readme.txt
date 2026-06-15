@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.5.3
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,14 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.6.0 =
+* New: the "Number with label" display type gains a Thousands separator option. Turn it off for years, model years, unit/lot numbers, and IDs so they render ungrouped (2019, not 2,019) while keeping the label.
+* New: the connector can assign taxonomy terms (categories, tags, or any taxonomy registered for the CPT) when creating or updating a post. Terms can be names, slugs, or IDs and are created if they don't exist. Powers taxonomy-based archive facets and taxonomy_match groupings.
+* Changed: minimum WordPress version is now 5.6 — required by Application Passwords (connector) and wp_date()/wp_timezone() (events).
+* Changed: taxonomy filter facets now hide empty terms, so the filter never offers an option that returns zero results.
+* Removed: the legacy GitHub auto-updater. Updates are delivered through the WordPress.org plugin directory.
+* Fixed: feature / multi-badge pills are now clearly visible on cards (they previously matched the card background); the meta-strip separator no longer shows a "Â·" encoding artifact.
+
 = 0.5.3 =
 * WordPress.org review round 2: rewrote the Iconify External Services disclosure with a direct privacy-policy link (https://iconify.design/privacy/), a clearer terms-of-use link, an explicit note that the icon web component is bundled locally (not loaded from a CDN), and a precise data / when / endpoints breakdown. Also synced this changelog with the full version history. No code or behavior change.
 
@@ -125,6 +133,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.6.0 =
+Adds an ungrouped-number option (for years, IDs, unit numbers) and connector taxonomy-term assignment, hides empty terms in taxonomy filters, raises the minimum WordPress version to 5.6, and removes the legacy self-updater (updates now come from the WordPress.org directory). Recommended for all users.
 
 = 0.5.3 =
 Documentation-only update: the External Services disclosure for the Iconify icon API now meets WordPress.org guidelines — a direct privacy-policy link, a clearer terms-of-use link, and an explicit note that the icon component is bundled locally rather than loaded from a CDN. No functional change.

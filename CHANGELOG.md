@@ -4,6 +4,12 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [Unreleased]
+
+### Fixed
+- **Delete endpoints returned a bare `204 No Content`, which the MCP bridge misread as an error.** `DELETE /cpts/{slug}`, `DELETE /cpts/{slug}/groupings/{key}`, and `DELETE /cpts/{slug}/post-fields/{key}` now return `200 OK` with a JSON envelope (`{ "deleted": true, "slug": "...", ... }`), matching every other connector endpoint. HTTP 204 cannot legally carry a body, so the bridge's `JSON.parse("")` threw and surfaced a spurious `{ error: true, status: 204 }` on what was actually a successful delete. Updated the three handlers in `class-pre-connector-api.php` and the `DELETE` contracts in `docs/CONNECTOR_SPEC.md`.
+- **Hardened the MCP bridge (`post-runtime-connector.js`) against empty success bodies.** An empty body on any 2xx response (a 204, or a body stripped by an upstream proxy) now resolves as `{ success: true, status }` instead of falling into the JSON-parse `catch` and reporting an error. Defense-in-depth so this class of bug can't resurface on other endpoints. (Takes effect after the connector is reinstalled; the server-side fix above resolves the reported case for existing bridge installs.)
+
 ## [0.6.0] — 2026-06-15
 
 ### Added

@@ -178,7 +178,8 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
             self::BASE . '/cpts/pre_test_listing'
         );
 
-        $this->assertSame( 204, $response->get_status() );
+        $this->assertSame( 200, $response->get_status() );
+        $this->assertTrue( (bool) $response->get_data()['deleted'] );
 
         // Per-post meta must still exist — the data is preserved so a
         // future re-registration picks up where it left off.
@@ -205,7 +206,8 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
         $request->set_param( 'purge_data', true );
         $response = rest_get_server()->dispatch( $request );
 
-        $this->assertSame( 204, $response->get_status() );
+        $this->assertSame( 200, $response->get_status() );
+        $this->assertTrue( (bool) $response->get_data()['purged'] );
 
         // Per-post meta should now be gone — explicit opt-in honored.
         $this->assertEmpty(
@@ -218,7 +220,7 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
     // Grouping delete
     // -----------------------------------------------------------------
 
-    public function test_delete_grouping_returns_204_no_content() {
+    public function test_delete_grouping_returns_200_with_body() {
         $this->enable_connector_as_admin();
 
         $this->register_test_cpt( 'pre_test_listing' );
@@ -230,10 +232,11 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
         );
 
         $this->assertSame(
-            204,
+            200,
             $response->get_status(),
-            'DELETE must return 204 No Content per REST conventions for successful destructive ops with no payload.'
+            'DELETE returns a 200 JSON envelope (not a bare 204) so connector clients that expect a body on every response do not misread success as an error.'
         );
+        $this->assertTrue( (bool) $response->get_data()['deleted'] );
 
         $this->assertFalse(
             $this->plugin->groupings->exists( 'pre_test_listing', 'features' ),

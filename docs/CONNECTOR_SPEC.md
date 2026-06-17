@@ -311,7 +311,7 @@ Requires `connector_version` in body or `If-Match` header. Slug cannot be change
 
 #### Delete a CPT
 
-`DELETE /cpts/{slug}` → `204 No Content` on success.
+`DELETE /cpts/{slug}` → `200 OK` on success, body `{ "deleted": true, "slug": "...", "purged": <bool> }`.
 
 The deletion unregisters the CPT from `register_post_type()` on the next request and removes its grouping definitions. **Post data is preserved by default** (matches the data-protection pattern) — the user can restore it by re-registering the CPT with the same slug. To purge post data too, send `?purge_data=1`. Returns `404` if the CPT doesn't exist.
 
@@ -408,7 +408,7 @@ Source can be a string (`"manual"` or `"child_posts"`) or an object form for the
 
 `PUT /cpts/{slug}/groupings/{key}` — same versioning rules as CPT update
 
-`DELETE /cpts/{slug}/groupings/{key}` → `204 No Content`. Post data referencing this grouping_key is preserved unless `?purge_data=1` is set.
+`DELETE /cpts/{slug}/groupings/{key}` → `200 OK`, body `{ "deleted": true, "slug": "...", "key": "..." }`. Post data referencing this grouping_key is preserved unless `?purge_data=1` is set.
 
 ---
 
@@ -640,7 +640,7 @@ Update a definition. URL `key` is authoritative (body `key` is forced to match).
 
 Remove a field definition.
 
-**Response 204** (no body).
+**Response 200:** `{ "deleted": true, "slug": "...", "key": "..." }`.
 
 Per-post values stored at `_pre_field_{key}` are intentionally preserved — orphaned until the post is next saved (the meta box save sweeps them) or until a future explicit cleanup endpoint. Matches the grouping delete behavior; protects against accidental data loss.
 

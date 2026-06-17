@@ -686,6 +686,18 @@ function makeRequest(method, path, body = null) {
       let data = "";
       res.on("data", (chunk) => (data += chunk));
       res.on("end", () => {
+        // An empty body on a 2xx (e.g. a 204 No Content, or a body
+        // stripped by an upstream proxy) is a success, not a parse
+        // failure. Resolve it before attempting JSON.parse("") — which
+        // would throw and surface a misleading { error: true }.
+        if (data.trim() === "") {
+          if (res.statusCode >= 400) {
+            resolve({ error: true, status: res.statusCode, message: "" });
+          } else {
+            resolve({ success: true, status: res.statusCode });
+          }
+          return;
+        }
         try {
           const json = JSON.parse(data);
           if (res.statusCode >= 400) {

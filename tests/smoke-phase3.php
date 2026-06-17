@@ -493,7 +493,9 @@ $dispatch( 'DELETE', '/cpts/pre_smk_link?purge_data=1' );
 
 // 6. Cleanup (original Phase 3 test fixture).
 $res = $dispatch( 'DELETE', '/cpts/' . $test_slug );
-pre_smoke_equals( 'delete_cpt returns 204', 204, $res->get_status() );
+pre_smoke_equals( 'delete_cpt returns 200', 200, $res->get_status() );
+$del_body = $res->get_data();
+pre_smoke_equals( 'delete_cpt body reports deleted', true, ! empty( $del_body['deleted'] ) );
 
 $res = $dispatch( 'GET', '/cpts/' . $test_slug );
 pre_smoke_equals( 'deleted CPT now returns 404', 404, $res->get_status() );

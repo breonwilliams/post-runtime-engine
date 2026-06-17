@@ -953,7 +953,18 @@ class PCPTPages_Connector_API {
 
 		$plugin->cpts->unregister( $slug );
 
-		return new WP_REST_Response( null, 204 );
+		// Return a 200 JSON envelope rather than a bare 204 No Content.
+		// 204 cannot legally carry a body, and connector clients that
+		// expect JSON on every response (the MCP bridge) misread an
+		// empty body as a parse failure. Match the sibling handlers,
+		// which all return rest_ensure_response( array(...) ).
+		return rest_ensure_response(
+			array(
+				'deleted' => true,
+				'slug'    => $slug,
+				'purged'  => $purge_data,
+			)
+		);
 	}
 
 	// ========================================================================
@@ -1071,7 +1082,14 @@ class PCPTPages_Connector_API {
 
 		$plugin->groupings->remove( $slug, $key );
 
-		return new WP_REST_Response( null, 204 );
+		// 200 JSON envelope, not a bare 204 — see handle_delete_cpt.
+		return rest_ensure_response(
+			array(
+				'deleted' => true,
+				'slug'    => $slug,
+				'key'     => $key,
+			)
+		);
 	}
 
 	// ========================================================================
@@ -2166,7 +2184,14 @@ class PCPTPages_Connector_API {
 
 		$plugin->post_fields->remove( $slug, $key );
 
-		return new WP_REST_Response( null, 204 );
+		// 200 JSON envelope, not a bare 204 — see handle_delete_cpt.
+		return rest_ensure_response(
+			array(
+				'deleted' => true,
+				'slug'    => $slug,
+				'key'     => $key,
+			)
+		);
 	}
 
 	/**

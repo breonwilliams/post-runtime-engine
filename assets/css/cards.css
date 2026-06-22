@@ -67,9 +67,19 @@
 	position: relative;
 }
 
-/* Dark mode (inside .aisb-section--dark). Same pattern as frontend.css. */
+/* Dark mode (inside .aisb-section--dark). Same pattern as frontend.css.
+ *
+ * MUST mirror the light-mode token block above, which declares these tokens
+ * on BOTH .pre-card-fields--card AND .aisb-features__item. When PRE post
+ * fields are injected directly into AISB PostGrid / theme archive cards
+ * (Phase 12), there is no .pre-card-fields--card wrapper — the position
+ * blocks sit inside .aisb-features__item. Omitting .aisb-features__item here
+ * left the light muted token in place on dark cards, so post-field meta
+ * (e.g. a footer_meta date) rendered near-invisible on dark sections. */
 .aisb-section--dark .pre-card-fields--card,
-.pre-card-fields--card.is-dark {
+.pre-card-fields--card.is-dark,
+.aisb-section--dark .aisb-features__item,
+.aisb-features__item.is-dark {
 	--pre-color-text: var(--aisb-color-dark-text, #fafafa);
 	--pre-color-text-muted: var(--aisb-color-dark-text-muted, #9ca3af);
 	--pre-color-background: var(--aisb-color-dark-background, #1a1a1a);

@@ -225,6 +225,19 @@ class PCPTPages_Post_Data {
 		// each per-post grouping against its definition.
 		$cpt_groupings = $this->groupings->get_all( $post->post_type );
 
+		// Accept `key` as an alias for `grouping_key` on each entry. The
+		// grouping DEFINITION (define_grouping) uses `key`, so authors
+		// naturally reach for `key` when attaching grouping DATA to a post
+		// too. Canonicalize to `grouping_key` here — before validation and
+		// storage — so both spellings attach correctly instead of silently
+		// failing with a "missing grouping_key" error.
+		foreach ( $groupings as $gi => $gentry ) {
+			if ( is_array( $gentry ) && empty( $gentry['grouping_key'] ) && ! empty( $gentry['key'] ) ) {
+				$groupings[ $gi ]['grouping_key'] = $gentry['key'];
+				unset( $groupings[ $gi ]['key'] );
+			}
+		}
+
 		$valid = $this->validator->validate_post_groupings( $groupings, $post->post_type, $cpt_groupings );
 		if ( is_wp_error( $valid ) ) {
 			return $valid;

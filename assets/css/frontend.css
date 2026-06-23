@@ -765,6 +765,99 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 	font-size: 1.0625rem;
 }
 
+/*
+ * Card-grid image bleed — alignment with Promptless's global Card Image Style.
+ *
+ * Promptless's Features / PostGrid default cards bleed the card image flush to
+ * the card's top + side edges, and only inset it when the site's global Card
+ * Image Style is set to "inset" (which Promptless surfaces as the body class
+ * `aisb-card-image-inset`). PRE's card-grid previously ALWAYS inset its image
+ * inside the item's padding and ignored that global setting, so it looked out
+ * of step with the rest of the cards on the page. These rules bring it in line:
+ *
+ *   - default            → image bleeds to the card's top + side edges; the
+ *                          item's padding still indents the heading / text below.
+ *   - body.aisb-card-image-inset → image returns inside the padding with a
+ *                          halved radius, matching Promptless's inset treatment.
+ *
+ * Implementation mirrors Promptless's own approach (margin on the image media),
+ * here a NEGATIVE margin equal to the item padding (--aisb-section-space-md) to
+ * pull the media out to the card edges, with overflow:hidden on the item
+ * clipping the image to the card's rounded corners (same technique featured-card
+ * already uses). The featured-card variant already bleeds by design (it is
+ * image-prominent, like the image-first cards Promptless intentionally excludes
+ * from the inset toggle), so it is left as-is. The sidebar card-grid is a
+ * horizontal list with a small 60px thumbnail, not a top image, so bleed does
+ * not apply there — it is explicitly reset below.
+ */
+.pre-grouping--card-grid .pre-grouping__item {
+	overflow: hidden; /* clip the bleeding image to the card's rounded corners */
+}
+
+.pre-grouping--card-grid .pre-grouping__media--image {
+	margin:
+		calc(-1 * var(--aisb-section-space-md, 1.5rem))
+		calc(-1 * var(--aisb-section-space-md, 1.5rem))
+		0;
+}
+
+.pre-grouping--card-grid .pre-grouping__media--image .pre-grouping__image {
+	border-radius: 0; /* the item's overflow:hidden rounds the corners */
+}
+
+/* Global "inset" toggle: return the card-grid image inside the padding with a
+ * halved radius, matching Promptless's card-image-inset treatment. */
+body.aisb-card-image-inset .pre-grouping--card-grid .pre-grouping__media--image {
+	margin: 0;
+}
+
+body.aisb-card-image-inset
+	.pre-grouping--card-grid
+	.pre-grouping__media--image
+	.pre-grouping__image {
+	border-radius: max(
+		0px,
+		calc(var(--aisb-section-radius-card, var(--aisb-section-radius-md, 8px)) / 2)
+	);
+}
+
+/* Sidebar card-grid is a horizontal list with a small thumbnail — never bleed. */
+.pre-body__sidebar .pre-grouping--card-grid .pre-grouping__media--image {
+	margin: 0;
+}
+
+.pre-body__sidebar
+	.pre-grouping--card-grid
+	.pre-grouping__media--image
+	.pre-grouping__image {
+	border-radius: var(--aisb-section-radius-image, 8px);
+}
+
+/*
+ * CTA arrow placement (card-grid). The arrow was absolutely positioned in the
+ * bottom-right corner, which collided with the supporting text whenever the
+ * text's last line reached the bottom-right (measured: a 16×16px overlap on
+ * cards with full-width last lines). Reserving bottom padding alone was
+ * fragile — whether it overlapped depended on the text length. Instead, flow
+ * the arrow as a bottom-aligned flex item: `margin-top: auto` pushes it to the
+ * bottom of the card's flex column (and, because grid cards stretch to equal
+ * height, bottom-aligns the arrow consistently across a row), and
+ * `align-self: flex-end` right-aligns it — so it always sits on its own row
+ * below the text and can never overlap it. The featured-card variant keeps its
+ * own absolute placement (its padded content wrapper isolates the text).
+ */
+.pre-grouping--card-grid .pre-grouping__item--linked {
+	/* Arrow now flows at the bottom, so restore the normal bottom padding
+	   (the absolute-arrow path reserved an extra ~1rem band). */
+	padding-bottom: var(--aisb-section-space-md, 1.5rem);
+}
+
+.pre-grouping--card-grid .pre-grouping__cta-arrow {
+	position: static;
+	align-self: flex-end;
+	margin-top: auto;
+}
+
 /* ----------------------------------------------------------------------- */
 /* Variant: featured-card                                                   */
 /* Single item, image-prominent. Image bleeds to the card edges (top, left, */

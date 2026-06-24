@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.6.0
+Stable tag: 0.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,11 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.6.1 =
+* Fixed: related-posts / grouping cards in the card layout now bleed their image to the card edges and follow the site's global Card Image Style, matching Promptless's own cards; the card's "clickable" arrow no longer overlaps the supporting text.
+* Fixed: post-field meta (such as a date) inside a dark Post Grid card is now readable — it follows the dark section colors instead of staying light-on-light.
+* Fixed: grouping data attached with `key` instead of `grouping_key` now saves correctly, and delete actions return a proper success response to the connector.
+
 = 0.6.0 =
 * New: the "Number with label" display type gains a Thousands separator option. Turn it off for years, model years, unit/lot numbers, and IDs so they render ungrouped (2019, not 2,019) while keeping the label.
 * New: the connector can assign taxonomy terms (categories, tags, or any taxonomy registered for the CPT) when creating or updating a post. Terms can be names, slugs, or IDs and are created if they don't exist. Powers taxonomy-based archive facets and taxonomy_match groupings.
@@ -133,6 +138,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.6.1 =
+Bug-fix release: card-layout grouping images now bleed to the card edges and honor the global Card Image Style, the card arrow no longer overlaps the supporting text, dark Post Grid card meta is readable (WCAG AA), grouping data keyed by `key` now saves, and connector delete actions return a proper success response. Recommended for all users.
 
 = 0.6.0 =
 Adds an ungrouped-number option (for years, IDs, unit numbers) and connector taxonomy-term assignment, hides empty terms in taxonomy filters, raises the minimum WordPress version to 5.6, and removes the legacy self-updater (updates now come from the WordPress.org directory). Recommended for all users.

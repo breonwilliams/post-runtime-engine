@@ -4,7 +4,7 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
-## [Unreleased]
+## [0.6.1] — 2026-06-23
 
 ### Fixed
 - **Card-grid CTA arrow overlapped the supporting text.** The clickability arrow was absolutely positioned in the card's bottom-right corner, so a supporting line that reached the bottom-right collided with it (verified: a 16×16px overlap on cards with full-width last lines; whether it overlapped depended on text length). The arrow now flows as a bottom-aligned flex footer (`margin-top:auto; align-self:flex-end`) — it always sits on its own row below the text and, because grid cards stretch to equal height, bottom-aligns consistently across a row. `featured-card` keeps its own placement (its padded content wrapper isolates the text). (`assets/css/frontend.css`.)

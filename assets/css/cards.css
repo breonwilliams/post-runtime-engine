@@ -55,7 +55,10 @@
 	--pre-color-info-bg: var(--aisb-color-info-bg, rgba(59, 130, 246, 0.12));
 	--pre-color-info-text: var(--aisb-color-info, #1d4ed8);
 	--pre-color-neutral-bg: var(--aisb-color-surface, rgba(0, 0, 0, 0.05));
-	--pre-color-neutral-text: var(--aisb-color-text-muted, #4b5563);
+	/* Track the theme-aware muted token (which flips light↔dark) rather than the
+	   raw light --aisb-color-text-muted, so neutral pill text stays legible on a
+	   dark Content Theme / dark section. A neutral pill's text IS muted text. */
+	--pre-color-neutral-text: var(--pre-color-text-muted, var(--aisb-color-text-muted, #4b5563));
 }
 
 /* When PRE post fields are injected DIRECTLY into AISB PostGrid /
@@ -100,7 +103,10 @@
 	--pre-color-info-bg: var(--aisb-color-info-bg, rgba(59, 130, 246, 0.12));
 	--pre-color-info-text: var(--aisb-color-info, #1d4ed8);
 	--pre-color-neutral-bg: var(--aisb-color-surface, rgba(0, 0, 0, 0.05));
-	--pre-color-neutral-text: var(--aisb-color-text-muted, #4b5563);
+	/* Track the theme-aware muted token (which flips light↔dark) rather than the
+	   raw light --aisb-color-text-muted, so neutral pill text stays legible on a
+	   dark Content Theme / dark section. A neutral pill's text IS muted text. */
+	--pre-color-neutral-text: var(--pre-color-text-muted, var(--aisb-color-text-muted, #4b5563));
 }
 
 /* ----------------------------------------------------------------------- */
@@ -171,27 +177,24 @@
 	gap: 0.4em 0.85em;
 }
 
-/* meta_strip is the canonical horizontal layout — flex with gap and a
- * thin separator between items. */
+/* meta_strip is the canonical horizontal layout — a wrapping flex row whose
+ * items are separated by GAP SPACING ONLY (no character separator).
+ *
+ * Why no middot/bar/border between items: any rendered separator (a `·`
+ * ::after, a `|`, or a left border) dangles at a wrap point, because CSS
+ * cannot target "the last item of a wrapped line" — `:not(:last-child)` only
+ * suppresses the trailing one on the final item overall. The previous middot
+ * left an orphaned `·` at the end of a wrapped line in narrow columns. Spacing
+ * via `gap` is bulletproof: it never dangles at any width or item count, and
+ * wrapped lines get their own row-gap. Each meta-pair also carries its own
+ * leading icon, which already delimits items visually, so the dots were
+ * largely redundant. Column gap is widened (vs the old 0.85em) to keep clear
+ * separation now that the glyph is gone. */
 .pre-card-fields__position--meta-strip {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.5em 0.85em;
-}
-
-/* Visible separator between meta_strip items. The :not(:last-child) pseudo
- * means we never paint a trailing separator. */
-.pre-card-fields__position--meta-strip > .pre-field:not(:last-child)::after {
-	/* Use the ASCII unicode escape for the middot (U+00B7) rather than a literal
-	   "·" byte. When this stylesheet is served without an explicit charset, some
-	   browsers decode the raw UTF-8 bytes as Latin-1 and render "Â·" mojibake.
-	   The escape is pure ASCII, so it is encoding-proof. */
-	content: "\00B7";
-	margin-left: 0.85em;
-	/* Fallback so the separator stays muted even outside the card token scope. */
-	color: var(--pre-color-text-muted, #6b7280);
-	opacity: 0.6;
+	gap: 0.5em 1.25em;
 }
 
 /* image_overlay positions absolutely over the parent media wrapper. The

@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.6.1
+Stable tag: 0.6.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,11 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.6.2 =
+* Fixed: sidebar card-grid grouping items (icon, heading, link arrow) are now vertically centered, with the arrow pinned to the right edge — single-line items no longer look misaligned.
+* Fixed: neutral chips (multi_badge) are now legible on a dark Content Theme and on dark sections; they could render dark-on-dark before.
+* Changed: meta-strip field separators now use clean gap spacing instead of a middot character, so a separator never dangles when the strip wraps to multiple lines.
+
 = 0.6.1 =
 * Fixed: related-posts / grouping cards in the card layout now bleed their image to the card edges and follow the site's global Card Image Style, matching Promptless's own cards; the card's "clickable" arrow no longer overlaps the supporting text.
 * Fixed: post-field meta (such as a date) inside a dark Post Grid card is now readable — it follows the dark section colors instead of staying light-on-light.
@@ -138,6 +143,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.6.2 =
+Visual polish: sidebar card grouping alignment, legible neutral chips in dark mode, and cleaner meta-strip spacing. CSS-only — no data or behavior changes.
 
 = 0.6.1 =
 Bug-fix release: card-layout grouping images now bleed to the card edges and honor the global Card Image Style, the card arrow no longer overlaps the supporting text, dark Post Grid card meta is readable (WCAG AA), grouping data keyed by `key` now saves, and connector delete actions return a proper success response. Recommended for all users.

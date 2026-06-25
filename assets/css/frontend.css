@@ -1017,9 +1017,31 @@ body.aisb-card-image-inset
    layout reads more like a list and uses the available space better. */
 .pre-body__sidebar .pre-grouping--card-grid .pre-grouping__item {
 	flex-direction: row;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--aisb-section-space-sm, 1rem);
 	padding: var(--aisb-section-space-sm, 1rem);
+}
+
+/* Heading column takes the slack so the arrow pins to the right edge no
+   matter the heading length (short headings would otherwise leave the arrow
+   floating mid-row). min-width:0 lets long headings wrap instead of forcing
+   overflow. */
+.pre-body__sidebar .pre-grouping--card-grid .pre-grouping__content {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+/* The base card-grid arrow rules (position:static; align-self:flex-end;
+   margin-top:auto) place the arrow at the bottom-right of the VERTICAL column
+   card. In the sidebar's horizontal row those drop the arrow to the bottom of
+   the row, out of line with the vertically-centered icon + heading (measured:
+   icon mid 29px, heading 35px, arrow 45px on a 70px row). Re-center the arrow
+   on the row's cross axis and pin it to the right edge. */
+.pre-body__sidebar .pre-grouping--card-grid .pre-grouping__cta-arrow {
+	align-self: center;
+	margin-top: 0;
+	margin-left: auto;
+	flex: 0 0 auto;
 }
 
 .pre-body__sidebar .pre-grouping--card-grid .pre-grouping__media--icon .pre-grouping__icon {

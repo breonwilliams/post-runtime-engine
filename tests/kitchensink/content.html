@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRE Grouping Kitchen Sink</title>
+<!-- Real plugin CSS (alignment source of truth) -->
+<link rel="stylesheet" href="../../assets/css/frontend.css?v=2">
+<link rel="stylesheet" href="../../assets/css/cards.css">
+<!-- Bundled iconify web component so <iconify-icon> renders at its CSS size -->
+<script src="../../assets/js/iconify-icon.min.js"></script>
+<style>
+  /* Minimal token shim so cards are visible. Spacing tokens mirror the theme
+     defaults; the plugin CSS already falls back to these where used, so layout
+     matches production. Colors are illustrative — alignment is what we test. */
+  :root{
+    --aisb-section-space-sm:1rem; --aisb-section-space-md:1.5rem;
+    --aisb-section-space-lg:2rem; --aisb-section-space-xl:3rem;
+    --aisb-section-radius-card:10px; --aisb-section-radius-image:8px;
+    --aisb-section-font-heading:'Inter',system-ui,sans-serif;
+    --pre-color-text:#1f2a37; --pre-color-text-muted:#566173;
+    --pre-color-surface:#ffffff; --pre-color-border:#dce3ea;
+    --pre-color-icon:#0e4a52; --pre-color-surface-icon:#0e4a52;
+    --pre-color-link:#0e4a52; --pre-color-surface-link:#0e4a52;
+    --pre-card-border-width:1px; --pre-card-shadow:0 1px 3px rgba(15,30,50,.07);
+  }
+  body{font-family:'Inter',system-ui,sans-serif;color:#1f2a37;margin:0;padding:24px;background:#fff;}
+  .ks-wrap{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap;}
+  .ks-col{flex:1 1 480px;min-width:300px;}
+  .ks-col--side{flex:0 0 340px;}
+  .ks-h{font:600 12px/1.4 ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase;color:#0e4a52;margin:28px 0 8px;border-top:2px solid #0e4a52;padding-top:8px;}
+  .ks-case{font:500 11px/1.4 ui-monospace,monospace;color:#8a97a5;margin:14px 0 4px;}
+  .pre-body__sidebar{max-width:340px;}
+  /* alignment guides: faint center line per item to eyeball vertical centering */
+  .ks-guide .pre-grouping__item{outline:1px dashed rgba(200,60,60,.25);}
+</style>
+</head>
+<body>
+
+<div class="ks-wrap">
+
+<!-- ============================= MAIN COLUMN ============================= -->
+<div class="ks-col ks-guide">
+  <div class="ks-h">MAIN — compact-grid (icon + heading, multi-col)</div>
+  <section class="pre-grouping pre-grouping--compact-grid">
+    <h2 class="pre-grouping__label">Service areas</h2>
+    <ul class="pre-grouping__items">
+      <li class="pre-grouping__item">
+        <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:water" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Wetlands</h3></div>
+      </li>
+      <li class="pre-grouping__item">
+        <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:weather-windy" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Air Quality &amp; Emissions Monitoring</h3></div>
+      </li>
+      <li class="pre-grouping__item pre-grouping__item--linked">
+        <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:leaf" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Remediation</h3></div>
+        <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+        <a class="pre-grouping__link-overlay" href="#" aria-label="Remediation"></a>
+      </li>
+    </ul>
+  </section>
+
+  <div class="ks-h">MAIN — card-grid (icon, no image)</div>
+  <section class="pre-grouping pre-grouping--card-grid">
+    <h2 class="pre-grouping__label">Sessions</h2>
+    <ul class="pre-grouping__items">
+      <div class="ks-case">linked · short heading · no supporting</div>
+      <li class="pre-grouping__item pre-grouping__item--linked">
+        <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:microphone" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Urban Stormwater &amp; Green Infrastructure</h3></div>
+        <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+        <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+      </li>
+      <li class="pre-grouping__item pre-grouping__item--linked">
+        <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:microphone" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Short</h3><p class="pre-grouping__supporting">A short supporting line.</p></div>
+        <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+        <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+      </li>
+      <li class="pre-grouping__item pre-grouping__item--linked">
+        <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:microphone" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">A much longer session title that will wrap onto two or three lines in this column</h3><p class="pre-grouping__supporting">Supporting text that also runs long enough to wrap so we can see how the arrow sits relative to the bottom of the card content.</p></div>
+        <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+        <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+      </li>
+    </ul>
+  </section>
+
+  <div class="ks-h">MAIN — card-grid (image)</div>
+  <section class="pre-grouping pre-grouping--card-grid">
+    <h2 class="pre-grouping__label">Featured topics</h2>
+    <ul class="pre-grouping__items">
+      <li class="pre-grouping__item pre-grouping__item--linked">
+        <div class="pre-grouping__media pre-grouping__media--image"><img class="pre-grouping__image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='240'%3E%3Crect width='400' height='240' fill='%23b5c9c0'/%3E%3C/svg%3E" alt=""></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Coastal Resilience</h3><p class="pre-grouping__supporting">Image card with heading and supporting text.</p></div>
+        <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+        <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+      </li>
+      <li class="pre-grouping__item">
+        <div class="pre-grouping__media pre-grouping__media--image"><img class="pre-grouping__image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='240'%3E%3Crect width='400' height='240' fill='%23cdd9cf'/%3E%3C/svg%3E" alt=""></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Unlinked image card</h3><p class="pre-grouping__supporting">No arrow, no overlay.</p></div>
+      </li>
+    </ul>
+  </section>
+
+  <div class="ks-h">MAIN — featured-card (icon &amp; image)</div>
+  <section class="pre-grouping pre-grouping--featured-card">
+    <h2 class="pre-grouping__label">Featured speaker</h2>
+    <ul class="pre-grouping__items">
+      <li class="pre-grouping__item pre-grouping__item--linked">
+        <div class="pre-grouping__media pre-grouping__media--image"><img class="pre-grouping__image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23aebfca'/%3E%3C/svg%3E" alt=""></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Dr. Theo Marsh</h3><p class="pre-grouping__supporting">Stormwater Practice Lead. Side-by-side at ≥600px, stacked below.</p></div>
+        <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+        <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+      </li>
+    </ul>
+  </section>
+  <section class="pre-grouping pre-grouping--featured-card">
+    <ul class="pre-grouping__items">
+      <li class="pre-grouping__item pre-grouping__item--linked">
+        <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:certificate" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+        <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Featured-card, icon variant</h3><p class="pre-grouping__supporting">Icon variant keeps padded treatment.</p></div>
+        <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+        <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+      </li>
+    </ul>
+  </section>
+
+  <div class="ks-h">MAIN — horizontal-row (inline chips)</div>
+  <section class="pre-grouping pre-grouping--horizontal-row">
+    <h2 class="pre-grouping__label">At a glance</h2>
+    <ul class="pre-grouping__items">
+      <li class="pre-grouping__item"><div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:calendar" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div><div class="pre-grouping__content"><h3 class="pre-grouping__heading">June 2026</h3></div></li>
+      <li class="pre-grouping__item"><div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:map-marker" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div><div class="pre-grouping__content"><h3 class="pre-grouping__heading">Portland, OR</h3></div></li>
+      <li class="pre-grouping__item"><div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:account-group" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div><div class="pre-grouping__content"><h3 class="pre-grouping__heading">2,400 members</h3></div></li>
+    </ul>
+  </section>
+</div>
+
+<!-- ============================= SIDEBAR ============================= -->
+<div class="ks-col ks-col--side ks-guide">
+  <div class="pre-body__sidebar">
+    <div class="ks-h">SIDEBAR — card-grid (the reported case)</div>
+    <section class="pre-grouping pre-grouping--card-grid">
+      <h2 class="pre-grouping__label">Sessions</h2>
+      <ul class="pre-grouping__items">
+        <div class="ks-case">linked · icon · single-line heading</div>
+        <li class="pre-grouping__item pre-grouping__item--linked">
+          <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:microphone" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+          <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Urban Stormwater &amp; Green Infrastructure</h3></div>
+          <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+          <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+        </li>
+        <div class="ks-case">linked · icon · short heading</div>
+        <li class="pre-grouping__item pre-grouping__item--linked">
+          <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:microphone" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+          <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Keynote</h3></div>
+          <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+          <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+        </li>
+        <div class="ks-case">linked · icon · heading + supporting</div>
+        <li class="pre-grouping__item pre-grouping__item--linked">
+          <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:microphone" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+          <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Field Science Track Overview</h3><p class="pre-grouping__supporting">Two-line supporting text to test how the icon and arrow align against taller content.</p></div>
+          <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+          <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+        </li>
+        <div class="ks-case">linked · image thumbnail</div>
+        <li class="pre-grouping__item pre-grouping__item--linked">
+          <div class="pre-grouping__media pre-grouping__media--image"><img class="pre-grouping__image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='120' height='120' fill='%23b5c9c0'/%3E%3C/svg%3E" alt=""></div>
+          <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Related resource with thumbnail</h3></div>
+          <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+          <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+        </li>
+      </ul>
+    </section>
+
+    <div class="ks-h">SIDEBAR — compact-grid</div>
+    <section class="pre-grouping pre-grouping--compact-grid">
+      <h2 class="pre-grouping__label">Specialties</h2>
+      <ul class="pre-grouping__items">
+        <li class="pre-grouping__item"><div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:water" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div><div class="pre-grouping__content"><h3 class="pre-grouping__heading">Wetlands</h3></div></li>
+        <li class="pre-grouping__item"><div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:leaf" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div><div class="pre-grouping__content"><h3 class="pre-grouping__heading">Restoration</h3></div></li>
+      </ul>
+    </section>
+
+    <div class="ks-h">SIDEBAR — featured-card</div>
+    <section class="pre-grouping pre-grouping--featured-card">
+      <h2 class="pre-grouping__label">Contact</h2>
+      <ul class="pre-grouping__items">
+        <li class="pre-grouping__item pre-grouping__item--linked">
+          <div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:email" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div>
+          <div class="pre-grouping__content"><h3 class="pre-grouping__heading">Rose City Environmental</h3><p class="pre-grouping__supporting">Get in touch with the practice.</p></div>
+          <span class="pre-grouping__cta-arrow" aria-hidden="true">→</span>
+          <a class="pre-grouping__link-overlay" href="#" aria-label="x"></a>
+        </li>
+      </ul>
+    </section>
+
+    <div class="ks-h">SIDEBAR — horizontal-row (stacks)</div>
+    <section class="pre-grouping pre-grouping--horizontal-row">
+      <h2 class="pre-grouping__label">Details</h2>
+      <ul class="pre-grouping__items">
+        <li class="pre-grouping__item"><div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:calendar" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div><div class="pre-grouping__content"><h3 class="pre-grouping__heading">June 2026</h3></div></li>
+        <li class="pre-grouping__item"><div class="pre-grouping__media pre-grouping__media--icon"><iconify-icon icon="mdi:map-marker" class="pre-grouping__icon" aria-hidden="true"></iconify-icon></div><div class="pre-grouping__content"><h3 class="pre-grouping__heading">Portland, OR</h3></div></li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

@@ -54,6 +54,8 @@ class PCPTPages_Autoloader {
 		'PCPTPages_Card_Filter_Hooks'  => 'Frontend/class-pre-card-filter-hooks.php',
 		// Events vertical (v1.2): Schema.org Event JSON-LD emitter.
 		'PCPTPages_Event_Schema'       => 'Frontend/class-pre-event-schema.php',
+		// SEO meta tags (description + OG/Twitter) for PRE CPT singles.
+		'PCPTPages_Meta_Tags'          => 'Frontend/class-pre-meta-tags.php',
 		// PostGrid editor-preview parity (v1.2.x): batched card-HTML endpoint.
 		'PCPTPages_Editor_Preview_API' => 'Frontend/class-pre-editor-preview-api.php',
 		// Schema-driven filters (v1.2): filter-descriptor provider (hook + REST).

@@ -4,9 +4,9 @@
  *
  * Exercises the data layer end-to-end against a real WordPress install.
  * No assumptions about admin UI or frontend — only the programmatic API:
- *   pre()->cpts        (PRE_CPT_Registry)
- *   pre()->groupings   (PRE_Grouping_Registry)
- *   pre()->post_data   (PRE_Post_Data)
+ *   pcptpages()->cpts        (PCPTPages_CPT_Registry)
+ *   pcptpages()->groupings   (PCPTPages_Grouping_Registry)
+ *   pcptpages()->post_data   (PCPTPages_Post_Data)
  *
  * Designed to catch regressions before manual browser testing. Validates:
  *   - Bootstrap and singleton wiring
@@ -52,7 +52,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! function_exists( 'pre' ) ) {
-	echo "FAIL: pre() global accessor not defined. Is the plugin activated?\n";
+	echo "FAIL: pcptpages() global accessor not defined. Is the plugin activated?\n";
 	exit( 1 );
 }
 
@@ -128,7 +128,7 @@ const PRE_SMOKE_GROUPING_KEY = 'quick_specs';
  * Tear down any state from a previous run. Idempotent.
  */
 function pre_smoke_cleanup() {
-	$plugin = pre();
+	$plugin = pcptpages();
 
 	// Delete any posts of the test CPT.
 	$posts = get_posts(
@@ -169,44 +169,44 @@ echo "========================================\n\n";
 
 pre_smoke_cleanup();
 
-$plugin = pre();
+$plugin = pcptpages();
 
 // 1. Bootstrap sanity.
 pre_smoke_assert( 'plugin singleton instantiated', $plugin instanceof Post_Runtime_Engine );
-pre_smoke_assert( 'CPT registry is wired', $plugin->cpts instanceof PRE_CPT_Registry );
-pre_smoke_assert( 'grouping registry is wired', $plugin->groupings instanceof PRE_Grouping_Registry );
-pre_smoke_assert( 'post data accessor is wired', $plugin->post_data instanceof PRE_Post_Data );
-pre_smoke_assert( 'PRE_Validator autoloads', class_exists( 'PRE_Validator' ) );
-pre_smoke_assert( 'PRE_Icon_Library autoloads', class_exists( 'PRE_Icon_Library' ) );
-pre_smoke_assert( 'PRE_Capabilities autoloads', class_exists( 'PRE_Capabilities' ) );
+pre_smoke_assert( 'CPT registry is wired', $plugin->cpts instanceof PCPTPages_CPT_Registry );
+pre_smoke_assert( 'grouping registry is wired', $plugin->groupings instanceof PCPTPages_Grouping_Registry );
+pre_smoke_assert( 'post data accessor is wired', $plugin->post_data instanceof PCPTPages_Post_Data );
+pre_smoke_assert( 'PCPTPages_Validator autoloads', class_exists( 'PCPTPages_Validator' ) );
+pre_smoke_assert( 'PCPTPages_Icon_Library autoloads', class_exists( 'PCPTPages_Icon_Library' ) );
+pre_smoke_assert( 'PCPTPages_Capabilities autoloads', class_exists( 'PCPTPages_Capabilities' ) );
 
 // 2. Icon library starter set is intact.
-$icons = PRE_Icon_Library::get_all();
+$icons = PCPTPages_Icon_Library::get_all();
 pre_smoke_assert( 'icon library returns an array', is_array( $icons ) );
 pre_smoke_assert( 'icon library includes "bed"', isset( $icons['bed'] ) );
 pre_smoke_assert( 'icon library includes "scale"', isset( $icons['scale'] ) );
-pre_smoke_assert( 'PRE_Icon_Library::has() works for known id', PRE_Icon_Library::has( 'phone' ) );
-pre_smoke_assert( 'PRE_Icon_Library::has() rejects unknown id', ! PRE_Icon_Library::has( 'no-such-icon' ) );
+pre_smoke_assert( 'PCPTPages_Icon_Library::has() works for known id', PCPTPages_Icon_Library::has( 'phone' ) );
+pre_smoke_assert( 'PCPTPages_Icon_Library::has() rejects unknown id', ! PCPTPages_Icon_Library::has( 'no-such-icon' ) );
 
 // 2b. Iconify support — both formats valid, invalid shapes rejected.
-pre_smoke_assert( 'is_valid_id accepts legacy curated id "home"', PRE_Icon_Library::is_valid_id( 'home' ) );
-pre_smoke_assert( 'is_valid_id accepts Iconify code "mdi:home"', PRE_Icon_Library::is_valid_id( 'mdi:home' ) );
-pre_smoke_assert( 'is_valid_id accepts Iconify code with hyphens "material-symbols:account-circle"', PRE_Icon_Library::is_valid_id( 'material-symbols:account-circle' ) );
-pre_smoke_assert( 'is_valid_id accepts brand-set Iconify code "logos:wordpress"', PRE_Icon_Library::is_valid_id( 'logos:wordpress' ) );
-pre_smoke_assert( 'is_valid_id rejects malformed "mdi:"', ! PRE_Icon_Library::is_valid_id( 'mdi:' ) );
-pre_smoke_assert( 'is_valid_id rejects malformed ":home"', ! PRE_Icon_Library::is_valid_id( ':home' ) );
-pre_smoke_assert( 'is_valid_id rejects whitespace "mdi:home extra"', ! PRE_Icon_Library::is_valid_id( 'mdi:home extra' ) );
-pre_smoke_assert( 'is_valid_id rejects unknown freeform "totally-not-an-icon"', ! PRE_Icon_Library::is_valid_id( 'totally-not-an-icon' ) );
-pre_smoke_assert( 'is_iconify_format accepts "fa6-solid:tooth"', PRE_Icon_Library::is_iconify_format( 'fa6-solid:tooth' ) );
-pre_smoke_assert( 'is_iconify_format rejects bare curated id', ! PRE_Icon_Library::is_iconify_format( 'home' ) );
-pre_smoke_assert( 'legacy_to_iconify maps "home" → "mdi:home"', PRE_Icon_Library::legacy_to_iconify( 'home' ) === 'mdi:home' );
-pre_smoke_assert( 'legacy_to_iconify passes Iconify code through unchanged', PRE_Icon_Library::legacy_to_iconify( 'logos:wordpress' ) === 'logos:wordpress' );
-pre_smoke_assert( 'legacy_to_iconify returns empty for unknown', PRE_Icon_Library::legacy_to_iconify( 'no-such-icon' ) === '' );
-pre_smoke_assert( 'render returns inline SVG span for curated id', strpos( PRE_Icon_Library::render( 'home' ), '<span' ) === 0 );
-pre_smoke_assert( 'render returns iconify-icon web component for Iconify code', strpos( PRE_Icon_Library::render( 'mdi:home' ), '<iconify-icon' ) === 0 );
-pre_smoke_assert( 'render returns empty for unrecognized id', PRE_Icon_Library::render( 'no-such-icon' ) === '' );
-pre_smoke_assert( 'get_legacy_iconify_map returns array', is_array( PRE_Icon_Library::get_legacy_iconify_map() ) );
-pre_smoke_assert( 'legacy map has same key count as curated icons', count( PRE_Icon_Library::get_legacy_iconify_map() ) === count( PRE_Icon_Library::get_all() ) );
+pre_smoke_assert( 'is_valid_id accepts legacy curated id "home"', PCPTPages_Icon_Library::is_valid_id( 'home' ) );
+pre_smoke_assert( 'is_valid_id accepts Iconify code "mdi:home"', PCPTPages_Icon_Library::is_valid_id( 'mdi:home' ) );
+pre_smoke_assert( 'is_valid_id accepts Iconify code with hyphens "material-symbols:account-circle"', PCPTPages_Icon_Library::is_valid_id( 'material-symbols:account-circle' ) );
+pre_smoke_assert( 'is_valid_id accepts brand-set Iconify code "logos:wordpress"', PCPTPages_Icon_Library::is_valid_id( 'logos:wordpress' ) );
+pre_smoke_assert( 'is_valid_id rejects malformed "mdi:"', ! PCPTPages_Icon_Library::is_valid_id( 'mdi:' ) );
+pre_smoke_assert( 'is_valid_id rejects malformed ":home"', ! PCPTPages_Icon_Library::is_valid_id( ':home' ) );
+pre_smoke_assert( 'is_valid_id rejects whitespace "mdi:home extra"', ! PCPTPages_Icon_Library::is_valid_id( 'mdi:home extra' ) );
+pre_smoke_assert( 'is_valid_id rejects unknown freeform "totally-not-an-icon"', ! PCPTPages_Icon_Library::is_valid_id( 'totally-not-an-icon' ) );
+pre_smoke_assert( 'is_iconify_format accepts "fa6-solid:tooth"', PCPTPages_Icon_Library::is_iconify_format( 'fa6-solid:tooth' ) );
+pre_smoke_assert( 'is_iconify_format rejects bare curated id', ! PCPTPages_Icon_Library::is_iconify_format( 'home' ) );
+pre_smoke_assert( 'legacy_to_iconify maps "home" → "mdi:home"', PCPTPages_Icon_Library::legacy_to_iconify( 'home' ) === 'mdi:home' );
+pre_smoke_assert( 'legacy_to_iconify passes Iconify code through unchanged', PCPTPages_Icon_Library::legacy_to_iconify( 'logos:wordpress' ) === 'logos:wordpress' );
+pre_smoke_assert( 'legacy_to_iconify returns empty for unknown', PCPTPages_Icon_Library::legacy_to_iconify( 'no-such-icon' ) === '' );
+pre_smoke_assert( 'render returns inline SVG span for curated id', strpos( PCPTPages_Icon_Library::render( 'home' ), '<span' ) === 0 );
+pre_smoke_assert( 'render returns iconify-icon web component for Iconify code', strpos( PCPTPages_Icon_Library::render( 'mdi:home' ), '<iconify-icon' ) === 0 );
+pre_smoke_assert( 'render returns empty for unrecognized id', PCPTPages_Icon_Library::render( 'no-such-icon' ) === '' );
+pre_smoke_assert( 'get_legacy_iconify_map returns array', is_array( PCPTPages_Icon_Library::get_legacy_iconify_map() ) );
+pre_smoke_assert( 'legacy map has same key count as curated icons', count( PCPTPages_Icon_Library::get_legacy_iconify_map() ) === count( PCPTPages_Icon_Library::get_all() ) );
 
 // 3. CPT registration — happy path.
 $result = $plugin->cpts->register(
@@ -321,7 +321,7 @@ pre_smoke_equals( 'hero_image_aspect defaults to square', 'square', $no_hero['he
 // 5c. default_icon — round-trip a known icon, reject an unknown one,
 // confirm empty default and that empty string is allowed (means "no
 // fallback"). The validator is the gatekeeper here; we don't re-test
-// PRE_Icon_Library::has() itself.
+// PCPTPages_Icon_Library::has() itself.
 $plugin->cpts->register(
 	PRE_SMOKE_CPT_SLUG,
 	array(
@@ -658,16 +658,16 @@ pre_smoke_wp_error(
 );
 
 // 15. Capability helpers.
-pre_smoke_assert( 'edit_cap_for() returns a string', is_string( PRE_Capabilities::edit_cap_for( PRE_SMOKE_CPT_SLUG ) ) );
-pre_smoke_assert( 'PRE_Capabilities::MANAGE_CAP is pre_manage_cpts', PRE_Capabilities::MANAGE_CAP === 'pre_manage_cpts' );
-pre_smoke_assert( 'default_roles() returns array containing administrator', in_array( 'administrator', PRE_Capabilities::default_roles(), true ) );
-pre_smoke_assert( 'required_capability() resolves through filter', is_string( PRE_Capabilities::required_capability() ) && PRE_Capabilities::required_capability() !== '' );
+pre_smoke_assert( 'edit_cap_for() returns a string', is_string( PCPTPages_Capabilities::edit_cap_for( PRE_SMOKE_CPT_SLUG ) ) );
+pre_smoke_assert( 'PCPTPages_Capabilities::MANAGE_CAP is pre_manage_cpts', PCPTPages_Capabilities::MANAGE_CAP === 'pre_manage_cpts' );
+pre_smoke_assert( 'default_roles() returns array containing administrator', in_array( 'administrator', PCPTPages_Capabilities::default_roles(), true ) );
+pre_smoke_assert( 'required_capability() resolves through filter', is_string( PCPTPages_Capabilities::required_capability() ) && PCPTPages_Capabilities::required_capability() !== '' );
 
 // Verify that the upgrade handler granted the capability to administrators.
 $admin_role = get_role( 'administrator' );
 pre_smoke_assert(
 	'administrator role has pre_manage_cpts after upgrade',
-	$admin_role && $admin_role->has_cap( PRE_Capabilities::MANAGE_CAP )
+	$admin_role && $admin_role->has_cap( PCPTPages_Capabilities::MANAGE_CAP )
 );
 
 // 15b. meta_match auto-registration — verify register_meta_match_keys()
@@ -687,7 +687,7 @@ if ( is_array( $meta_match_grouping )
 }
 
 // 16. Validator — link validation.
-$validator = new PRE_Validator();
+$validator = new PCPTPages_Validator();
 pre_smoke_assert( 'anchor link is accepted', true === $validator->validate_link( '#contact' ) );
 pre_smoke_assert( 'relative path is accepted', true === $validator->validate_link( '/contact/' ) );
 pre_smoke_assert( 'tel: URI is accepted', true === $validator->validate_link( 'tel:+15555550100' ) );

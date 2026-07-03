@@ -84,7 +84,7 @@ class CptRegistrationTest extends IntegrationTestCase {
         ) );
 
         // New instance, no shared in-memory state with the original.
-        $fresh_registry = new \PRE_CPT_Registry();
+        $fresh_registry = new \PCPTPages_CPT_Registry();
 
         $stored = $fresh_registry->get( 'pre_test_listing' );
         $this->assertNotNull(

@@ -31,8 +31,8 @@ if ( php_sapi_name() === 'cli' ) {
 }
 
 // Ensure the connector is enabled for the duration of these tests.
-$_pre_smoke_was_enabled = PRE_Connector_Settings::is_enabled();
-PRE_Connector_Settings::set_enabled( true );
+$_pre_smoke_was_enabled = PCPTPages_Connector_Settings::is_enabled();
+PCPTPages_Connector_Settings::set_enabled( true );
 
 // Register a test admin user as the actor for permission checks.
 $test_user = get_user_by( 'login', 'admin' );
@@ -85,7 +85,7 @@ pre_smoke_equals( 'list_positions returns 3 positions', 3, count( $res->get_data
 $test_slug = 'pre_smoke_cpt_' . substr( md5( (string) microtime( true ) ), 0, 6 );
 
 // Cleanup any leftover from a previous failed run.
-pre()->cpts->unregister( $test_slug );
+pcptpages()->cpts->unregister( $test_slug );
 
 $res = $dispatch( 'POST', '/cpts', array(
 	'slug'           => $test_slug,
@@ -330,8 +330,8 @@ $host_post_id = (int) $res->get_data()['post_id'];
 $res          = $dispatch( 'GET', '/posts/' . $host_post_id . '/preview' );
 $render_data  = $res->get_data();
 $html         = isset( $render_data['html'] ) ? $render_data['html'] : '';
-$expected_user_svg = PRE_Icon_Library::render( 'user', 'pre-grouping__icon' );
-$expected_home_svg = PRE_Icon_Library::render( 'home', 'pre-grouping__icon' );
+$expected_user_svg = PCPTPages_Icon_Library::render( 'user', 'pre-grouping__icon' );
+$expected_home_svg = PCPTPages_Icon_Library::render( 'home', 'pre-grouping__icon' );
 pre_smoke_assert(
 	'rendered featured-card uses LINKED CPT default_icon (user)',
 	$expected_user_svg !== '' && strpos( $html, $expected_user_svg ) !== false
@@ -507,7 +507,7 @@ pre_smoke_equals( 'unauthenticated returns 401', 401, $res->get_status() );
 
 // 8. Connector disabled returns 403 even for authenticated users.
 wp_set_current_user( $test_user->ID );
-PRE_Connector_Settings::set_enabled( false );
+PCPTPages_Connector_Settings::set_enabled( false );
 $res = $dispatch( 'GET', '/preflight' );
 pre_smoke_equals( 'connector_disabled returns 403', 403, $res->get_status() );
 $err = $res->as_error();
@@ -518,4 +518,4 @@ pre_smoke_equals(
 );
 
 // Restore the connector toggle to whatever it was before this test ran.
-PRE_Connector_Settings::set_enabled( $_pre_smoke_was_enabled );
+PCPTPages_Connector_Settings::set_enabled( $_pre_smoke_was_enabled );

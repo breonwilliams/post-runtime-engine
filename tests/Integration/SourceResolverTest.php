@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for PRE_Source_Resolver.
+ * Integration tests for PCPTPages_Source_Resolver.
  *
  * The resolver bridges grouping definitions (where do items come from?)
  * and the renderer (here are the items to display). It's pure WP-API
@@ -23,7 +23,7 @@ class SourceResolverTest extends IntegrationTestCase {
     /**
      * Resolver instance.
      *
-     * @var \PRE_Source_Resolver
+     * @var \PCPTPages_Source_Resolver
      */
     protected $resolver;
 
@@ -50,7 +50,7 @@ class SourceResolverTest extends IntegrationTestCase {
             'post_status' => 'publish',
         ) );
 
-        $this->resolver = new \PRE_Source_Resolver();
+        $this->resolver = new \PCPTPages_Source_Resolver();
     }
 
     /**

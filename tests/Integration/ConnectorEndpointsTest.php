@@ -10,7 +10,7 @@
  *   - Concurrency (connector_version) checks
  *   - Atomic rollback on create_post when groupings validation fails
  *   - Data-protection: delete preserves post meta unless purge_data=true
- *   - Catalog endpoints stay in sync with PRE_Validator constants
+ *   - Catalog endpoints stay in sync with PCPTPages_Validator constants
  *
  * Pure-delegation paths (e.g. list_cpts wrapping the registry's get_all)
  * get a single sanity check rather than a full happy-path test, since
@@ -41,7 +41,7 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
     }
 
     // -----------------------------------------------------------------
-    // Catalog endpoints — must stay in sync with PRE_Validator
+    // Catalog endpoints — must stay in sync with PCPTPages_Validator
     //
     // The catalog endpoints exist so external agents can introspect
     // valid values WITHOUT hardcoding them. If the validator's enum
@@ -60,13 +60,13 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
 
         $returned_ids = array_column( $data['variants'], 'id' );
         sort( $returned_ids );
-        $expected_ids = \PRE_Validator::VARIANTS;
+        $expected_ids = \PCPTPages_Validator::VARIANTS;
         sort( $expected_ids );
 
         $this->assertSame(
             $expected_ids,
             $returned_ids,
-            'variants endpoint must mirror PRE_Validator::VARIANTS exactly — drift between the two means agents see invalid options or miss valid ones.'
+            'variants endpoint must mirror PCPTPages_Validator::VARIANTS exactly — drift between the two means agents see invalid options or miss valid ones.'
         );
     }
 
@@ -81,13 +81,13 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
 
         $returned_ids = array_column( $data['positions'], 'id' );
         sort( $returned_ids );
-        $expected_ids = \PRE_Validator::POSITIONS;
+        $expected_ids = \PCPTPages_Validator::POSITIONS;
         sort( $expected_ids );
 
         $this->assertSame(
             $expected_ids,
             $returned_ids,
-            'positions endpoint must mirror PRE_Validator::POSITIONS exactly.'
+            'positions endpoint must mirror PCPTPages_Validator::POSITIONS exactly.'
         );
     }
 

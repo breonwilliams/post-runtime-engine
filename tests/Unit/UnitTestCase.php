@@ -249,7 +249,7 @@ abstract class UnitTestCase extends TestCase {
         Functions\when( 'is_admin' )->justReturn( false );
 
         // ---------------------------------------------------------------
-        // Post-type existence check — used by PRE_CPT_Registry::unregister
+        // Post-type existence check — used by PCPTPages_CPT_Registry::unregister
         // to decide whether to flush rewrite rules. Default to false so
         // tests don't get unexpected side effects; tests that need to
         // simulate "WP knows about this CPT" can override per-test.

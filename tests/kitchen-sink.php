@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! function_exists( 'pre' ) ) {
-	echo "FAIL: pre() global accessor not defined. Activate the plugin first.\n";
+	echo "FAIL: pcptpages() global accessor not defined. Activate the plugin first.\n";
 	exit( 1 );
 }
 
@@ -44,7 +44,7 @@ function ks_log( $msg ) {
 // 1. Register the demo CPT (hierarchical, public, full supports).
 // ---------------------------------------------------------------------------
 
-$plugin = pre();
+$plugin = pcptpages();
 
 $cpt_def = array(
 	'slug'           => PRE_KS_CPT,

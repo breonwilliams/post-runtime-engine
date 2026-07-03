@@ -43,7 +43,7 @@ abstract class IntegrationTestCase extends \WP_UnitTestCase {
     public function set_up() {
         parent::set_up();
 
-        $this->plugin = pre();
+        $this->plugin = pcptpages();
 
         $this->clear_pre_state();
     }
@@ -194,7 +194,7 @@ abstract class IntegrationTestCase extends \WP_UnitTestCase {
      * @return int The administrator user ID.
      */
     protected function enable_connector_as_admin() {
-        \PRE_Connector_Settings::set_enabled( true );
+        \PCPTPages_Connector_Settings::set_enabled( true );
 
         $admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
         wp_set_current_user( $admin_id );
@@ -220,7 +220,7 @@ abstract class IntegrationTestCase extends \WP_UnitTestCase {
         $post = get_post( $post_id );
         $this->assertNotNull( $post, "capture_render: post {$post_id} not found." );
 
-        $renderer = new \PRE_Renderer();
+        $renderer = new \PCPTPages_Renderer();
 
         ob_start();
         $renderer->render( $post, $use_cache );

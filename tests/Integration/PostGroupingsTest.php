@@ -2,7 +2,7 @@
 /**
  * Integration tests for per-post grouping persistence.
  *
- * Exercises PRE_Post_Data against real wp_postmeta storage. The unit
+ * Exercises PCPTPages_Post_Data against real wp_postmeta storage. The unit
  * tests cover read-modify-write semantics with mocked meta — these
  * tests confirm the same logic works against the actual WP meta API,
  * including the backup chain (`_pre_groupings_backup` and friends).

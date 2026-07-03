@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for PRE_Validator.
+ * Unit tests for PCPTPages_Validator.
  *
  * Focus: enforce that the contract documented in CLAUDE.md and
  * docs/CONNECTOR_SPEC.md is actually enforced by the validator. Each
@@ -14,21 +14,25 @@
 namespace PRE\Tests\Unit;
 
 /**
- * Tests for PRE_Validator.
+ * Tests for PCPTPages_Validator.
  */
 class ValidatorTest extends UnitTestCase {
 
     /**
      * Validator instance.
      *
-     * @var \PRE_Validator
+     * @var \PCPTPages_Validator
      */
     private $validator;
 
     protected function set_up() {
         parent::set_up();
         require_once PRE_TEST_PLUGIN_DIR . 'includes/Core/class-pre-validator.php';
-        $this->validator = new \PRE_Validator();
+        // Load the icon library too: PCPTPages_Validator::validate_grouping_item()
+        // gates its icon_id validity check on class_exists( 'PCPTPages_Icon_Library' ),
+        // so without this the icon-format assertions are silently skipped.
+        require_once PRE_TEST_PLUGIN_DIR . 'includes/Core/class-pre-icon-library.php';
+        $this->validator = new \PCPTPages_Validator();
     }
 
     // -----------------------------------------------------------------
@@ -38,7 +42,7 @@ class ValidatorTest extends UnitTestCase {
     public function test_variants_constant_lists_exactly_four_options() {
         $this->assertSame(
             array( 'compact-grid', 'card-grid', 'featured-card', 'horizontal-row' ),
-            \PRE_Validator::VARIANTS,
+            \PCPTPages_Validator::VARIANTS,
             'VARIANTS must list exactly the four documented variants. Adding a fifth requires an architectural conversation per CLAUDE.md.'
         );
     }
@@ -46,7 +50,7 @@ class ValidatorTest extends UnitTestCase {
     public function test_positions_constant_lists_exactly_three_positions() {
         $this->assertSame(
             array( 'above_main', 'below_main', 'sidebar' ),
-            \PRE_Validator::POSITIONS,
+            \PCPTPages_Validator::POSITIONS,
             'POSITIONS must list exactly the three documented positions. CLAUDE.md guardrail says do not add a fourth without an architectural conversation.'
         );
     }
@@ -54,7 +58,7 @@ class ValidatorTest extends UnitTestCase {
     public function test_source_modes_constant_lists_exactly_four_modes() {
         $this->assertSame(
             array( 'manual', 'child_posts', 'taxonomy_match', 'meta_match' ),
-            \PRE_Validator::SOURCE_MODES,
+            \PCPTPages_Validator::SOURCE_MODES,
             'SOURCE_MODES must list exactly the four documented modes (manual, child_posts, taxonomy_match, meta_match).'
         );
     }
@@ -63,7 +67,7 @@ class ValidatorTest extends UnitTestCase {
         // Spot-check a few critical reserved slugs. If WordPress adds new
         // built-in post types or this list expands for a new plugin, this
         // test should be updated alongside the constant.
-        $reserved = \PRE_Validator::RESERVED_CPT_SLUGS;
+        $reserved = \PCPTPages_Validator::RESERVED_CPT_SLUGS;
         foreach ( array( 'post', 'page', 'attachment', 'wp_template', 'product' ) as $must_be_reserved ) {
             $this->assertContains(
                 $must_be_reserved,
@@ -80,7 +84,7 @@ class ValidatorTest extends UnitTestCase {
     public function test_validate_cpt_definition_rejects_non_array_input() {
         $result = $this->validator->validate_cpt_definition( 'not-an-array' );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_cpt', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_cpt', $result->get_error_code() );
     }
 
     public function test_validate_cpt_definition_rejects_missing_slug() {
@@ -89,7 +93,7 @@ class ValidatorTest extends UnitTestCase {
             'label_plural'   => 'Listings',
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_missing_slug', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_missing_slug', $result->get_error_code() );
     }
 
     public function test_validate_cpt_definition_rejects_uppercase_slug() {
@@ -99,7 +103,7 @@ class ValidatorTest extends UnitTestCase {
             'label_plural'   => 'Listings',
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_slug', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_slug', $result->get_error_code() );
     }
 
     public function test_validate_cpt_definition_rejects_slug_over_20_chars() {
@@ -112,7 +116,7 @@ class ValidatorTest extends UnitTestCase {
         // Per WP CPT slug max — explicit error code lives in the validator.
         $this->assertContains(
             $result->get_error_code(),
-            array( 'pre_slug_too_long', 'pre_invalid_slug' ),
+            array( 'pcptpages_slug_too_long', 'pcptpages_invalid_slug' ),
             'Over-long slug must be rejected with a slug-related error code.'
         );
     }
@@ -124,7 +128,7 @@ class ValidatorTest extends UnitTestCase {
             'label_plural'   => 'Xs',
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_reserved_slug', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_reserved_slug', $result->get_error_code() );
     }
 
     public function test_validate_cpt_definition_accepts_minimal_valid_definition() {
@@ -149,7 +153,7 @@ class ValidatorTest extends UnitTestCase {
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
         $this->assertSame(
-            'pre_invalid_default_variant',
+            'pcptpages_invalid_default_variant',
             $result->get_error_code(),
             'Unknown variants must be rejected — VARIANTS constant is the source of truth.'
         );
@@ -163,7 +167,7 @@ class ValidatorTest extends UnitTestCase {
             'default_position' => 'middle',  // not in POSITIONS
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_default_position', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_default_position', $result->get_error_code() );
     }
 
     public function test_validate_grouping_definition_accepts_minimal_valid_definition() {
@@ -234,7 +238,7 @@ class ValidatorTest extends UnitTestCase {
                 $definition
             );
             $this->assertInstanceOf( '\\WP_Error', $result, sprintf( 'Should reject "%s" (%s)', $bad, $reason ) );
-            $this->assertSame( 'pre_unknown_icon', $result->get_error_code(), sprintf( 'Wrong error code for "%s"', $bad ) );
+            $this->assertSame( 'pcptpages_unknown_icon', $result->get_error_code(), sprintf( 'Wrong error code for "%s"', $bad ) );
         }
     }
 
@@ -280,7 +284,7 @@ class ValidatorTest extends UnitTestCase {
             'max_items'        => 3,
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_featured_card_max_items', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_featured_card_max_items', $result->get_error_code() );
     }
 
     public function test_validate_grouping_definition_accepts_featured_card_with_max_items_one() {
@@ -319,7 +323,7 @@ class ValidatorTest extends UnitTestCase {
             'max_items'        => 0,
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_max_items', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_max_items', $result->get_error_code() );
     }
 
     public function test_validate_grouping_definition_rejects_max_items_above_hard_cap() {
@@ -331,10 +335,10 @@ class ValidatorTest extends UnitTestCase {
             'label'            => 'Features',
             'default_variant'  => 'card-grid',
             'default_position' => 'above_main',
-            'max_items'        => \PRE_Validator::MAX_ITEMS_PER_GROUPING + 1,
+            'max_items'        => \PCPTPages_Validator::MAX_ITEMS_PER_GROUPING + 1,
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_max_items_too_large', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_max_items_too_large', $result->get_error_code() );
     }
 
     // -----------------------------------------------------------------
@@ -350,7 +354,7 @@ class ValidatorTest extends UnitTestCase {
         $result = $this->validator->validate_source_value( 'taxonomy_match' );
         $this->assertInstanceOf( '\\WP_Error', $result );
         $this->assertSame(
-            'pre_taxonomy_match_needs_object',
+            'pcptpages_taxonomy_match_needs_object',
             $result->get_error_code(),
             'Bare-string "taxonomy_match" must fail — the taxonomy slug is required and not defaultable.'
         );
@@ -372,7 +376,7 @@ class ValidatorTest extends UnitTestCase {
             // missing 'taxonomy'
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_source_taxonomy', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_source_taxonomy', $result->get_error_code() );
     }
 
     public function test_validate_source_value_rejects_taxonomy_match_with_invalid_limit() {
@@ -382,7 +386,7 @@ class ValidatorTest extends UnitTestCase {
             'limit'    => 0,  // must be >= 1
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_source_limit', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_source_limit', $result->get_error_code() );
     }
 
     // -----------------------------------------------------------------
@@ -400,7 +404,7 @@ class ValidatorTest extends UnitTestCase {
         $result = $this->validator->validate_source_value( 'meta_match' );
         $this->assertInstanceOf( '\\WP_Error', $result );
         $this->assertSame(
-            'pre_meta_match_needs_object',
+            'pcptpages_meta_match_needs_object',
             $result->get_error_code(),
             'Bare-string "meta_match" must fail — the meta_key is required and not defaultable.'
         );
@@ -437,7 +441,7 @@ class ValidatorTest extends UnitTestCase {
             'type' => 'meta_match',
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_source_meta_key', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_source_meta_key', $result->get_error_code() );
     }
 
     public function test_validate_source_value_rejects_meta_match_with_empty_meta_key() {
@@ -446,7 +450,7 @@ class ValidatorTest extends UnitTestCase {
             'meta_key' => '',
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_source_meta_key', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_source_meta_key', $result->get_error_code() );
     }
 
     public function test_validate_source_value_rejects_meta_match_with_uppercase_meta_key() {
@@ -455,7 +459,7 @@ class ValidatorTest extends UnitTestCase {
             'meta_key' => 'AgentId',  // sanitize_key would lowercase + drop chars; we reject silent transforms
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_source_meta_key', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_source_meta_key', $result->get_error_code() );
     }
 
     public function test_validate_source_value_rejects_meta_match_with_meta_key_too_long() {
@@ -464,7 +468,7 @@ class ValidatorTest extends UnitTestCase {
             'meta_key' => str_repeat( 'a', 65 ),  // MAX_META_KEY_LENGTH is 64
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_source_meta_key_length', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_source_meta_key_length', $result->get_error_code() );
     }
 
     public function test_validate_source_value_rejects_meta_match_with_invalid_limit() {
@@ -474,7 +478,7 @@ class ValidatorTest extends UnitTestCase {
             'limit'    => 0,
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_source_limit', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_source_limit', $result->get_error_code() );
     }
 
     public function test_validate_source_value_rejects_meta_match_with_non_bool_exclude_self() {
@@ -484,7 +488,7 @@ class ValidatorTest extends UnitTestCase {
             'exclude_self' => 'yes',  // string instead of bool
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_source_exclude_self', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_source_exclude_self', $result->get_error_code() );
     }
 
     // -----------------------------------------------------------------
@@ -501,7 +505,7 @@ class ValidatorTest extends UnitTestCase {
         // distinct grouping_keys, then submit per-post entries for all 25.
         $cpt_groupings = array();
         $post_entries  = array();
-        for ( $i = 0; $i < \PRE_Validator::MAX_GROUPINGS_PER_POST + 1; $i++ ) {
+        for ( $i = 0; $i < \PCPTPages_Validator::MAX_GROUPINGS_PER_POST + 1; $i++ ) {
             $key                   = 'group_' . $i;
             $cpt_groupings[ $key ] = array(
                 'key'              => $key,
@@ -519,7 +523,7 @@ class ValidatorTest extends UnitTestCase {
 
         $result = $this->validator->validate_post_groupings( $post_entries, 'listing', $cpt_groupings );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_too_many_groupings', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_too_many_groupings', $result->get_error_code() );
     }
 
     public function test_validate_post_groupings_rejects_unknown_grouping_key() {
@@ -544,7 +548,7 @@ class ValidatorTest extends UnitTestCase {
             $cpt_groupings
         );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_unknown_grouping_key', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_unknown_grouping_key', $result->get_error_code() );
     }
 
     public function test_validate_post_groupings_rejects_duplicate_grouping_key() {
@@ -577,6 +581,6 @@ class ValidatorTest extends UnitTestCase {
             $cpt_groupings
         );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_duplicate_post_grouping', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_duplicate_post_grouping', $result->get_error_code() );
     }
 }

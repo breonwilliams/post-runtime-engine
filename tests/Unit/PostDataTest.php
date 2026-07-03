@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for PRE_Post_Data.
+ * Unit tests for PCPTPages_Post_Data.
  *
  * Focus: read-modify-write semantics. The most important invariant is
  * that update_grouping() and remove_grouping() are non-destructive to
@@ -17,22 +17,22 @@ namespace PRE\Tests\Unit;
 use Brain\Monkey\Functions;
 
 /**
- * Tests for PRE_Post_Data.
+ * Tests for PCPTPages_Post_Data.
  */
 class PostDataTest extends UnitTestCase {
 
     /**
-     * @var \PRE_CPT_Registry
+     * @var \PCPTPages_CPT_Registry
      */
     private $cpts;
 
     /**
-     * @var \PRE_Grouping_Registry
+     * @var \PCPTPages_Grouping_Registry
      */
     private $groupings;
 
     /**
-     * @var \PRE_Post_Data
+     * @var \PCPTPages_Post_Data
      */
     private $post_data;
 
@@ -52,13 +52,13 @@ class PostDataTest extends UnitTestCase {
 
         // Mock get_post() — used in two distinct ways by code under test:
         //
-        //   1. PRE_Post_Data::set_groupings() calls get_post($post_id) to
+        //   1. PCPTPages_Post_Data::set_groupings() calls get_post($post_id) to
         //      resolve the post's post_type and confirm the CPT is managed.
         //      Tests use ID 100 = a 'listing' post and ID 200 = an 'attorney'
         //      post (the latter is intentionally unmanaged so the
         //      pre_post_type_not_managed branch can be exercised).
         //
-        //   2. PRE_Validator::validate_grouping_item() calls get_post($image_id)
+        //   2. PCPTPages_Validator::validate_grouping_item() calls get_post($image_id)
         //      to verify that referenced attachments still exist (a real
         //      production safety check against orphan media references).
         //      Tests use IDs 42 and 99 as fixture attachment IDs; the mock
@@ -104,9 +104,9 @@ class PostDataTest extends UnitTestCase {
         // Mock current user (for backup audit trail).
         Functions\when( 'get_current_user_id' )->justReturn( 1 );
 
-        $this->cpts      = new \PRE_CPT_Registry();
-        $this->groupings = new \PRE_Grouping_Registry();
-        $this->post_data = new \PRE_Post_Data( $this->cpts, $this->groupings );
+        $this->cpts      = new \PCPTPages_CPT_Registry();
+        $this->groupings = new \PCPTPages_Grouping_Registry();
+        $this->post_data = new \PCPTPages_Post_Data( $this->cpts, $this->groupings );
 
         // Set up a 'listing' CPT and one grouping definition so set_groupings has something to validate against.
         $this->cpts->register( 'listing', array(
@@ -178,14 +178,14 @@ class PostDataTest extends UnitTestCase {
     public function test_set_groupings_rejects_unknown_post_id() {
         $result = $this->post_data->set_groupings( 999, $this->valid_groupings() );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_post_not_found', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_post_not_found', $result->get_error_code() );
     }
 
     public function test_set_groupings_rejects_post_in_unmanaged_cpt() {
         // Post ID 200 is an 'attorney' post but we only registered 'listing'.
         $result = $this->post_data->set_groupings( 200, $this->valid_groupings() );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_post_type_not_managed', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_post_type_not_managed', $result->get_error_code() );
     }
 
     public function test_update_grouping_replaces_only_the_targeted_grouping() {

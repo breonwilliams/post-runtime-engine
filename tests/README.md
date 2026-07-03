@@ -27,10 +27,10 @@ PHP 7.4+ required (matches the plugin minimum).
 
 | Test class | Covers | Why |
 |---|---|---|
-| `Unit/ValidatorTest.php` | `PRE_Validator` constants + CPT/grouping/item validation | The contract surface — every `critical_rules` entry in CONNECTOR_SPEC.md should have a test below. |
-| `Unit/CPTRegistryTest.php` | `PRE_CPT_Registry` CRUD + validation rejection + connector-version stamping | The data layer for CPT definitions; round-trip + edge cases. |
-| `Unit/GroupingRegistryTest.php` | `PRE_Grouping_Registry` per-CPT scoping + define/remove | The architectural decision that groupings are per-CPT depends on this not regressing. |
-| `Unit/PostDataTest.php` | `PRE_Post_Data` read-modify-write semantics | `update_grouping` MUST NOT touch other groupings — that's the contract behind the connector's `set_post_groupings` vs `update_post` distinction. |
+| `Unit/ValidatorTest.php` | `PCPTPages_Validator` constants + CPT/grouping/item validation | The contract surface — every `critical_rules` entry in CONNECTOR_SPEC.md should have a test below. |
+| `Unit/CPTRegistryTest.php` | `PCPTPages_CPT_Registry` CRUD + validation rejection + connector-version stamping | The data layer for CPT definitions; round-trip + edge cases. |
+| `Unit/GroupingRegistryTest.php` | `PCPTPages_Grouping_Registry` per-CPT scoping + define/remove | The architectural decision that groupings are per-CPT depends on this not regressing. |
+| `Unit/PostDataTest.php` | `PCPTPages_Post_Data` read-modify-write semantics | `update_grouping` MUST NOT touch other groupings — that's the contract behind the connector's `set_post_groupings` vs `update_post` distinction. |
 
 Coverage as of initial scaffold: ~25% on the data layer. Target before v1.0
 ship: **>80%** per `CLAUDE.md` post-launch maintenance constraints.
@@ -39,13 +39,13 @@ ship: **>80%** per `CLAUDE.md` post-launch maintenance constraints.
 
 These are explicit gaps the next test-writing pass should fill:
 
-- `PRE_Source_Resolver` (manual / child_posts / taxonomy_match resolution)
-- `PRE_Renderer` and the four layout-variant outputs
-- `PRE_Connector_API` — most-impactful next addition; the connector is the
+- `PCPTPages_Source_Resolver` (manual / child_posts / taxonomy_match resolution)
+- `PCPTPages_Renderer` and the four layout-variant outputs
+- `PCPTPages_Connector_API` — most-impactful next addition; the connector is the
   external surface and its responses need pinning down. Look at FRE's
   `tests/Unit/ConnectorPreflightTest.php` as the model.
-- `PRE_Capabilities` — capability grant/revoke on activation/uninstall.
-- `PRE_Icon_Library` — icon catalogue integrity (no dupes, all IDs sanitized).
+- `PCPTPages_Capabilities` — capability grant/revoke on activation/uninstall.
+- `PCPTPages_Icon_Library` — icon catalogue integrity (no dupes, all IDs sanitized).
 
 ## How tests are organized
 

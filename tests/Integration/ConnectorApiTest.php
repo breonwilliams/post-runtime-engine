@@ -2,8 +2,8 @@
 /**
  * Integration tests for the Cowork connector REST API.
  *
- * Why integration: the auth stack (PRE_Connector_Auth) and the route
- * registration in PRE_Connector_API are tightly coupled to WP's REST
+ * Why integration: the auth stack (PCPTPages_Connector_Auth) and the route
+ * registration in PCPTPages_Connector_API are tightly coupled to WP's REST
  * infrastructure — register_rest_route, permission callbacks, capability
  * checks, transient-backed rate limiting. Mocking that surface meaningfully
  * is harder than just running tests against a real WP test instance.
@@ -69,7 +69,7 @@ class ConnectorApiTest extends IntegrationTestCase {
     // -----------------------------------------------------------------
 
     public function test_preflight_blocks_unauthenticated_request_when_enabled() {
-        \PRE_Connector_Settings::set_enabled( true );
+        \PCPTPages_Connector_Settings::set_enabled( true );
         wp_set_current_user( 0 );  // explicitly unauthenticated
 
         $response = $this->dispatch_rest_request( 'GET', self::BASE . '/preflight' );
@@ -92,7 +92,7 @@ class ConnectorApiTest extends IntegrationTestCase {
     // -----------------------------------------------------------------
 
     public function test_preflight_blocks_subscriber_role_with_403() {
-        \PRE_Connector_Settings::set_enabled( true );
+        \PCPTPages_Connector_Settings::set_enabled( true );
 
         $subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
         wp_set_current_user( $subscriber_id );

@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for PRE_Renderer.
+ * Integration tests for PCPTPages_Renderer.
  *
  * Renders real posts in registered CPTs against a real WP test instance
  * and asserts on the resulting HTML structure. The renderer is the
@@ -98,7 +98,7 @@ class RendererTest extends IntegrationTestCase {
         // This assertion exists so a future refactor that accidentally
         // starts rendering empty sections (e.g. by removing the
         // `if ( empty( $items ) ) { return; }` short-circuit in
-        // PRE_Renderer::render_grouping) will fail this test rather than
+        // PCPTPages_Renderer::render_grouping) will fail this test rather than
         // silently changing user-visible output.
         $html = $this->capture_render( $this->post_id );
 
@@ -225,7 +225,7 @@ class RendererTest extends IntegrationTestCase {
      * $post variable has to be set separately. Without that, the_content()
      * → get_post() reads an unset/stale global and returns empty.
      *
-     * The fix in PRE_Renderer pins $GLOBALS['post'] explicitly around the
+     * The fix in PCPTPages_Renderer pins $GLOBALS['post'] explicitly around the
      * the_content() call. This test pins that fix in place — if anyone
      * removes the GLOBALS assignment, the assertion fires.
      *
@@ -259,7 +259,7 @@ class RendererTest extends IntegrationTestCase {
             'RENDER_CONTENT_MARKER_CONNECTOR_FIX',
             $html,
             'the_content() must emit the post_content even when called outside a theme loop. '
-            . 'If this fails, someone removed the $GLOBALS[\'post\'] assignment in PRE_Renderer::render_internal().'
+            . 'If this fails, someone removed the $GLOBALS[\'post\'] assignment in PCPTPages_Renderer::render_internal().'
         );
     }
 
@@ -459,7 +459,7 @@ class RendererTest extends IntegrationTestCase {
         // Manually invalidate (simulating what save_post would do via the
         // hook). The data layer doesn't fire save_post, so we explicitly
         // call the same invalidation function the hook calls.
-        \PRE_Renderer::invalidate_post_cache( $this->post_id );
+        \PCPTPages_Renderer::invalidate_post_cache( $this->post_id );
 
         $html = $this->capture_render( $this->post_id, true );
 

@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.6.2
+Stable tag: 0.6.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,9 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.6.3 =
+* Added: CPT single pages now emit a <meta name="description"> tag plus a compact OpenGraph/Twitter set, derived from the post excerpt/content, title, and featured image. Emits only when no dedicated SEO plugin is active and defers to Promptless-built pages. Clears the "Document does not have a meta description" SEO flag on CPT singles.
+
 = 0.6.2 =
 * Fixed: sidebar card-grid grouping items (icon, heading, link arrow) are now vertically centered, with the arrow pinned to the right edge — single-line items no longer look misaligned.
 * Fixed: neutral chips (multi_badge) are now legible on a dark Content Theme and on dark sections; they could render dark-on-dark before.
@@ -143,6 +146,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.6.3 =
+CPT single pages now emit a meta description plus OpenGraph/Twitter tags (when no SEO plugin is active), clearing the "Document does not have a meta description" SEO flag. Additive — no data or behavior changes.
 
 = 0.6.2 =
 Visual polish: sidebar card grouping alignment, legible neutral chips in dark mode, and cleaner meta-strip spacing. CSS-only — no data or behavior changes.

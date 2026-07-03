@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for PRE_Grouping_Registry.
+ * Unit tests for PCPTPages_Grouping_Registry.
  *
  * Focus: per-CPT scoping. Groupings on different CPTs MUST NOT collide
  * — that's the whole point of using `OPTION_PREFIX . $cpt_slug` keys
@@ -14,12 +14,12 @@ namespace PRE\Tests\Unit;
 use Brain\Monkey\Functions;
 
 /**
- * Tests for PRE_Grouping_Registry.
+ * Tests for PCPTPages_Grouping_Registry.
  */
 class GroupingRegistryTest extends UnitTestCase {
 
     /**
-     * @var \PRE_Grouping_Registry
+     * @var \PCPTPages_Grouping_Registry
      */
     private $registry;
 
@@ -36,7 +36,7 @@ class GroupingRegistryTest extends UnitTestCase {
             return time();
         } );
 
-        $this->registry = new \PRE_Grouping_Registry();
+        $this->registry = new \PCPTPages_Grouping_Registry();
     }
 
     private function valid_grouping( array $overrides = array() ) {
@@ -186,6 +186,6 @@ class GroupingRegistryTest extends UnitTestCase {
         $result = $this->registry->remove( 'listing', 'never_defined' );
 
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_grouping_not_found', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_grouping_not_found', $result->get_error_code() );
     }
 }

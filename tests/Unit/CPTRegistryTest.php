@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for PRE_CPT_Registry.
+ * Unit tests for PCPTPages_CPT_Registry.
  *
  * Focus: round-trip the registry through register → get → exists →
  * unregister, and verify validation rejection bubbles up correctly.
@@ -13,12 +13,12 @@ namespace PRE\Tests\Unit;
 use Brain\Monkey\Functions;
 
 /**
- * Tests for PRE_CPT_Registry.
+ * Tests for PCPTPages_CPT_Registry.
  */
 class CPTRegistryTest extends UnitTestCase {
 
     /**
-     * @var \PRE_CPT_Registry
+     * @var \PCPTPages_CPT_Registry
      */
     private $registry;
 
@@ -40,7 +40,7 @@ class CPTRegistryTest extends UnitTestCase {
             define( 'HOUR_IN_SECONDS', 3600 );
         }
 
-        $this->registry = new \PRE_CPT_Registry();
+        $this->registry = new \PCPTPages_CPT_Registry();
     }
 
     /**
@@ -142,14 +142,14 @@ class CPTRegistryTest extends UnitTestCase {
     public function test_register_rejects_reserved_slug() {
         $result = $this->registry->register( 'page', $this->valid_definition( array( 'slug' => 'page' ) ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_reserved_slug', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_reserved_slug', $result->get_error_code() );
         $this->assertFalse( $this->registry->exists( 'page' ), 'Rejected registration must not leak into storage.' );
     }
 
     public function test_register_rejects_empty_slug() {
         $result = $this->registry->register( '', $this->valid_definition() );
         $this->assertInstanceOf( '\\WP_Error', $result );
-        $this->assertSame( 'pre_invalid_slug', $result->get_error_code() );
+        $this->assertSame( 'pcptpages_invalid_slug', $result->get_error_code() );
     }
 
     public function test_unregister_removes_existing_cpt() {

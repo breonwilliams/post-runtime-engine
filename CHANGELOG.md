@@ -4,6 +4,11 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.6.3] — 2026-07-03
+
+### Added
+- **SEO meta tags on CPT single pages: `<meta name="description">` plus a compact OpenGraph/Twitter set.** PRE renders its own CPT single pages (listings, practice areas, attorney bios, events), but only emitted structured data (Event JSON-LD) for them — never a meta description. Promptless WP's `SocialMetaTags` only fires on pages carrying `_aisb_sections`, which PRE singles don't have, so those pages shipped with no meta description at all and Lighthouse/PageSpeed flagged "Document does not have a meta description." A new self-contained `PCPTPages_Meta_Tags` emitter (mirroring the `PCPTPages_Event_Schema` `wp_head` pattern) now outputs `<meta name="description">` derived from the post excerpt (or trimmed content, capped ~155 chars on a word boundary), plus `og:title/description/type/url/site_name/image` and the Twitter card, using the post title and featured image. It emits only on singular views of PRE-registered CPTs, **defers to Promptless** on `_aisb_enabled` pages (which own their own head), and **defers to any active SEO plugin** (Yoast, Rank Math, AIOSEO, SEOPress, The SEO Framework, Slim SEO — detected by version constant, filterable via `pcptpages_seo_plugin_active`) so it never double-emits. Description and the full tag set are filterable (`pcptpages_meta_description`, `pcptpages_meta_tags`). No PHP dependency on Promptless — the one-way decoupling is preserved. (`includes/Frontend/class-pre-meta-tags.php`, autoloader, `post-runtime-engine.php`.)
+
 ## [0.6.2] — 2026-06-25
 
 ### Fixed

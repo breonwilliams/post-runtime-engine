@@ -3,7 +3,7 @@
  * Plugin Name: Promptless CPT Pages
  * Plugin URI: https://promptlesswp.com
  * Description: Render CPT single pages with structured data display, layout variants, and admin or AI population. Works standalone or with Promptless WP.
- * Version: 0.6.2
+ * Version: 0.6.3
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: Promptless WP
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin version. Bumped on every meaningful release.
-define( 'PCPTPages_VERSION', '0.6.2' );
+define( 'PCPTPages_VERSION', '0.6.3' );
 
 // Minimum data-storage schema version. Bumped when option / post-meta shapes
 // change in a way that requires migration, or when a new capability needs to
@@ -258,6 +258,15 @@ final class Promptless_CPT_Pages {
 		// that map an event_start role. Self-contained — no Promptless
 		// dependency; defers to Promptless on _aisb_enabled pages.
 		( new PCPTPages_Event_Schema() )->init();
+
+		// SEO meta tags on CPT singles: <meta name="description"> plus a
+		// compact OG/Twitter set derived from the excerpt/content, title,
+		// and featured image. PRE owns the head for the pages it renders;
+		// Promptless's SocialMetaTags only fires on _aisb_sections pages, so
+		// without this a PRE single ships with no meta description (a
+		// Lighthouse/PageSpeed SEO flag). Self-contained — defers to
+		// Promptless on _aisb_enabled pages and to any active SEO plugin.
+		( new PCPTPages_Meta_Tags() )->init();
 
 		// PostGrid editor-preview parity (v1.2.x): REST endpoint that returns
 		// batched, position-keyed card-field HTML so Promptless WP's React

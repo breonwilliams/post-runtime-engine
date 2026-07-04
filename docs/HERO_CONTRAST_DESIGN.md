@@ -1,7 +1,9 @@
-# Hero Contrast & Width — Design Contract (Phase A)
+# Hero Contrast & Width — Design Contract
 
-**Status:** Locked 2026-07-04. Implementation must match this contract; changes to the
-contract require editing this document first (same discipline as
+**Status:** Phase A locked 2026-07-04 and SHIPPED (validator, renderer, CSS, admin,
+connector, MCP — smoke-tested end-to-end). Phase B locked 2026-07-04, not yet
+implemented. Implementation must match this contract; changes to the contract
+require editing this document first (same discipline as
 `POST_FIELDS_V1_1_DESIGN.md`).
 
 ## Problem
@@ -121,3 +123,143 @@ composition stays single-sourced.
    values are rejected by the validator with a clear error.
 6. Non-Promptless themes: forced hero themes still work (they depend only on `--aisb-*`
    fallbacks); `inherit` remains light as today.
+
+## Implementation lessons from Phase A (binding on Phase B)
+
+Three bugs found in Phase A smoke testing that Phase B must not re-introduce:
+
+1. **Theme-interop variables.** The Promptless theme styles headings/links inside
+   `.promptless-content` via its OWN `--section-*` intermediates at higher
+   specificity than `.pre-hero__*` element classes. Any hero treatment that forces
+   a mode must re-declare the theme's `--section-*` set alongside `--pre-*`
+   (see the `.pre-hero--theme-dark` block in `frontend.css`).
+2. **Overflow clipping placement.** `overflow-x: clip` on `.pre-single` clips the
+   full-bleed breakout itself (clipping affects painting, not layout — rects
+   measure fine while the paint is wrong). Viewport-sliver containment lives on
+   `body:has(.pre-single--hero-full)`.
+3. **Cascade order vs. the container shorthand.** `.pre-single { padding: ... }`
+   lives late in the file; any earlier rule zeroing part of that padding needs
+   compound-selector specificity (`.pre-single.pre-single--hero-full`), not
+   source-order luck.
+
+---
+
+# Phase B — Overlay hero layout (`hero_layout: overlay`)
+
+**Status:** Locked 2026-07-04. Not yet implemented.
+
+## Problem
+
+Phase A's band puts the featured image *beside or above* the text on a colored
+surface. For image-rich CPTs (real estate listings, events, venues, portfolios) the
+premium agency treatment puts text *on* the image: the featured image fills the hero
+band and the title/price/badges/meta sit on top, kept readable by a gradient scrim.
+
+## Scope
+
+ONE new enum value: `hero_layout` gains `overlay` (`stacked | split | overlay`), plus
+ONE new optional CPT key:
+
+| Key | Enum | Default | Meaning |
+|---|---|---|---|
+| `hero_overlay_focus` | `top` \| `center` \| `bottom` | `center` | Which part of the featured image stays visible when the band crops it (`object-position`). `top` keeps rooflines/skies, `bottom` keeps foregrounds. Only meaningful when `hero_layout=overlay`. |
+
+Explicit non-goals (future contracts if demanded): scrim-strength knob, text-position
+knob (bottom-left is fixed), per-post overlay opt-out, video backgrounds, parallax.
+
+## Rendering contract
+
+`render_hero()` gains an `overlay` branch emitting:
+
+```html
+<header class="pre-hero pre-hero--overlay pre-hero--focus-{focus} [pre-hero--full] pre-hero--has-image">
+  <div class="pre-hero__inner">
+    <div class="pre-hero__backdrop">          <!-- absolute, fills band -->
+      <img class="pre-hero__image" ...>       <!-- size 'full', object-fit: cover -->
+    </div>
+    <div class="pre-hero__scrim" aria-hidden="true"></div>
+    <!-- image_overlay post-field position: top-left of the band (unchanged semantics) -->
+    <div class="pre-hero__text pre-hero__text--overlay">  <!-- bottom-left, above scrim -->
+      headline → h1 → subtitle → excerpt → meta_strip → footer_meta  (same order as today)
+    </div>
+  </div>
+</header>
+```
+
+- **Text is ALWAYS dark-mode-tokened** in the with-image case: the overlay branch
+  applies the same `--pre-*` + `--section-*` re-declarations as
+  `.pre-hero--theme-dark`, because text sits on a darkened photograph regardless of
+  page mode. `hero_theme` is IGNORED when overlay has an image (documented
+  precedence, enforced in CSS not PHP — the theme class may still be emitted but the
+  overlay rules win).
+- **No-featured-image fallback:** the hero renders exactly as `stacked` does today
+  (text-only, honoring `hero_theme`/`hero_width`). Never an empty dark box. This is
+  a renderer-level branch: `overlay && ! has_post_thumbnail()` → render the stacked
+  path. Markup for imageless posts is therefore identical to Phase A output.
+- **Band height:** `clamp(320px, 52vh, 560px)` desktop; `clamp(260px, 45vh, 420px)`
+  under 768px. Values may be tuned during implementation within acceptance
+  criterion B3 (text never clipped, band never exceeds first viewport).
+- **Composes with `hero_width`:** `contained` renders the overlay as a rounded card
+  (`--aisb-section-radius-card`) inside the grid; `full` is the full-bleed cinematic
+  version using Phase A's breakout mechanics unchanged.
+
+## Scrim contract (the WCAG guarantee)
+
+- Fixed bottom-weighted gradient on `.pre-hero__scrim`:
+  `linear-gradient(180deg, rgba(10,14,18,0.18) 0%, rgba(10,14,18,0.30) 45%, rgba(10,14,18,0.86) 100%)`.
+- Scrim constants are **deliberately palette-independent** (literal near-black rgba,
+  NOT derived from `--aisb-color-dark-background`): the contrast guarantee must hold
+  for any uploaded photo and any user palette. A site palette with a light "dark
+  background" must not be able to break hero text contrast.
+- Text tokens over the scrim use the standard dark set (`--aisb-color-dark-text`
+  etc.) — the bottom scrim stop (0.86 near-black) guarantees ≥ WCAG AA for
+  `#fafafa`-class text over ANY image content.
+- The gradient is exempt from the plugin's no-gradient aesthetic conventions: it is
+  a functional contrast device, not decoration.
+
+## Data-layer contract
+
+- `PCPTPages_Validator`: `'overlay'` added to the `hero_layout` inline enum; new
+  `HERO_OVERLAY_FOCUS` const + validation block for `hero_overlay_focus`.
+- `merge_defaults()`: `hero_overlay_focus => 'center'`. No migration, no data-version
+  bump (additive, behavior-preserving default).
+- `hero_image_position` / `hero_image_aspect` remain split-only; overlay ignores them
+  (validator continues to accept them regardless of layout, per existing policy).
+
+## Surface wiring checklist (same nine points as Phase A — silent-drop gates ⚠️)
+
+- [ ] Validator: enum extension + `HERO_OVERLAY_FOCUS` + validation block
+- [ ] Registry `merge_defaults()`
+- [ ] Renderer: overlay branch, no-image fallback branch, focus class,
+      `loading="eager"` + `fetchpriority="high"` on the overlay image (it is the LCP
+      element by construction; mirrors Promptless WP's hero LCP handling)
+- [ ] `frontend.css`: `.pre-hero--overlay` block (backdrop/scrim/text positioning,
+      heights, focus variants, contained-radius vs full-bleed) with the Phase A
+      lessons applied
+- [ ] Admin CPTs screen: `overlay` option in the Hero layout select + focus select
+      (shown for all layouts, described as overlay-only, matching how
+      image_position/aspect describe themselves as split-only)
+- [ ] ⚠️ Connector `field_name_hints()['cpt_definition']`: add `hero_overlay_focus`
+- [ ] Connector `critical_rules`: extend `hero_contrast_band` with overlay guidance
+      (when to pick overlay vs dark band; no-image fallback; hero_theme precedence)
+- [ ] ⚠️ MCP JS: `hero_layout` enum in BOTH tool schemas, `hero_overlay_focus` in
+      schemas AND both body-allowlist arrays
+- [ ] Cache invalidation: already covered by the Phase A `pcptpages_cpt_registered`
+      hook — no new work
+
+## Acceptance criteria (Phase B)
+
+B1. Existing CPTs (`stacked`/`split`) render byte-identical markup — `overlay` is
+    pure opt-in.
+B2. Overlay with an image: title/meta text passes WCAG AA over a worst-case bright
+    image (verify with a white test image); text sits bottom-left, aligned with the
+    page grid in both `contained` and `full` widths.
+B3. Band height respects the clamp on desktop and mobile; text never clips; the band
+    never pushes all content below the first viewport.
+B4. Overlay without a featured image renders the stacked fallback honoring
+    `hero_theme` — no empty band, no layout shift artifacts.
+B5. `hero_overlay_focus` visibly shifts crop (top/center/bottom) on a tall test image.
+B6. Overlay image carries `loading="eager"`/`fetchpriority="high"`; no layout shift
+    (band height is fixed by CSS, not by image intrinsic size).
+B7. All three write surfaces (admin, REST, MCP) accept the new values; invalid values
+    rejected with typed errors.

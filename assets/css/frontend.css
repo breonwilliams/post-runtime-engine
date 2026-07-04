@@ -288,6 +288,13 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
  * uploaded photo and any user palette. The 0.86 near-black bottom stop
  * keeps #fafafa-class text ≥ AA over any image content.
  */
+/* TOKEN REMAP ONLY in this compound-specificity (0-2-0) block: it must
+ * beat .pre-hero--theme-light (0-1-0) to enforce "hero_theme is ignored
+ * over a photo". Layout properties live in the plain (0-1-0) block
+ * below so the shared .pre-hero--full width rules (radius reset +
+ * grid-aligning padding-inline) win exactly as they do for the Phase A
+ * band — attaching layout to this selector was a smoke-test bug that
+ * left the full-bleed overlay with card radius and un-capped content. */
 .pre-hero.pre-hero--overlay {
 	--pre-color-text: var(--aisb-color-dark-text, #fafafa);
 	--pre-color-text-muted: var(--aisb-smart-dark-surface-muted, var(--aisb-color-dark-text-muted, #9ca3af));
@@ -309,7 +316,9 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 	--section-border: var(--aisb-color-dark-border, #4b5563);
 	--section-link: var(--aisb-smart-dark-section-link, var(--aisb-color-primary, #6366f1));
 	--section-surface-link: var(--aisb-smart-dark-surface-link, var(--aisb-color-primary, #6366f1));
+}
 
+.pre-hero--overlay {
 	position: relative;
 	display: flex;
 	flex-direction: column;
@@ -319,6 +328,10 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 	/* Dark fallback so text stays readable before the image paints. */
 	background: var(--pre-color-background);
 	padding: var(--aisb-section-space-lg, 2rem) var(--aisb-section-space-md, 1.5rem);
+	/* Contained mode renders as a card, matching the Phase A contained
+	 * band. Full-bleed mode gets radius 0 + grid-aligned padding from
+	 * the shared .pre-hero--full rules below (they must keep winning —
+	 * do NOT raise this block's specificity). */
 	border-radius: var(--aisb-section-radius-card, 12px);
 }
 
@@ -388,16 +401,6 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 
 .pre-hero__text--overlay {
 	margin-top: auto;
-	/* Belt-and-suspenders over pathological images (specular highlights,
-	 * pure-white regions the gradient math can't anticipate). Standard
-	 * practice for text-on-photography. */
-	text-shadow: 0 1px 3px rgba(10, 14, 18, 0.55);
-}
-
-/* Cap line length on very wide full-bleed bands so the text block stays
- * readable instead of stretching across the whole viewport. */
-.pre-hero__text--overlay {
-	max-width: 44rem;
 }
 
 /*

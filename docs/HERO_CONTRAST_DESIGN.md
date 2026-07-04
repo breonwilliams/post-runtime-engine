@@ -212,9 +212,14 @@ knob (bottom-left is fixed), per-post overlay opt-out, video backgrounds, parall
   ~35% band height, where 0.28 opacity measured ~2:1 over a white test image.
   The amended stops guarantee ≥3:1 (AA large text) anywhere the title/headline
   can reach (~25% down) and ≥4.5:1 (AA normal text) from the title line down,
-  where excerpt/meta always sit. `.pre-hero__text--overlay` additionally
-  carries `text-shadow: 0 1px 3px rgba(10,14,18,0.55)` as belt-and-suspenders
-  for pathological images.)
+  where excerpt/meta always sit. A text-shadow was briefly added as
+  belt-and-suspenders and REMOVED in design review — it is off-system and the
+  scrim stops alone carry the guarantee. Design-review amendment 2: the
+  overlay must inherit the Phase A width mechanics EXACTLY — full-bleed
+  overlay has radius 0 and grid-aligned content via the shared
+  `.pre-hero--full` rules; token remaps and layout properties therefore live
+  in separate selectors so the compound-specificity token block cannot
+  outrank the shared width rules.)
 - Scrim constants are **deliberately palette-independent** (literal near-black rgba,
   NOT derived from `--aisb-color-dark-background`): the contrast guarantee must hold
   for any uploaded photo and any user palette. A site palette with a light "dark

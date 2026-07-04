@@ -46,14 +46,22 @@
 	--pre-color-border: var(--aisb-color-border, #e5e7eb);
 	--pre-color-primary: var(--aisb-color-primary, #6366f1);
 
-	--pre-color-success-bg: var(--aisb-color-success-bg, rgba(16, 185, 129, 0.12));
-	--pre-color-success-text: var(--aisb-color-success, #047857);
-	--pre-color-warning-bg: var(--aisb-color-warning-bg, rgba(245, 158, 11, 0.14));
-	--pre-color-warning-text: var(--aisb-color-warning, #b45309);
-	--pre-color-danger-bg: var(--aisb-color-error-bg, rgba(239, 68, 68, 0.12));
-	--pre-color-danger-text: var(--aisb-color-error, #b91c1c);
-	--pre-color-info-bg: var(--aisb-color-info-bg, rgba(59, 130, 246, 0.12));
-	--pre-color-info-text: var(--aisb-color-info, #1d4ed8);
+	/* Intent (status) colors are PALETTE-INDEPENDENT CONSTANTS, not brand
+	   tokens. Kitchen-sink contrast audit (2026-07-04) found that sites
+	   whose --aisb-color-success/warning/error/info tokens are mid-tone
+	   FILL colors (e.g. emerald-500 #10b981) produced badge text at
+	   1.9–3.2:1 on the tint backgrounds — those tokens are meant for
+	   solid fills, not text on tints. Status colors are semantic, not
+	   brand, so they use fixed AA-safe shades (same philosophy as the
+	   overlay hero scrim constants in frontend.css). */
+	--pre-color-success-bg: rgba(16, 185, 129, 0.14);
+	--pre-color-success-text: #047857;
+	--pre-color-warning-bg: rgba(245, 158, 11, 0.16);
+	--pre-color-warning-text: #92400e;
+	--pre-color-danger-bg: rgba(239, 68, 68, 0.13);
+	--pre-color-danger-text: #b91c1c;
+	--pre-color-info-bg: rgba(59, 130, 246, 0.13);
+	--pre-color-info-text: #1d4ed8;
 	--pre-color-neutral-bg: var(--aisb-color-surface, rgba(0, 0, 0, 0.05));
 	/* Track the theme-aware muted token (which flips light↔dark) rather than the
 	   raw light --aisb-color-text-muted, so neutral pill text stays legible on a
@@ -92,21 +100,69 @@
 
 /* Single-hero context: declare success/warning/danger/info intent
  * tokens on the wrapper so badges work even when this CSS is loaded
- * before frontend.css's .pre-single block has resolved. */
+ * before frontend.css's .pre-single block has resolved. Same
+ * palette-independent constants as the card block above. */
 .pre-card-fields--single-hero, .pre-hero {
-	--pre-color-success-bg: var(--aisb-color-success-bg, rgba(16, 185, 129, 0.12));
-	--pre-color-success-text: var(--aisb-color-success, #047857);
-	--pre-color-warning-bg: var(--aisb-color-warning-bg, rgba(245, 158, 11, 0.14));
-	--pre-color-warning-text: var(--aisb-color-warning, #b45309);
-	--pre-color-danger-bg: var(--aisb-color-error-bg, rgba(239, 68, 68, 0.12));
-	--pre-color-danger-text: var(--aisb-color-error, #b91c1c);
-	--pre-color-info-bg: var(--aisb-color-info-bg, rgba(59, 130, 246, 0.12));
-	--pre-color-info-text: var(--aisb-color-info, #1d4ed8);
+	--pre-color-success-bg: rgba(16, 185, 129, 0.14);
+	--pre-color-success-text: #047857;
+	--pre-color-warning-bg: rgba(245, 158, 11, 0.16);
+	--pre-color-warning-text: #92400e;
+	--pre-color-danger-bg: rgba(239, 68, 68, 0.13);
+	--pre-color-danger-text: #b91c1c;
+	--pre-color-info-bg: rgba(59, 130, 246, 0.13);
+	--pre-color-info-text: #1d4ed8;
 	--pre-color-neutral-bg: var(--aisb-color-surface, rgba(0, 0, 0, 0.05));
 	/* Track the theme-aware muted token (which flips light↔dark) rather than the
 	   raw light --aisb-color-text-muted, so neutral pill text stays legible on a
 	   dark Content Theme / dark section. A neutral pill's text IS muted text. */
 	--pre-color-neutral-text: var(--pre-color-text-muted, var(--aisb-color-text-muted, #4b5563));
+}
+
+/* ----------------------------------------------------------------------
+ * DARK-CONTEXT intent remap (kitchen-sink audit fix, 2026-07-04).
+ *
+ * The light intent set above uses dark text on pale tints — on a dark
+ * surface those tints barely lighten the background and the dark text
+ * disappears (audited at 1.9–4.4:1). Every dark surface a badge or
+ * multi-badge pill can sit on gets light text shades on stronger tints:
+ *   - page dark mode (cards, PostGrid/theme-archive items, hero)
+ *   - forced-dark hero band (.pre-hero--theme-dark, Phase A)
+ *   - overlay hero (always dark-on-scrim by contract, Phase B)
+ * Audited ≥7:1 for all four intents over the darkest band background.
+ * -------------------------------------------------------------------- */
+.aisb-section--dark .pre-card-fields--card,
+.pre-card-fields--card.is-dark,
+.aisb-section--dark .aisb-features__item,
+.aisb-features__item.is-dark,
+.aisb-section--dark .pre-hero,
+.pre-single--dark .pre-hero,
+.pre-hero.pre-hero--theme-dark,
+.pre-hero.pre-hero--overlay {
+	--pre-color-success-bg: rgba(16, 185, 129, 0.22);
+	--pre-color-success-text: #6ee7b7;
+	--pre-color-warning-bg: rgba(245, 158, 11, 0.22);
+	--pre-color-warning-text: #fcd34d;
+	--pre-color-danger-bg: rgba(239, 68, 68, 0.24);
+	--pre-color-danger-text: #fca5a5;
+	--pre-color-info-bg: rgba(59, 130, 246, 0.24);
+	--pre-color-info-text: #93c5fd;
+	--pre-color-neutral-bg: rgba(255, 255, 255, 0.10);
+}
+
+/* Forced-LIGHT hero band inside a dark page must get the light intent
+ * set back. :not(.pre-hero--overlay) both raises specificity above the
+ * dark block's compound selectors AND keeps the overlay exempt (overlay
+ * ignores hero_theme by contract — its badges always sit on the scrim). */
+.pre-hero.pre-hero--theme-light:not(.pre-hero--overlay) {
+	--pre-color-success-bg: rgba(16, 185, 129, 0.14);
+	--pre-color-success-text: #047857;
+	--pre-color-warning-bg: rgba(245, 158, 11, 0.16);
+	--pre-color-warning-text: #92400e;
+	--pre-color-danger-bg: rgba(239, 68, 68, 0.13);
+	--pre-color-danger-text: #b91c1c;
+	--pre-color-info-bg: rgba(59, 130, 246, 0.13);
+	--pre-color-info-text: #1d4ed8;
+	--pre-color-neutral-bg: var(--aisb-color-surface, rgba(0, 0, 0, 0.05));
 }
 
 /* ----------------------------------------------------------------------- */
@@ -374,23 +430,27 @@
 	-webkit-backdrop-filter: blur(4px);
 }
 
+/* Solid backgrounds are FIXED AA-safe shades, not brand tokens — the
+ * kitchen-sink audit (2026-07-04) measured white text at ~2.6:1 on sites
+ * whose intent tokens are mid-tone fills (e.g. emerald-500). White on
+ * these constants: success 7.9:1, warning 4.9:1, danger 5.9:1, info 6.1:1. */
 .pre-field--badge.pre-field--position-image-overlay.pre-field--badge-success {
-	background: var(--aisb-color-success, #047857);
+	background: #047857;
 	color: #ffffff;
 }
 
 .pre-field--badge.pre-field--position-image-overlay.pre-field--badge-warning {
-	background: var(--aisb-color-warning, #b45309);
+	background: #b45309;
 	color: #ffffff;
 }
 
 .pre-field--badge.pre-field--position-image-overlay.pre-field--badge-danger {
-	background: var(--aisb-color-error, #b91c1c);
+	background: #b91c1c;
 	color: #ffffff;
 }
 
 .pre-field--badge.pre-field--position-image-overlay.pre-field--badge-info {
-	background: var(--aisb-color-info, #1d4ed8);
+	background: #1d4ed8;
 	color: #ffffff;
 }
 

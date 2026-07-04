@@ -105,6 +105,31 @@ class PCPTPages_Renderer {
 		add_action( 'updated_option', array( __CLASS__, 'maybe_bump_groupings_changed' ), 10, 3 );
 		add_action( 'added_option', array( __CLASS__, 'maybe_bump_groupings_changed_on_add' ), 10, 2 );
 		add_action( 'deleted_option', array( __CLASS__, 'maybe_bump_groupings_changed_on_delete' ), 10, 1 );
+
+		// When a CPT DEFINITION changes (hero_layout, hero_theme, hero_width,
+		// archive flags, labels …), bump the same per-CPT timestamp. All CPT
+		// definitions live in the single `pcptpages_cpts` option, which does
+		// NOT match the groupings prefix above — before this hook existed,
+		// definition edits left stale cached renders for up to the cache TTL
+		// (pre-existing bug fixed as part of docs/HERO_CONTRAST_DESIGN.md).
+		// We reuse the groupings_changed timestamp rather than adding a
+		// parallel key so cache-key composition stays single-sourced.
+		add_action( 'pcptpages_cpt_registered', array( __CLASS__, 'bump_cpt_changed' ), 10, 1 );
+		add_action( 'pcptpages_cpt_unregistered', array( __CLASS__, 'bump_cpt_changed' ), 10, 1 );
+	}
+
+	/**
+	 * Bump the per-CPT change timestamp when a CPT definition is registered,
+	 * updated, or removed, so cached renders of that CPT's posts invalidate
+	 * on next read.
+	 *
+	 * @param string $cpt_slug CPT slug passed by pcptpages_cpt_(un)registered.
+	 */
+	public static function bump_cpt_changed( $cpt_slug ) {
+		if ( ! is_string( $cpt_slug ) || $cpt_slug === '' ) {
+			return;
+		}
+		update_option( 'pcptpages_groupings_changed_' . sanitize_key( $cpt_slug ), time() );
 	}
 
 	/**
@@ -271,6 +296,17 @@ class PCPTPages_Renderer {
 			? $cpt_def['hero_image_aspect']
 			: 'square';
 
+		// Hero contrast/width (docs/HERO_CONTRAST_DESIGN.md). 'inherit' and
+		// 'contained' are the no-op defaults — they emit no extra classes,
+		// keeping markup byte-identical to pre-Phase-A output for every CPT
+		// that hasn't opted in.
+		$hero_theme = is_array( $cpt_def ) && ! empty( $cpt_def['hero_theme'] )
+			? $cpt_def['hero_theme']
+			: 'inherit';
+		$hero_width = is_array( $cpt_def ) && ! empty( $cpt_def['hero_width'] )
+			? $cpt_def['hero_width']
+			: 'contained';
+
 		// CPT-level default icon. Used as a fallback when:
 		//   - a grouping item has neither image_id nor icon_id set (any
 		//     variant — gives every auto-source row a baseline visual cue
@@ -335,9 +371,17 @@ class PCPTPages_Renderer {
 		$has_sidebar = ! empty( $sidebar );
 		$body_class  = $has_sidebar ? 'pre-body pre-body--with-sidebar' : 'pre-body';
 
+		// A full-bleed hero needs overflow coordination on the article itself
+		// (overflow-x: clip kills the 100vw scrollbar sliver) — a child class
+		// alone can't provide that, hence the container-level class.
+		$article_classes = 'pre-single pre-single--' . sanitize_html_class( $post->post_type );
+		if ( 'full' === $hero_width ) {
+			$article_classes .= ' pre-single--hero-full';
+		}
+
 		?>
-		<article id="post-<?php echo esc_attr( $post->ID ); ?>" <?php post_class( 'pre-single pre-single--' . sanitize_html_class( $post->post_type ) ); ?>>
-			<?php $this->render_hero( $post, $hero_layout, $hero_image_position, $hero_image_aspect ); ?>
+		<article id="post-<?php echo esc_attr( $post->ID ); ?>" <?php post_class( $article_classes ); ?>>
+			<?php $this->render_hero( $post, $hero_layout, $hero_image_position, $hero_image_aspect, $hero_theme, $hero_width ); ?>
 
 			<div class="<?php echo esc_attr( $body_class ); ?>">
 				<div class="pre-body__main">
@@ -435,8 +479,10 @@ class PCPTPages_Renderer {
 	 * @param string  $layout         'stacked' | 'split'.
 	 * @param string  $image_position 'left' | 'right' (only meaningful for split).
 	 * @param string  $image_aspect   'square' | 'landscape' | 'wide' (only meaningful for split).
+	 * @param string  $theme          'inherit' | 'light' | 'dark' (docs/HERO_CONTRAST_DESIGN.md).
+	 * @param string  $width          'contained' | 'full' (docs/HERO_CONTRAST_DESIGN.md).
 	 */
-	private function render_hero( WP_Post $post, $layout = 'stacked', $image_position = 'left', $image_aspect = 'square' ) {
+	private function render_hero( WP_Post $post, $layout = 'stacked', $image_position = 'left', $image_aspect = 'square', $theme = 'inherit', $width = 'contained' ) {
 		$has_thumbnail = has_post_thumbnail( $post->ID );
 		$excerpt       = $post->post_excerpt;
 		$title         = get_the_title( $post );
@@ -447,6 +493,8 @@ class PCPTPages_Renderer {
 		$layout         = in_array( $layout, array( 'stacked', 'split' ), true ) ? $layout : 'stacked';
 		$image_position = in_array( $image_position, array( 'left', 'right' ), true ) ? $image_position : 'left';
 		$image_aspect   = in_array( $image_aspect, array( 'square', 'landscape', 'wide' ), true ) ? $image_aspect : 'square';
+		$theme          = in_array( $theme, PCPTPages_Validator::HERO_THEMES, true ) ? $theme : 'inherit';
+		$width          = in_array( $width, PCPTPages_Validator::HERO_WIDTHS, true ) ? $width : 'contained';
 
 		$hero_classes = array( 'pre-hero', 'pre-hero--' . $layout );
 		if ( $layout === 'split' ) {
@@ -459,6 +507,15 @@ class PCPTPages_Renderer {
 		}
 		if ( $has_thumbnail ) {
 			$hero_classes[] = 'pre-hero--has-image';
+		}
+		// Contrast band + width (docs/HERO_CONTRAST_DESIGN.md). 'inherit' and
+		// 'contained' deliberately emit NOTHING — pre-Phase-A markup must
+		// stay byte-identical for CPTs that haven't opted in.
+		if ( 'inherit' !== $theme ) {
+			$hero_classes[] = 'pre-hero--theme-' . $theme;
+		}
+		if ( 'full' === $width ) {
+			$hero_classes[] = 'pre-hero--full';
 		}
 
 		// v1.1: render post fields if the CPT has any registered. We render

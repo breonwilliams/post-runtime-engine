@@ -614,6 +614,45 @@ class PCPTPages_Admin_CPTs {
 						</p>
 					</td>
 				</tr>
+				<tr>
+					<th scope="row">
+						<label for="pcptpages_hero_theme"><?php esc_html_e( 'Hero theme', 'promptless-cpt-pages' ); ?></label>
+					</th>
+					<td>
+						<select id="pcptpages_hero_theme" name="hero_theme">
+							<option value="inherit" <?php selected( $values['hero_theme'], 'inherit' ); ?>>
+								<?php esc_html_e( 'Inherit — hero follows the page\'s light/dark mode (default)', 'promptless-cpt-pages' ); ?>
+							</option>
+							<option value="light" <?php selected( $values['hero_theme'], 'light' ); ?>>
+								<?php esc_html_e( 'Light band — hero forced light regardless of page mode', 'promptless-cpt-pages' ); ?>
+							</option>
+							<option value="dark" <?php selected( $values['hero_theme'], 'dark' ); ?>>
+								<?php esc_html_e( 'Dark band — hero forced dark regardless of page mode', 'promptless-cpt-pages' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'A forced theme turns the hero into a contrasting band with its own background — e.g. a dark hero on an otherwise light page. Colors come from the same design tokens as the rest of the site, so brand palettes and WCAG-corrected link colors flow through automatically.', 'promptless-cpt-pages' ); ?>
+						</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="pcptpages_hero_width"><?php esc_html_e( 'Hero width', 'promptless-cpt-pages' ); ?></label>
+					</th>
+					<td>
+						<select id="pcptpages_hero_width" name="hero_width">
+							<option value="contained" <?php selected( $values['hero_width'], 'contained' ); ?>>
+								<?php esc_html_e( 'Contained — hero stays inside the page content width (default)', 'promptless-cpt-pages' ); ?>
+							</option>
+							<option value="full" <?php selected( $values['hero_width'], 'full' ); ?>>
+								<?php esc_html_e( 'Full width — hero background bleeds to the viewport edges', 'promptless-cpt-pages' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Full width bleeds the hero band edge-to-edge while the title, image, and metadata stay aligned with the page grid. Most striking combined with a forced Dark band theme.', 'promptless-cpt-pages' ); ?>
+						</p>
+					</td>
+				</tr>
 			</table>
 
 			<h2 class="title"><?php esc_html_e( 'Grouping defaults', 'promptless-cpt-pages' ); ?></h2>
@@ -821,6 +860,12 @@ class PCPTPages_Admin_CPTs {
 		$hero_image_aspect = isset( $_POST['hero_image_aspect'] )
 			? sanitize_key( wp_unslash( $_POST['hero_image_aspect'] ) )
 			: 'square';
+		$hero_theme = isset( $_POST['hero_theme'] )
+			? sanitize_key( wp_unslash( $_POST['hero_theme'] ) )
+			: 'inherit';
+		$hero_width = isset( $_POST['hero_width'] )
+			? sanitize_key( wp_unslash( $_POST['hero_width'] ) )
+			: 'contained';
 		// default_icon is validated against PCPTPages_Icon_Library by the validator
 		// — sanitize_key strips invalid chars (icon IDs are snake_case) before
 		// the lookup so malformed input fails with a typed error.
@@ -846,6 +891,8 @@ class PCPTPages_Admin_CPTs {
 			'hero_layout'         => $hero_layout,
 			'hero_image_position' => $hero_image_position,
 			'hero_image_aspect'   => $hero_image_aspect,
+			'hero_theme'          => $hero_theme,
+			'hero_width'          => $hero_width,
 			'default_icon'        => $default_icon,
 			// Archive card meta toggles. Checkboxes are unchecked when the
 			// post param is missing, so the default behavior of `!empty()`
@@ -950,6 +997,8 @@ class PCPTPages_Admin_CPTs {
 			'hero_layout'         => $definition['hero_layout'] ?? 'stacked',
 			'hero_image_position' => $definition['hero_image_position'] ?? 'left',
 			'hero_image_aspect'   => $definition['hero_image_aspect'] ?? 'square',
+			'hero_theme'          => $definition['hero_theme'] ?? 'inherit',
+			'hero_width'          => $definition['hero_width'] ?? 'contained',
 			'default_icon'        => $definition['default_icon'] ?? '',
 			// Archive card meta toggles. Defaults to true (backward compatible
 			// — existing CPTs without these keys behave exactly as before).
@@ -986,6 +1035,8 @@ class PCPTPages_Admin_CPTs {
 			'hero_layout'         => 'stacked',
 			'hero_image_position' => 'left',
 			'hero_image_aspect'   => 'square',
+			'hero_theme'          => 'inherit',
+			'hero_width'          => 'contained',
 			'default_icon'        => '',
 			'archive_show_post_date'   => true,
 			'archive_show_post_author' => true,

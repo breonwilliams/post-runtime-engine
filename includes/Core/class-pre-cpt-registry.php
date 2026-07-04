@@ -386,6 +386,14 @@ class PCPTPages_CPT_Registry {
 			'hero_image_position' => 'left',
 			'hero_image_aspect'   => 'square',
 
+			// Hero contrast/width (Phase A, docs/HERO_CONTRAST_DESIGN.md).
+			// 'inherit'/'contained' reproduce pre-Phase-A rendering exactly
+			// (no extra classes emitted), so existing CPTs pick these up
+			// transparently with zero visual change. 'dark' + 'full' is the
+			// opt-in "full-width dark hero band on a light page" treatment.
+			'hero_theme'          => 'inherit',
+			'hero_width'          => 'contained',
+
 			// Default icon — empty string means "no fallback". Authors who
 			// want their compact-grid / horizontal-row groupings to always
 			// have a visual cue set this to an icon ID from PCPTPages_Icon_Library.

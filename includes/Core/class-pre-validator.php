@@ -66,6 +66,40 @@ class PCPTPages_Validator {
 	);
 
 	/**
+	 * Allowed hero theme modes (CPT-level, Phase A of HERO_CONTRAST_DESIGN.md).
+	 *
+	 *   - inherit: hero follows the page's light/dark mode (pre-Phase-A
+	 *     behavior; emits no theme class, markup is byte-identical to v0.6.3)
+	 *   - light:   hero band forced light regardless of page mode
+	 *   - dark:    hero band forced dark regardless of page mode — the
+	 *     "dark band on a light page" contrast treatment
+	 *
+	 * Closed enum. Do NOT extend without updating
+	 * docs/HERO_CONTRAST_DESIGN.md first.
+	 */
+	const HERO_THEMES = array(
+		'inherit',
+		'light',
+		'dark',
+	);
+
+	/**
+	 * Allowed hero width modes (CPT-level, Phase A of HERO_CONTRAST_DESIGN.md).
+	 *
+	 *   - contained: hero stays inside .pre-single's max-width (pre-Phase-A
+	 *     behavior; emits no width class)
+	 *   - full:      hero band background bleeds to the viewport edges while
+	 *     hero content re-caps at --aisb-section-max-width
+	 *
+	 * Closed enum. Do NOT extend without updating
+	 * docs/HERO_CONTRAST_DESIGN.md first.
+	 */
+	const HERO_WIDTHS = array(
+		'contained',
+		'full',
+	);
+
+	/**
 	 * Maximum length of a post-meta key referenced by a meta_match source.
 	 *
 	 * WordPress's wp_postmeta.meta_key is varchar(255) but practical keys are
@@ -567,6 +601,43 @@ class PCPTPages_Validator {
 						__( 'CPT hero_image_aspect %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 						is_string( $definition['hero_image_aspect'] ) ? $definition['hero_image_aspect'] : 'non-string',
 						implode( ', ', $valid_aspects )
+					)
+				);
+			}
+		}
+
+		// Hero theme — optional; enum (inherit|light|dark). Default 'inherit'
+		// is applied by PCPTPages_CPT_Registry::merge_defaults. 'dark' forces
+		// a dark hero band regardless of the page's light/dark mode — the
+		// standard "contrast band" detail-page treatment. See
+		// docs/HERO_CONTRAST_DESIGN.md.
+		if ( isset( $definition['hero_theme'] ) ) {
+			if ( ! in_array( $definition['hero_theme'], self::HERO_THEMES, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_hero_theme',
+					sprintf(
+						/* translators: %1$s: the invalid theme; %2$s: list of allowed themes */
+						__( 'CPT hero_theme %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+						is_string( $definition['hero_theme'] ) ? $definition['hero_theme'] : 'non-string',
+						implode( ', ', self::HERO_THEMES )
+					)
+				);
+			}
+		}
+
+		// Hero width — optional; enum (contained|full). Default 'contained'
+		// is applied by merge_defaults. 'full' bleeds the hero band's
+		// background to the viewport edges while the hero content stays
+		// aligned with the page grid. See docs/HERO_CONTRAST_DESIGN.md.
+		if ( isset( $definition['hero_width'] ) ) {
+			if ( ! in_array( $definition['hero_width'], self::HERO_WIDTHS, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_hero_width',
+					sprintf(
+						/* translators: %1$s: the invalid width; %2$s: list of allowed widths */
+						__( 'CPT hero_width %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+						is_string( $definition['hero_width'] ) ? $definition['hero_width'] : 'non-string',
+						implode( ', ', self::HERO_WIDTHS )
 					)
 				);
 			}

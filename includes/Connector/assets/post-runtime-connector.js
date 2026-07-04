@@ -121,6 +121,20 @@ const TOOLS = [
           description:
             "Only meaningful when hero_layout is 'split'. Pick to match the natural shape of the post's photos so they crop cleanly: 'square' (1:1) for headshots, profiles, team pages; 'landscape' (4:3) for property photos, product shots; 'wide' (16:9) for cinematic banner imagery. Stacked layouts always use a 16:9 banner regardless.",
         },
+        hero_theme: {
+          type: "string",
+          enum: ["inherit", "light", "dark"],
+          default: "inherit",
+          description:
+            "Hero contrast band (docs/HERO_CONTRAST_DESIGN.md). 'inherit' = hero follows the page's light/dark mode (default, pre-existing behavior). 'dark' = hero forced to a dark band regardless of page mode — the standard high-contrast detail-page treatment on light sites (title, featured image, and hero-positioned post fields render on a dark surface with WCAG-corrected token colors). 'light' = forced light (contrast band on dark sites). Applies to every post of the CPT.",
+        },
+        hero_width: {
+          type: "string",
+          enum: ["contained", "full"],
+          default: "contained",
+          description:
+            "'contained' = hero stays inside the page content width (default). 'full' = the hero band's background bleeds to the viewport edges while hero content stays aligned with the page grid. Most striking combined with hero_theme:'dark'.",
+        },
         default_icon: {
           type: "string",
           description:
@@ -173,6 +187,8 @@ const TOOLS = [
         hero_layout: { type: "string", enum: ["stacked", "split"] },
         hero_image_position: { type: "string", enum: ["left", "right"] },
         hero_image_aspect: { type: "string", enum: ["square", "landscape", "wide"] },
+        hero_theme: { type: "string", enum: ["inherit", "light", "dark"], description: "Hero contrast band: 'dark' forces a dark hero on any page mode, 'light' forces light, 'inherit' follows the page (default)." },
+        hero_width: { type: "string", enum: ["contained", "full"], description: "'full' bleeds the hero band background viewport-wide; content stays grid-aligned. Default 'contained'." },
         default_icon: { type: "string", description: "Curated icon id (e.g. 'home') OR Iconify code in collection:name form (e.g. 'mdi:home'), or empty string to remove the fallback. See postruntime_list_icons." },
         archive_show_post_date: { type: "boolean", description: "Hide the theme-rendered post create-date on archive cards by setting false. Default true." },
         archive_show_post_author: { type: "boolean", description: "Hide the theme-rendered post author byline on archive cards by setting false. Default true." },
@@ -822,6 +838,8 @@ async function handleTool(name, args) {
         "hero_layout",
         "hero_image_position",
         "hero_image_aspect",
+        "hero_theme",
+        "hero_width",
         "default_icon",
         "archive_show_post_date",
         "archive_show_post_author",
@@ -852,6 +870,8 @@ async function handleTool(name, args) {
         "hero_layout",
         "hero_image_position",
         "hero_image_aspect",
+        "hero_theme",
+        "hero_width",
         "default_icon",
         "archive_show_post_date",
         "archive_show_post_author",

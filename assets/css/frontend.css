@@ -186,6 +186,149 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 }
 
 /* ----------------------------------------------------------------------- */
+/* Hero contrast band + full-bleed width (docs/HERO_CONTRAST_DESIGN.md)     */
+/* ----------------------------------------------------------------------- */
+
+/*
+ * Forced hero themes. These re-declare the --pre-color-* intermediates ON
+ * THE HERO ELEMENT ITSELF, which beats anything inherited from .pre-single
+ * regardless of page mode — element-own custom-property declarations always
+ * win over inherited ones. So a .pre-hero--theme-light inside a dark page
+ * renders light, and vice versa, with zero specificity games.
+ *
+ * ORDERING REQUIREMENT: these blocks must stay AFTER the .aisb-section--dark
+ * .pre-single block above. The var() declarations don't need it (per the
+ * inheritance rule just described) but the background/color/padding rules do
+ * — keep the "forced theme beats page mode" reading order intact.
+ *
+ * Same rule as everywhere in this file: every intermediate reads an
+ * --aisb-* token (never another --pre-*) to avoid the self-reference cycle
+ * bug class documented at the top of this file.
+ *
+ * A themed hero is a BAND: it gains its own background, internal padding,
+ * and card radius so it reads as a distinct surface. An `inherit` hero
+ * (no theme class) keeps today's backgroundless rendering untouched.
+ */
+.pre-hero--theme-dark {
+	--pre-color-text: var(--aisb-color-dark-text, #fafafa);
+	--pre-color-text-muted: var(--aisb-smart-dark-surface-muted, var(--aisb-color-dark-text-muted, #9ca3af));
+	--pre-color-background: var(--aisb-color-dark-background, #1a1a1a);
+	--pre-color-surface: var(--aisb-color-dark-surface, #2a2a2a);
+	--pre-color-border: var(--aisb-smart-dark-surface-border, var(--aisb-color-dark-border, #4b5563));
+	--pre-color-link: var(--aisb-smart-dark-section-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-link: var(--aisb-smart-dark-surface-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-icon: var(--aisb-smart-dark-icon, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-icon: var(--aisb-smart-dark-surface-icon, var(--aisb-color-primary, #6366f1));
+	--pre-link-hover-brightness: var(--aisb-smart-dark-link-hover-brightness, 1.2);
+	--pre-surface-link-hover-brightness: var(--aisb-smart-dark-surface-link-hover-brightness, 1.2);
+	--pre-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	/* Theme interop: the Promptless theme styles headings/links inside
+	 * .promptless-content through its OWN intermediates — e.g.
+	 * `.promptless-content h1 { color: var(--section-text); }` — which beat
+	 * .pre-hero__title on specificity and read variables our --pre-* remap
+	 * doesn't touch (found in smoke testing: dark band, near-invisible dark
+	 * title). Re-declare the theme's --section-* set here so those theme
+	 * rules resolve to the forced hero mode too. Harmless no-ops on
+	 * non-Promptless themes (nothing reads them). */
+	--section-text: var(--aisb-color-dark-text, #fafafa);
+	--section-text-muted: var(--aisb-color-dark-text-muted, #9ca3af);
+	--section-bg: var(--aisb-color-dark-background, #1a1a1a);
+	--section-surface: var(--aisb-color-dark-surface, #2a2a2a);
+	--section-border: var(--aisb-color-dark-border, #4b5563);
+	--section-link: var(--aisb-smart-dark-section-link, var(--aisb-color-primary, #6366f1));
+	--section-surface-link: var(--aisb-smart-dark-surface-link, var(--aisb-color-primary, #6366f1));
+}
+
+.pre-hero--theme-light {
+	--pre-color-text: var(--aisb-color-text, #1f2937);
+	--pre-color-text-muted: var(--aisb-color-text-muted, #6b7280);
+	--pre-color-background: var(--aisb-color-background, #ffffff);
+	--pre-color-surface: var(--aisb-color-surface, #f9fafb);
+	--pre-color-border: var(--aisb-color-border, #e5e7eb);
+	--pre-color-link: var(--aisb-smart-light-section-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-link: var(--aisb-smart-light-surface-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-icon: var(--aisb-smart-light-icon, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-icon: var(--aisb-smart-light-surface-icon, var(--aisb-color-primary, #6366f1));
+	--pre-link-hover-brightness: var(--aisb-smart-light-link-hover-brightness, 0.75);
+	--pre-surface-link-hover-brightness: var(--aisb-smart-light-surface-link-hover-brightness, 0.75);
+	--pre-card-shadow: none;
+	/* Theme interop — see the matching comment in .pre-hero--theme-dark. */
+	--section-text: var(--aisb-color-text, #1f2937);
+	--section-text-muted: var(--aisb-color-text-muted, #6b7280);
+	--section-bg: var(--aisb-color-background, #ffffff);
+	--section-surface: var(--aisb-color-surface, #f9fafb);
+	--section-border: var(--aisb-color-border, #e5e7eb);
+	--section-link: var(--aisb-smart-light-section-link, var(--aisb-color-primary, #6366f1));
+	--section-surface-link: var(--aisb-smart-light-surface-link, var(--aisb-color-primary, #6366f1));
+}
+
+/* Band chrome shared by both forced themes. */
+.pre-hero--theme-dark,
+.pre-hero--theme-light {
+	background: var(--pre-color-background);
+	color: var(--pre-color-text);
+	padding: var(--aisb-section-space-lg, 2rem) var(--aisb-section-space-md, 1.5rem);
+	border-radius: var(--aisb-section-radius-card, 12px);
+}
+
+/*
+ * Full-bleed hero band. The hero lives INSIDE .pre-single (max-width
+ * capped), so bleeding requires the classic viewport breakout:
+ * margin-inline pulls the band to the viewport edges; padding-inline
+ * re-caps the band's CONTENT at the page grid so hero text stays aligned
+ * with .pre-body below it.
+ *
+ *   padding = max(page gutter, (50vw - maxwidth/2) + page gutter)
+ *
+ * Narrow viewports (< max-width): the calc() goes negative, max() picks
+ * the plain gutter — content sits exactly where .pre-single's own padding
+ * would put it. Wide viewports: the calc() term wins and re-centers the
+ * content on the 1280px grid.
+ *
+ * 50vw includes the classic-scrollbar gutter, so the band can overhang by
+ * ~15px on the right; overflow-x: clip on the article (below) swallows the
+ * sliver without creating a new scroll container (unlike overflow: hidden).
+ */
+.pre-hero--full {
+	margin-inline: calc(50% - 50vw);
+	padding-inline: max(
+		var(--aisb-section-space-md, 1.5rem),
+		calc(50vw - (var(--aisb-section-max-width, 1280px) / 2) + var(--aisb-section-space-md, 1.5rem))
+	);
+	/* Edge-to-edge bands don't get card radius. */
+	border-radius: 0;
+}
+
+.pre-single--hero-full {
+	/* The band should sit flush under the site header — move the article's
+	 * top padding onto the band itself so no page-background strip shows
+	 * above a full-bleed hero. */
+	padding-top: 0;
+}
+
+/*
+ * Scrollbar-sliver containment for the breakout. IMPORTANT: this must live
+ * on an ancestor that already spans the viewport (body), NOT on
+ * .pre-single itself — overflow clipping affects painting, so clipping on
+ * the max-width article would clip the band's own breakout back to the
+ * article box (found in smoke testing: rect measured full-bleed while the
+ * painted band stopped at the content edges).
+ *
+ * :has() support matches the existing dark-bleed rules above (Chrome 105+,
+ * Safari 15.4+, Firefox 121+). On older browsers the rule is skipped: the
+ * band still bleeds, and systems with classic scrollbars may show a
+ * scrollbar-width overhang — cosmetic, not layout-breaking.
+ */
+body:has(.pre-single--hero-full) {
+	overflow-x: clip;
+}
+
+.pre-single--hero-full .pre-hero--full {
+	padding-top: var(--aisb-section-space-xl, 3rem);
+	padding-bottom: var(--aisb-section-space-lg, 2rem);
+}
+
+/* ----------------------------------------------------------------------- */
 /* Container + body layout                                                  */
 /* ----------------------------------------------------------------------- */
 

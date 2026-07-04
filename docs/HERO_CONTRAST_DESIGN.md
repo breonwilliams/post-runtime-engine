@@ -206,7 +206,15 @@ knob (bottom-left is fixed), per-post overlay opt-out, video backgrounds, parall
 ## Scrim contract (the WCAG guarantee)
 
 - Fixed bottom-weighted gradient on `.pre-hero__scrim`:
-  `linear-gradient(180deg, rgba(10,14,18,0.18) 0%, rgba(10,14,18,0.30) 45%, rgba(10,14,18,0.86) 100%)`.
+  `linear-gradient(180deg, rgba(10,14,18,0.25) 0%, rgba(10,14,18,0.55) 30%, rgba(10,14,18,0.80) 55%, rgba(10,14,18,0.92) 100%)`.
+  (Amended during implementation: the originally-drafted 0.18/0.30/0.86 stops
+  failed acceptance B2 in smoke testing — a tall text block puts the title at
+  ~35% band height, where 0.28 opacity measured ~2:1 over a white test image.
+  The amended stops guarantee ≥3:1 (AA large text) anywhere the title/headline
+  can reach (~25% down) and ≥4.5:1 (AA normal text) from the title line down,
+  where excerpt/meta always sit. `.pre-hero__text--overlay` additionally
+  carries `text-shadow: 0 1px 3px rgba(10,14,18,0.55)` as belt-and-suspenders
+  for pathological images.)
 - Scrim constants are **deliberately palette-independent** (literal near-black rgba,
   NOT derived from `--aisb-color-dark-background`): the contrast guarantee must hold
   for any uploaded photo and any user palette. A site palette with a light "dark

@@ -569,9 +569,12 @@ class PCPTPages_Admin_CPTs {
 							<option value="split" <?php selected( $values['hero_layout'], 'split' ); ?>>
 								<?php esc_html_e( 'Split — featured image side-by-side with title + excerpt (1:1)', 'promptless-cpt-pages' ); ?>
 							</option>
+							<option value="overlay" <?php selected( $values['hero_layout'], 'overlay' ); ?>>
+								<?php esc_html_e( 'Overlay — title + metadata on top of the featured image (gradient scrim)', 'promptless-cpt-pages' ); ?>
+							</option>
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'When the post has no featured image, both layouts collapse to a clean text-only hero — no empty image slot.', 'promptless-cpt-pages' ); ?>
+							<?php esc_html_e( 'When the post has no featured image, Stacked and Split collapse to a clean text-only hero, and Overlay falls back to the Stacked treatment — never an empty band. Overlay is the premium look for image-rich content (listings, events, venues); text is always rendered on a darkening gradient so it stays readable over any photo.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
@@ -611,6 +614,27 @@ class PCPTPages_Admin_CPTs {
 						</select>
 						<p class="description">
 							<?php esc_html_e( 'Only applies when Hero layout is set to Split. Pick the shape that matches the natural aspect of your photos so they crop cleanly. Stacked layouts always use a 16:9 banner.', 'promptless-cpt-pages' ); ?>
+						</p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="pcptpages_hero_overlay_focus"><?php esc_html_e( 'Overlay image focus', 'promptless-cpt-pages' ); ?></label>
+					</th>
+					<td>
+						<select id="pcptpages_hero_overlay_focus" name="hero_overlay_focus">
+							<option value="center" <?php selected( $values['hero_overlay_focus'], 'center' ); ?>>
+								<?php esc_html_e( 'Center — safe default for most photography', 'promptless-cpt-pages' ); ?>
+							</option>
+							<option value="top" <?php selected( $values['hero_overlay_focus'], 'top' ); ?>>
+								<?php esc_html_e( 'Top — keep rooflines and skies visible', 'promptless-cpt-pages' ); ?>
+							</option>
+							<option value="bottom" <?php selected( $values['hero_overlay_focus'], 'bottom' ); ?>>
+								<?php esc_html_e( 'Bottom — keep foregrounds visible', 'promptless-cpt-pages' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Only applies when Hero layout is set to Overlay. Controls which part of the featured image stays visible when the band crops it.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
@@ -860,6 +884,9 @@ class PCPTPages_Admin_CPTs {
 		$hero_image_aspect = isset( $_POST['hero_image_aspect'] )
 			? sanitize_key( wp_unslash( $_POST['hero_image_aspect'] ) )
 			: 'square';
+		$hero_overlay_focus = isset( $_POST['hero_overlay_focus'] )
+			? sanitize_key( wp_unslash( $_POST['hero_overlay_focus'] ) )
+			: 'center';
 		$hero_theme = isset( $_POST['hero_theme'] )
 			? sanitize_key( wp_unslash( $_POST['hero_theme'] ) )
 			: 'inherit';
@@ -891,6 +918,7 @@ class PCPTPages_Admin_CPTs {
 			'hero_layout'         => $hero_layout,
 			'hero_image_position' => $hero_image_position,
 			'hero_image_aspect'   => $hero_image_aspect,
+			'hero_overlay_focus'  => $hero_overlay_focus,
 			'hero_theme'          => $hero_theme,
 			'hero_width'          => $hero_width,
 			'default_icon'        => $default_icon,
@@ -997,6 +1025,7 @@ class PCPTPages_Admin_CPTs {
 			'hero_layout'         => $definition['hero_layout'] ?? 'stacked',
 			'hero_image_position' => $definition['hero_image_position'] ?? 'left',
 			'hero_image_aspect'   => $definition['hero_image_aspect'] ?? 'square',
+			'hero_overlay_focus'  => $definition['hero_overlay_focus'] ?? 'center',
 			'hero_theme'          => $definition['hero_theme'] ?? 'inherit',
 			'hero_width'          => $definition['hero_width'] ?? 'contained',
 			'default_icon'        => $definition['default_icon'] ?? '',
@@ -1035,6 +1064,7 @@ class PCPTPages_Admin_CPTs {
 			'hero_layout'         => 'stacked',
 			'hero_image_position' => 'left',
 			'hero_image_aspect'   => 'square',
+			'hero_overlay_focus'  => 'center',
 			'hero_theme'          => 'inherit',
 			'hero_width'          => 'contained',
 			'default_icon'        => '',

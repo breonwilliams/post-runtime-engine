@@ -386,6 +386,11 @@ class PCPTPages_CPT_Registry {
 			'hero_image_position' => 'left',
 			'hero_image_aspect'   => 'square',
 
+			// Hero overlay focus (Phase B, docs/HERO_CONTRAST_DESIGN.md).
+			// Only meaningful when hero_layout is 'overlay'; maps to the
+			// backdrop image's object-position.
+			'hero_overlay_focus'  => 'center',
+
 			// Hero contrast/width (Phase A, docs/HERO_CONTRAST_DESIGN.md).
 			// 'inherit'/'contained' reproduce pre-Phase-A rendering exactly
 			// (no extra classes emitted), so existing CPTs pick these up

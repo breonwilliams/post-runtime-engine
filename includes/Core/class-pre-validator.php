@@ -84,6 +84,25 @@ class PCPTPages_Validator {
 	);
 
 	/**
+	 * Allowed hero overlay focus values (CPT-level, Phase B of
+	 * HERO_CONTRAST_DESIGN.md). Maps to CSS object-position on the overlay
+	 * hero's backdrop image — which part of the featured image stays
+	 * visible when the fixed-height band crops it:
+	 *
+	 *   - top:    keeps rooflines / skies (tall architectural photos)
+	 *   - center: safe default for most photography
+	 *   - bottom: keeps foregrounds
+	 *
+	 * Only meaningful when hero_layout is 'overlay'. Closed enum. Do NOT
+	 * extend without updating docs/HERO_CONTRAST_DESIGN.md first.
+	 */
+	const HERO_OVERLAY_FOCUS = array(
+		'top',
+		'center',
+		'bottom',
+	);
+
+	/**
 	 * Allowed hero width modes (CPT-level, Phase A of HERO_CONTRAST_DESIGN.md).
 	 *
 	 *   - contained: hero stays inside .pre-single's max-width (pre-Phase-A
@@ -547,13 +566,16 @@ class PCPTPages_Validator {
 			}
 		}
 
-		// Hero layout — optional; enum (stacked|split). Default 'stacked' is
-		// applied by PCPTPages_CPT_Registry::merge_defaults; the validator only
-		// rejects malformed input. Existing CPTs registered before this
-		// field existed pass through untouched (the field is absent =>
-		// merge_defaults supplies the default).
+		// Hero layout — optional; enum (stacked|split|overlay). Default
+		// 'stacked' is applied by PCPTPages_CPT_Registry::merge_defaults; the
+		// validator only rejects malformed input. Existing CPTs registered
+		// before this field existed pass through untouched (the field is
+		// absent => merge_defaults supplies the default). 'overlay' (Phase B,
+		// docs/HERO_CONTRAST_DESIGN.md) renders text ON the featured image
+		// over a gradient scrim; posts without a featured image fall back to
+		// the stacked treatment at render time.
 		if ( isset( $definition['hero_layout'] ) ) {
-			$valid_layouts = array( 'stacked', 'split' );
+			$valid_layouts = array( 'stacked', 'split', 'overlay' );
 			if ( ! in_array( $definition['hero_layout'], $valid_layouts, true ) ) {
 				return new WP_Error(
 					'pcptpages_invalid_hero_layout',
@@ -601,6 +623,24 @@ class PCPTPages_Validator {
 						__( 'CPT hero_image_aspect %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
 						is_string( $definition['hero_image_aspect'] ) ? $definition['hero_image_aspect'] : 'non-string',
 						implode( ', ', $valid_aspects )
+					)
+				);
+			}
+		}
+
+		// Hero overlay focus — optional; enum (top|center|bottom). Default
+		// 'center' is applied by merge_defaults. Only meaningful when
+		// hero_layout is 'overlay'; validated regardless of layout to keep
+		// stored data consistent (same policy as hero_image_position).
+		if ( isset( $definition['hero_overlay_focus'] ) ) {
+			if ( ! in_array( $definition['hero_overlay_focus'], self::HERO_OVERLAY_FOCUS, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_hero_overlay_focus',
+					sprintf(
+						/* translators: %1$s: the invalid focus; %2$s: list of allowed values */
+						__( 'CPT hero_overlay_focus %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+						is_string( $definition['hero_overlay_focus'] ) ? $definition['hero_overlay_focus'] : 'non-string',
+						implode( ', ', self::HERO_OVERLAY_FOCUS )
 					)
 				);
 			}

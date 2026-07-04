@@ -102,10 +102,17 @@ const TOOLS = [
         capability_type: { type: "string", default: "post" },
         hero_layout: {
           type: "string",
-          enum: ["stacked", "split"],
+          enum: ["stacked", "split", "overlay"],
           default: "stacked",
           description:
-            "stacked = featured image as 16:9 banner above title (best for editorial CPTs: events, courses, articles). split = featured image side-by-side with title at 1:1 aspect ratio (best for profile-shaped CPTs: real estate listings, attorney bios, team pages).",
+            "stacked = featured image as 16:9 banner above title (best for editorial CPTs: events, courses, articles). split = featured image side-by-side with title at 1:1 aspect ratio (best for profile-shaped CPTs: real estate listings, attorney bios, team pages). overlay = title/badges/meta rendered ON TOP of the featured image over a darkening gradient scrim (the premium treatment for image-rich CPTs — listings, events, venues, portfolios; posts without a featured image fall back to stacked automatically, so it's safe to enable before every post has imagery; pair with hero_width:'full' for the full-bleed cinematic version).",
+        },
+        hero_overlay_focus: {
+          type: "string",
+          enum: ["top", "center", "bottom"],
+          default: "center",
+          description:
+            "Only meaningful when hero_layout is 'overlay'. Which part of the featured image stays visible when the fixed-height band crops it: 'top' keeps rooflines/skies, 'center' is the safe default, 'bottom' keeps foregrounds.",
         },
         hero_image_position: {
           type: "string",
@@ -184,9 +191,10 @@ const TOOLS = [
         menu_icon: { type: "string" },
         taxonomies: { type: "array", items: { type: "string" } },
         rewrite: { type: "object" },
-        hero_layout: { type: "string", enum: ["stacked", "split"] },
+        hero_layout: { type: "string", enum: ["stacked", "split", "overlay"] },
         hero_image_position: { type: "string", enum: ["left", "right"] },
         hero_image_aspect: { type: "string", enum: ["square", "landscape", "wide"] },
+        hero_overlay_focus: { type: "string", enum: ["top", "center", "bottom"], description: "Overlay-only: which part of the featured image survives the band's crop." },
         hero_theme: { type: "string", enum: ["inherit", "light", "dark"], description: "Hero contrast band: 'dark' forces a dark hero on any page mode, 'light' forces light, 'inherit' follows the page (default)." },
         hero_width: { type: "string", enum: ["contained", "full"], description: "'full' bleeds the hero band background viewport-wide; content stays grid-aligned. Default 'contained'." },
         default_icon: { type: "string", description: "Curated icon id (e.g. 'home') OR Iconify code in collection:name form (e.g. 'mdi:home'), or empty string to remove the fallback. See postruntime_list_icons." },
@@ -838,6 +846,7 @@ async function handleTool(name, args) {
         "hero_layout",
         "hero_image_position",
         "hero_image_aspect",
+        "hero_overlay_focus",
         "hero_theme",
         "hero_width",
         "default_icon",
@@ -870,6 +879,7 @@ async function handleTool(name, args) {
         "hero_layout",
         "hero_image_position",
         "hero_image_aspect",
+        "hero_overlay_focus",
         "hero_theme",
         "hero_width",
         "default_icon",

@@ -306,6 +306,9 @@ class PCPTPages_Renderer {
 		$hero_width = is_array( $cpt_def ) && ! empty( $cpt_def['hero_width'] )
 			? $cpt_def['hero_width']
 			: 'contained';
+		$hero_overlay_focus = is_array( $cpt_def ) && ! empty( $cpt_def['hero_overlay_focus'] )
+			? $cpt_def['hero_overlay_focus']
+			: 'center';
 
 		// CPT-level default icon. Used as a fallback when:
 		//   - a grouping item has neither image_id nor icon_id set (any
@@ -381,7 +384,7 @@ class PCPTPages_Renderer {
 
 		?>
 		<article id="post-<?php echo esc_attr( $post->ID ); ?>" <?php post_class( $article_classes ); ?>>
-			<?php $this->render_hero( $post, $hero_layout, $hero_image_position, $hero_image_aspect, $hero_theme, $hero_width ); ?>
+			<?php $this->render_hero( $post, $hero_layout, $hero_image_position, $hero_image_aspect, $hero_theme, $hero_width, $hero_overlay_focus ); ?>
 
 			<div class="<?php echo esc_attr( $body_class ); ?>">
 				<div class="pre-body__main">
@@ -476,13 +479,14 @@ class PCPTPages_Renderer {
 	 * screen-reader reading order.
 	 *
 	 * @param WP_Post $post           Post being rendered.
-	 * @param string  $layout         'stacked' | 'split'.
+	 * @param string  $layout         'stacked' | 'split' | 'overlay'.
 	 * @param string  $image_position 'left' | 'right' (only meaningful for split).
 	 * @param string  $image_aspect   'square' | 'landscape' | 'wide' (only meaningful for split).
 	 * @param string  $theme          'inherit' | 'light' | 'dark' (docs/HERO_CONTRAST_DESIGN.md).
 	 * @param string  $width          'contained' | 'full' (docs/HERO_CONTRAST_DESIGN.md).
+	 * @param string  $overlay_focus  'top' | 'center' | 'bottom' (only meaningful for overlay).
 	 */
-	private function render_hero( WP_Post $post, $layout = 'stacked', $image_position = 'left', $image_aspect = 'square', $theme = 'inherit', $width = 'contained' ) {
+	private function render_hero( WP_Post $post, $layout = 'stacked', $image_position = 'left', $image_aspect = 'square', $theme = 'inherit', $width = 'contained', $overlay_focus = 'center' ) {
 		$has_thumbnail = has_post_thumbnail( $post->ID );
 		$excerpt       = $post->post_excerpt;
 		$title         = get_the_title( $post );
@@ -490,11 +494,25 @@ class PCPTPages_Renderer {
 		// Defensive normalization — the renderer should never crash on a
 		// stored CPT definition with malformed values, even if the
 		// validator somehow let a bad value through.
-		$layout         = in_array( $layout, array( 'stacked', 'split' ), true ) ? $layout : 'stacked';
+		$layout         = in_array( $layout, array( 'stacked', 'split', 'overlay' ), true ) ? $layout : 'stacked';
 		$image_position = in_array( $image_position, array( 'left', 'right' ), true ) ? $image_position : 'left';
 		$image_aspect   = in_array( $image_aspect, array( 'square', 'landscape', 'wide' ), true ) ? $image_aspect : 'square';
 		$theme          = in_array( $theme, PCPTPages_Validator::HERO_THEMES, true ) ? $theme : 'inherit';
 		$width          = in_array( $width, PCPTPages_Validator::HERO_WIDTHS, true ) ? $width : 'contained';
+		$overlay_focus  = in_array( $overlay_focus, PCPTPages_Validator::HERO_OVERLAY_FOCUS, true ) ? $overlay_focus : 'center';
+
+		// Overlay requires an image by definition — text sits ON the photo.
+		// Posts without a featured image fall back to the stacked treatment
+		// (honoring hero_theme/hero_width), never an empty dark band.
+		// Contract: docs/HERO_CONTRAST_DESIGN.md § Phase B rendering.
+		if ( 'overlay' === $layout && ! $has_thumbnail ) {
+			$layout = 'stacked';
+		}
+
+		if ( 'overlay' === $layout ) {
+			$this->render_hero_overlay( $post, $title, $excerpt, $overlay_focus, $width, $theme );
+			return;
+		}
 
 		$hero_classes = array( 'pre-hero', 'pre-hero--' . $layout );
 		if ( $layout === 'split' ) {
@@ -581,6 +599,105 @@ class PCPTPages_Renderer {
 					<?php
 					// meta_strip and footer_meta land below the excerpt
 					// but inside the text column.
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo $card_renderer->render_position_html( $post->ID, 'meta_strip', 'single_hero' );
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo $card_renderer->render_position_html( $post->ID, 'footer_meta', 'single_hero' );
+					?>
+				</div>
+			</div>
+		</header>
+		<?php
+	}
+
+	/**
+	 * Overlay hero (Phase B, docs/HERO_CONTRAST_DESIGN.md): the featured
+	 * image fills the band, a fixed bottom-weighted scrim guarantees
+	 * contrast, and the text block sits bottom-left on top of it.
+	 *
+	 * Only called when the post HAS a featured image — render_hero()
+	 * falls back to the stacked treatment otherwise.
+	 *
+	 * Notes:
+	 *   - hero_theme is IGNORED here by design: text always uses the dark
+	 *     token set because it sits on a darkened photograph regardless of
+	 *     page mode. The theme class is still emitted for markup
+	 *     consistency; the CSS overlay rules win on specificity.
+	 *   - The image is the LCP element by construction, so it ships with
+	 *     loading=eager + fetchpriority=high (mirrors Promptless WP's hero
+	 *     LCP handling). Band height is fixed by CSS — no layout shift.
+	 *   - image_overlay post fields render in-flow at the TOP of the band
+	 *     (same "badge over the image" semantics as other layouts); the
+	 *     text block is pushed to the bottom with margin-top:auto.
+	 *
+	 * @param WP_Post $post          Post being rendered (has a thumbnail).
+	 * @param string  $title         Pre-fetched post title.
+	 * @param string  $excerpt       Raw post excerpt ('' when unset).
+	 * @param string  $overlay_focus 'top' | 'center' | 'bottom' (normalized).
+	 * @param string  $width         'contained' | 'full' (normalized).
+	 * @param string  $theme         'inherit' | 'light' | 'dark' (normalized).
+	 */
+	private function render_hero_overlay( WP_Post $post, $title, $excerpt, $overlay_focus, $width, $theme ) {
+		$card_renderer = new PCPTPages_Card_Renderer();
+
+		$hero_classes = array(
+			'pre-hero',
+			'pre-hero--overlay',
+			'pre-hero--focus-' . $overlay_focus,
+			'pre-hero--has-image',
+		);
+		if ( 'inherit' !== $theme ) {
+			$hero_classes[] = 'pre-hero--theme-' . $theme;
+		}
+		if ( 'full' === $width ) {
+			$hero_classes[] = 'pre-hero--full';
+		}
+
+		// Alt-text fallback: attachment alt wins; fall back to the post
+		// title when no alt is saved (same policy as the other layouts).
+		$thumb_id  = get_post_thumbnail_id( $post->ID );
+		$saved_alt = trim( (string) get_post_meta( $thumb_id, '_wp_attachment_image_alt', true ) );
+		$args      = array(
+			'class'         => 'pre-hero__image',
+			'loading'       => 'eager',
+			'fetchpriority' => 'high',
+		);
+		if ( $saved_alt === '' ) {
+			$args['alt'] = $title;
+		}
+
+		?>
+		<header class="<?php echo esc_attr( implode( ' ', $hero_classes ) ); ?>">
+			<div class="pre-hero__backdrop" aria-hidden="true">
+				<?php echo get_the_post_thumbnail( $post->ID, 'full', $args ); ?>
+			</div>
+			<div class="pre-hero__scrim" aria-hidden="true"></div>
+			<div class="pre-hero__inner pre-hero__inner--overlay">
+				<?php
+				// image_overlay fields sit at the top of the band, in flow,
+				// so they respect the band's padding in both widths.
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo $card_renderer->render_position_html( $post->ID, 'image_overlay', 'single_hero' );
+				?>
+
+				<div class="pre-hero__text pre-hero__text--overlay">
+					<?php
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo $card_renderer->render_position_html( $post->ID, 'headline', 'single_hero' );
+					?>
+
+					<h1 class="pre-hero__title"><?php echo esc_html( $title ); ?></h1>
+
+					<?php
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo $card_renderer->render_position_html( $post->ID, 'subtitle', 'single_hero' );
+					?>
+
+					<?php if ( $excerpt !== '' ) : ?>
+						<p class="pre-hero__excerpt"><?php echo esc_html( $excerpt ); ?></p>
+					<?php endif; ?>
+
+					<?php
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					echo $card_renderer->render_position_html( $post->ID, 'meta_strip', 'single_hero' );
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

@@ -272,6 +272,135 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 }
 
 /*
+ * Overlay hero (Phase B, docs/HERO_CONTRAST_DESIGN.md § Phase B).
+ * The featured image fills the band; text sits bottom-left on a fixed
+ * bottom-weighted scrim. Only rendered when the post has a featured
+ * image (the renderer falls back to stacked otherwise).
+ *
+ * Compound selector (.pre-hero.pre-hero--overlay, 0-2-0) is deliberate:
+ * it beats .pre-hero--theme-light (0-1-0) regardless of source order,
+ * enforcing the contract rule that hero_theme is IGNORED when text sits
+ * on a photograph — the dark token set always applies here.
+ *
+ * The scrim gradient below is a FUNCTIONAL contrast device with
+ * palette-independent literal constants (NOT derived from
+ * --aisb-color-dark-background): the WCAG guarantee must hold for any
+ * uploaded photo and any user palette. The 0.86 near-black bottom stop
+ * keeps #fafafa-class text ≥ AA over any image content.
+ */
+.pre-hero.pre-hero--overlay {
+	--pre-color-text: var(--aisb-color-dark-text, #fafafa);
+	--pre-color-text-muted: var(--aisb-smart-dark-surface-muted, var(--aisb-color-dark-text-muted, #9ca3af));
+	--pre-color-background: var(--aisb-color-dark-background, #1a1a1a);
+	--pre-color-surface: var(--aisb-color-dark-surface, #2a2a2a);
+	--pre-color-border: var(--aisb-smart-dark-surface-border, var(--aisb-color-dark-border, #4b5563));
+	--pre-color-link: var(--aisb-smart-dark-section-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-link: var(--aisb-smart-dark-surface-link, var(--aisb-color-primary, #6366f1));
+	--pre-color-icon: var(--aisb-smart-dark-icon, var(--aisb-color-primary, #6366f1));
+	--pre-color-surface-icon: var(--aisb-smart-dark-surface-icon, var(--aisb-color-primary, #6366f1));
+	--pre-link-hover-brightness: var(--aisb-smart-dark-link-hover-brightness, 1.2);
+	--pre-surface-link-hover-brightness: var(--aisb-smart-dark-surface-link-hover-brightness, 1.2);
+	--pre-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	/* Theme interop — same reasoning as .pre-hero--theme-dark above. */
+	--section-text: var(--aisb-color-dark-text, #fafafa);
+	--section-text-muted: var(--aisb-color-dark-text-muted, #9ca3af);
+	--section-bg: var(--aisb-color-dark-background, #1a1a1a);
+	--section-surface: var(--aisb-color-dark-surface, #2a2a2a);
+	--section-border: var(--aisb-color-dark-border, #4b5563);
+	--section-link: var(--aisb-smart-dark-section-link, var(--aisb-color-primary, #6366f1));
+	--section-surface-link: var(--aisb-smart-dark-surface-link, var(--aisb-color-primary, #6366f1));
+
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	height: clamp(320px, 52vh, 560px);
+	overflow: hidden;
+	color: var(--pre-color-text);
+	/* Dark fallback so text stays readable before the image paints. */
+	background: var(--pre-color-background);
+	padding: var(--aisb-section-space-lg, 2rem) var(--aisb-section-space-md, 1.5rem);
+	border-radius: var(--aisb-section-radius-card, 12px);
+}
+
+@media (max-width: 767px) {
+	.pre-hero.pre-hero--overlay {
+		height: clamp(260px, 45vh, 420px);
+	}
+}
+
+.pre-hero--overlay .pre-hero__backdrop {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+}
+
+.pre-hero--overlay .pre-hero__backdrop .pre-hero__image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+}
+
+.pre-hero--overlay.pre-hero--focus-top .pre-hero__backdrop .pre-hero__image {
+	object-position: center top;
+}
+
+.pre-hero--overlay.pre-hero--focus-bottom .pre-hero__backdrop .pre-hero__image {
+	object-position: center bottom;
+}
+
+/*
+ * Scrim stops are tuned for the WORST CASE: a near-white photo with a
+ * tall text block (long title + excerpt + meta reaching ~25% from the
+ * band top). At 25% the 0.50 stop yields ≥3:1 (AA large-text — the
+ * title/headline are always large text) over pure white; from the title
+ * line (~35%) down it clears ≥4.5:1 (AA normal text) for the excerpt
+ * and meta rows that always sit lower. The top quarter stays light so
+ * the photo reads as a photo. Initial 0.18/0.30/0.86 stops failed this
+ * in smoke testing — title measured ~2:1 over a white test image.
+ */
+.pre-hero--overlay .pre-hero__scrim {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	background: linear-gradient(
+		180deg,
+		rgba(10, 14, 18, 0.25) 0%,
+		rgba(10, 14, 18, 0.55) 30%,
+		rgba(10, 14, 18, 0.80) 55%,
+		rgba(10, 14, 18, 0.92) 100%
+	);
+}
+
+/* Inner column rides above the scrim; image_overlay badges render at the
+ * top in flow (respecting band padding in both widths), and the text
+ * block is pushed to the bottom. */
+.pre-hero__inner--overlay {
+	position: relative;
+	z-index: 2;
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+.pre-hero__text--overlay {
+	margin-top: auto;
+	/* Belt-and-suspenders over pathological images (specular highlights,
+	 * pure-white regions the gradient math can't anticipate). Standard
+	 * practice for text-on-photography. */
+	text-shadow: 0 1px 3px rgba(10, 14, 18, 0.55);
+}
+
+/* Cap line length on very wide full-bleed bands so the text block stays
+ * readable instead of stretching across the whole viewport. */
+.pre-hero__text--overlay {
+	max-width: 44rem;
+}
+
+/*
  * Full-bleed hero band. The hero lives INSIDE .pre-single (max-width
  * capped), so bleeding requires the classic viewport breakout:
  * margin-inline pulls the band to the viewport edges; padding-inline

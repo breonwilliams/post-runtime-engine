@@ -299,10 +299,18 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 	border-radius: 0;
 }
 
-.pre-single--hero-full {
-	/* The band should sit flush under the site header — move the article's
-	 * top padding onto the band itself so no page-background strip shows
-	 * above a full-bleed hero. */
+/* The band should sit flush under the site header — move the article's
+ * top padding onto the band itself so no page-background strip shows
+ * above a full-bleed hero.
+ *
+ * Compound selector (.pre-single.pre-single--hero-full) is REQUIRED, not
+ * decorative: the container rule `.pre-single { padding: ... }` lives
+ * LATER in this file (Container + body layout section), so a plain
+ * .pre-single--hero-full { padding-top: 0 } at equal specificity loses
+ * the cascade to the shorthand (found in smoke testing: 48px white strip
+ * above the band). The extra class wins on specificity regardless of
+ * source order. */
+.pre-single.pre-single--hero-full {
 	padding-top: 0;
 }
 

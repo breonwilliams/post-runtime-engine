@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.6.3
+Stable tag: 0.6.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,13 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.6.4 =
+* Added: Hero theme option (Inherit / Light band / Dark band) per CPT - force the single-post hero into a contrasting band independent of the page's light/dark mode. Colors flow from the site's design tokens with WCAG-corrected link/icon colors.
+* Added: Hero width option (Contained / Full width) per CPT - full width bleeds the hero band edge-to-edge while the title, image, and metadata stay aligned with the page grid.
+* Added: Overlay hero layout - the featured image fills the hero band and the title, badges, and metadata render on top of it over a darkening gradient that guarantees readable text over any photo. Posts without a featured image automatically fall back to the stacked treatment. New "Overlay image focus" option (Top / Center / Bottom) controls how the photo is cropped.
+* Fixed: changing a post type's settings (hero layout, archive flags, labels) now refreshes cached single-page renders immediately instead of waiting out the cache lifetime.
+* Fixed: status badge and chip colors (success / warning / danger / info) now meet WCAG AA contrast in every context - light pages, dark pages, dark hero bands, overlay heroes, and badges over images - regardless of the site's brand palette.
+
 = 0.6.3 =
 * Added: CPT single pages now emit a <meta name="description"> tag plus a compact OpenGraph/Twitter set, derived from the post excerpt/content, title, and featured image. Emits only when no dedicated SEO plugin is active and defers to Promptless-built pages. Clears the "Document does not have a meta description" SEO flag on CPT singles.
 
@@ -146,6 +153,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.6.4 =
+New hero design options per CPT: contrasting light/dark hero bands, full-width hero, and an overlay layout with text over the featured image. Fully opt-in - existing CPTs render identically until you change their Hero settings. Also fixes status badge contrast on dark backgrounds.
 
 = 0.6.3 =
 CPT single pages now emit a meta description plus OpenGraph/Twitter tags (when no SEO plugin is active), clearing the "Document does not have a meta description" SEO flag. Additive — no data or behavior changes.

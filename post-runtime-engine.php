@@ -3,7 +3,7 @@
  * Plugin Name: Promptless CPT Pages
  * Plugin URI: https://promptlesswp.com
  * Description: Render CPT single pages with structured data display, layout variants, and admin or AI population. Works standalone or with Promptless WP.
- * Version: 0.6.3
+ * Version: 0.6.4
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: Promptless WP
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin version. Bumped on every meaningful release.
-define( 'PCPTPages_VERSION', '0.6.3' );
+define( 'PCPTPages_VERSION', '0.6.4' );
 
 // Minimum data-storage schema version. Bumped when option / post-meta shapes
 // change in a way that requires migration, or when a new capability needs to

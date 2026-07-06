@@ -29,7 +29,7 @@ jobs:
       matrix:
         php: ['7.4', '8.2']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -46,24 +46,36 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      # Run every PHP version even if one fails — a 7.4-only failure and an
+      # 8.2-only failure are different bugs; canceling half the matrix hides
+      # one of them (CI run #1 did exactly that).
+      fail-fast: false
       matrix:
         php: ['7.4', '8.2']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           coverage: none
           tools: composer
-      - name: Install dev dependencies
-        run: composer install --no-interaction --prefer-dist
+      # `composer update`, NOT `composer install`: the committed lock file is
+      # generated on the dev machine's PHP (8.4) and pins packages that hard-
+      # require it (doctrine/instantiator 2.x needs ^8.4), so installing the
+      # lock on the 7.4/8.2 matrix legs refuses outright — CI run #1 failed
+      # before executing a single test. Resolving per-leg gives each PHP
+      # version a compatible dependency set (7.4 gets instantiator 1.x); the
+      # code under test is the plugin, not the dev dependencies, so lock-file
+      # reproducibility matters less than actually running the suite.
+      - name: Resolve dev dependencies for this PHP version
+        run: composer update --no-interaction --prefer-dist
       - name: Run Unit suite
         run: composer run test:unit
 
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build release ZIP (self-verifying)
         run: ./bin/build-release.sh
       - name: Confirm artifact exists

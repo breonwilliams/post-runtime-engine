@@ -141,6 +141,124 @@ class ValidatorTest extends UnitTestCase {
     }
 
     // -----------------------------------------------------------------
+    // Hero contrast band + overlay (docs/HERO_CONTRAST_DESIGN.md).
+    //
+    // These enums are the Phase A/B contract surface. The kitchen-sink
+    // incident history (v1.2.5 theme zip, badge contrast) is why every
+    // closed enum gets pinned: extending one without updating the design
+    // contract must fail a test, not slip through review.
+    // -----------------------------------------------------------------
+
+    public function test_hero_themes_constant_lists_exactly_three_modes() {
+        $this->assertSame(
+            array( 'inherit', 'light', 'dark' ),
+            \PCPTPages_Validator::HERO_THEMES,
+            'HERO_THEMES is a closed enum per docs/HERO_CONTRAST_DESIGN.md — do not extend without updating the contract first.'
+        );
+    }
+
+    public function test_hero_widths_constant_lists_exactly_two_modes() {
+        $this->assertSame(
+            array( 'contained', 'full' ),
+            \PCPTPages_Validator::HERO_WIDTHS,
+            'HERO_WIDTHS is a closed enum per docs/HERO_CONTRAST_DESIGN.md — do not extend without updating the contract first.'
+        );
+    }
+
+    public function test_hero_overlay_focus_constant_lists_exactly_three_values() {
+        $this->assertSame(
+            array( 'top', 'center', 'bottom' ),
+            \PCPTPages_Validator::HERO_OVERLAY_FOCUS,
+            'HERO_OVERLAY_FOCUS is a closed enum per docs/HERO_CONTRAST_DESIGN.md — do not extend without updating the contract first.'
+        );
+    }
+
+    /**
+     * Minimal valid CPT definition with one hero field overridden.
+     *
+     * @param string $key   Hero field key.
+     * @param mixed  $value Value under test.
+     * @return array
+     */
+    private function cpt_with( $key, $value ) {
+        return array(
+            'slug'           => 'listing',
+            'label_singular' => 'Listing',
+            'label_plural'   => 'Listings',
+            $key             => $value,
+        );
+    }
+
+    public function test_validate_cpt_definition_accepts_overlay_hero_layout() {
+        $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'hero_layout', 'overlay' ) );
+        $this->assertTrue( $result, 'overlay is a valid hero_layout since Phase B.' );
+    }
+
+    public function test_validate_cpt_definition_rejects_unknown_hero_layout() {
+        $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'hero_layout', 'banner' ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_hero_layout', $result->get_error_code() );
+    }
+
+    public function test_validate_cpt_definition_accepts_each_valid_hero_theme() {
+        foreach ( \PCPTPages_Validator::HERO_THEMES as $theme ) {
+            $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'hero_theme', $theme ) );
+            $this->assertTrue( $result, "hero_theme '{$theme}' must validate cleanly." );
+        }
+    }
+
+    public function test_validate_cpt_definition_rejects_unknown_hero_theme() {
+        $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'hero_theme', 'midnight' ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_hero_theme', $result->get_error_code() );
+    }
+
+    public function test_validate_cpt_definition_rejects_non_string_hero_theme() {
+        $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'hero_theme', true ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_hero_theme', $result->get_error_code() );
+    }
+
+    public function test_validate_cpt_definition_accepts_each_valid_hero_width() {
+        foreach ( \PCPTPages_Validator::HERO_WIDTHS as $width ) {
+            $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'hero_width', $width ) );
+            $this->assertTrue( $result, "hero_width '{$width}' must validate cleanly." );
+        }
+    }
+
+    public function test_validate_cpt_definition_rejects_unknown_hero_width() {
+        $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'hero_width', 'fullscreen' ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_hero_width', $result->get_error_code() );
+    }
+
+    public function test_validate_cpt_definition_accepts_each_valid_hero_overlay_focus() {
+        foreach ( \PCPTPages_Validator::HERO_OVERLAY_FOCUS as $focus ) {
+            $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'hero_overlay_focus', $focus ) );
+            $this->assertTrue( $result, "hero_overlay_focus '{$focus}' must validate cleanly." );
+        }
+    }
+
+    public function test_validate_cpt_definition_rejects_unknown_hero_overlay_focus() {
+        $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'hero_overlay_focus', 'left' ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_hero_overlay_focus', $result->get_error_code() );
+    }
+
+    public function test_validate_cpt_definition_accepts_full_phase_a_b_combination() {
+        $result = $this->validator->validate_cpt_definition( array(
+            'slug'               => 'listing',
+            'label_singular'     => 'Listing',
+            'label_plural'       => 'Listings',
+            'hero_layout'        => 'overlay',
+            'hero_theme'         => 'dark',
+            'hero_width'         => 'full',
+            'hero_overlay_focus' => 'top',
+        ) );
+        $this->assertTrue( $result, 'The full opt-in combination (overlay + dark + full + top) must validate cleanly.' );
+    }
+
+    // -----------------------------------------------------------------
     // Grouping definition validation
     // -----------------------------------------------------------------
 

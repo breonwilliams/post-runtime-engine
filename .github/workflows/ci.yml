@@ -1,0 +1,70 @@
+# CI for Promptless CPT Pages.
+#
+# Three jobs, all required:
+#   lint  — php -l every PHP file across the supported version range, plus
+#           a syntax check of the MCP connector JS.
+#   test  — the PHPUnit Unit suite (validator/registry/renderer contract
+#           tests — the closed enums, error codes, and merge_defaults
+#           behavior that every write surface depends on).
+#   build — runs the release packaging script, which self-verifies the
+#           ZIP's internal structure (the post-theme-v1.2.5-incident
+#           guard). A flattened or incomplete archive fails the build
+#           here instead of on a customer's site.
+#
+# The Integration suite needs a WordPress test install (see
+# bin/install-wp-tests.sh) and is not wired here yet — add a wp-env or
+# wordpress-develop service when integration coverage grows.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.2']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP syntax check (all plugin files)
+        run: |
+          set -e
+          find . -name '*.php' -not -path './vendor/*' -not -path './build/*' -print0 \
+            | xargs -0 -n1 -P4 php -l > /dev/null
+          echo "All PHP files lint clean on PHP ${{ matrix.php }}"
+      - name: MCP connector JS syntax check
+        run: node --check includes/Connector/assets/post-runtime-connector.js
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.2']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer
+      - name: Install dev dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Run Unit suite
+        run: composer run test:unit
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build release ZIP (self-verifying)
+        run: ./bin/build-release.sh
+      - name: Confirm artifact exists
+        run: test -f build/promptless-cpt-pages.zip && unzip -l build/promptless-cpt-pages.zip | tail -3

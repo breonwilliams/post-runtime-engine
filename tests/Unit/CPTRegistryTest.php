@@ -77,6 +77,37 @@ class CPTRegistryTest extends UnitTestCase {
         $this->assertSame( 'Listing', $stored['label_singular'] );
     }
 
+    public function test_register_applies_hero_defaults_transparently() {
+        // Phase A/B contract (docs/HERO_CONTRAST_DESIGN.md): merge_defaults
+        // must supply behavior-preserving hero defaults so CPTs registered
+        // before these fields existed — and minimal registrations today —
+        // render byte-identical to pre-feature output.
+        $this->registry->register( 'listing', $this->valid_definition() );
+        $stored = $this->registry->get( 'listing' );
+
+        $this->assertSame( 'stacked', $stored['hero_layout'] );
+        $this->assertSame( 'left', $stored['hero_image_position'] );
+        $this->assertSame( 'square', $stored['hero_image_aspect'] );
+        $this->assertSame( 'inherit', $stored['hero_theme'], 'hero_theme must default to inherit (no-op).' );
+        $this->assertSame( 'contained', $stored['hero_width'], 'hero_width must default to contained (no-op).' );
+        $this->assertSame( 'center', $stored['hero_overlay_focus'], 'hero_overlay_focus must default to center.' );
+    }
+
+    public function test_register_round_trips_hero_opt_in_values() {
+        $this->registry->register( 'listing', $this->valid_definition( array(
+            'hero_layout'        => 'overlay',
+            'hero_theme'         => 'dark',
+            'hero_width'         => 'full',
+            'hero_overlay_focus' => 'top',
+        ) ) );
+        $stored = $this->registry->get( 'listing' );
+
+        $this->assertSame( 'overlay', $stored['hero_layout'] );
+        $this->assertSame( 'dark', $stored['hero_theme'] );
+        $this->assertSame( 'full', $stored['hero_width'] );
+        $this->assertSame( 'top', $stored['hero_overlay_focus'], 'Hero opt-in values must round-trip register() → get(). If this fails, the registry or a write-surface allowlist is dropping the field.' );
+    }
+
     public function test_register_stamps_created_at_and_updated_at() {
         $this->registry->register( 'listing', $this->valid_definition() );
         $stored = $this->registry->get( 'listing' );

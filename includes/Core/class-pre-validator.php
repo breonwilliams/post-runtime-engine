@@ -50,9 +50,18 @@ class PCPTPages_Validator {
 	 *   - manual: items entered per-post via admin meta box or connector
 	 *   - child_posts: posts whose post_parent equals the current post
 	 *   - taxonomy_match: posts sharing one of the current post's terms
-	 *   - meta_match: posts whose configured post-meta value equals the
-	 *     current post's value for the same meta key (e.g., "more from
-	 *     this agent" when meta_key='_agent_id')
+	 *   - meta_match: posts whose configured post-meta value equals a value
+	 *     derived from the current post. Default shape (mirror): posts in
+	 *     the SAME CPT whose value for the key equals the current post's
+	 *     value for the same key (e.g., "more from this agent" when
+	 *     meta_key='_agent_id'). Since data-version 0.5.0 the object also
+	 *     accepts `post_type` (query a DIFFERENT CPT), `match_against`
+	 *     (compare the target posts' meta to the current post's ID / slug /
+	 *     title instead of its own meta value — the reverse-lookup /
+	 *     parent-pulls-children shape, e.g. an Agent page pulling Listings
+	 *     whose agent field names this agent), and `field_key` (reference a
+	 *     PRE post-field by its key instead of a raw meta key; resolved to
+	 *     the `_pcptpages_field_{key}` storage key).
 	 *
 	 * `taxonomy_match` and `meta_match` MUST be expressed as objects
 	 * (string forms are rejected by validate_source_value()) because they
@@ -63,6 +72,29 @@ class PCPTPages_Validator {
 		'child_posts',
 		'taxonomy_match',
 		'meta_match',
+	);
+
+	/**
+	 * Allowed values for meta_match's `match_against` parameter — what the
+	 * TARGET posts' meta value is compared to (data-version 0.5.0).
+	 *
+	 *   - same_key:      the current post's own value for the same meta key
+	 *                    (the original v0.3.0 mirror behavior; default)
+	 *   - current_id:    the current post's ID (targets store a post ID)
+	 *   - current_slug:  the current post's slug (post_name)
+	 *   - current_title: the current post's title (targets store a
+	 *                    human-readable name, e.g. a Listing's visible
+	 *                    "Agent" post-field naming the agent)
+	 *
+	 * Closed enum — single source of truth for the meta_match reverse-lookup
+	 * shape. Do NOT extend without updating docs/CONNECTOR_SPEC.md and the
+	 * connector source_modes descriptor first.
+	 */
+	const META_MATCH_AGAINST = array(
+		'same_key',
+		'current_id',
+		'current_slug',
+		'current_title',
 	);
 
 	/**
@@ -1307,33 +1339,108 @@ class PCPTPages_Validator {
 			}
 
 			if ( $source['type'] === 'meta_match' ) {
-				// meta_key required: must be a string, in canonical sanitize_key
-				// form, and within the practical length cap. Strict equality with
-				// sanitize_key() rejects silent transformation (mirrors the
-				// taxonomy slug check and the ReusableElementsService key check).
-				if ( empty( $source['meta_key'] ) || ! is_string( $source['meta_key'] ) ) {
+				$has_meta_key  = ! empty( $source['meta_key'] );
+				$has_field_key = ! empty( $source['field_key'] );
+
+				// Exactly one of meta_key / field_key. field_key references a
+				// PRE post-field by its definition key (resolved to the
+				// `_pcptpages_field_{key}` storage key at render time) — the
+				// connector-friendly form, since post-field values are the
+				// only meta the connector can write. meta_key remains the raw
+				// escape hatch for meta written by other code.
+				if ( $has_meta_key && $has_field_key ) {
+					return new WP_Error(
+						'pcptpages_meta_match_key_conflict',
+						__( 'meta_match source accepts meta_key OR field_key, not both.', 'promptless-cpt-pages' )
+					);
+				}
+				if ( ! $has_meta_key && ! $has_field_key ) {
 					return new WP_Error(
 						'pcptpages_invalid_source_meta_key',
-						__( 'meta_match source requires a meta_key (non-empty string).', 'promptless-cpt-pages' )
+						__( 'meta_match source requires a meta_key (raw post-meta key) or a field_key (PRE post-field key).', 'promptless-cpt-pages' )
 					);
 				}
 
-				$meta_key_raw = $source['meta_key'];
-				// Allow a single leading underscore (the WordPress convention
-				// for "private" meta) but otherwise enforce sanitize_key form.
-				$meta_key_normalized = preg_replace( '/^_+/', '', $meta_key_raw );
-				if ( $meta_key_normalized === '' || sanitize_key( $meta_key_normalized ) !== $meta_key_normalized ) {
-					return new WP_Error(
-						'pcptpages_invalid_source_meta_key',
-						__( 'meta_match meta_key must be a valid post-meta key (lowercase alphanumeric + underscores, optionally prefixed with _).', 'promptless-cpt-pages' )
-					);
+				if ( $has_field_key ) {
+					// field_key: strict sanitize_key form, no underscore prefix
+					// (post-field keys are plain; the storage prefix is added
+					// by the resolver). The leading-underscore check must be
+					// explicit — sanitize_key() itself allows leading
+					// underscores, so form-equality alone would accept
+					// '_agent' (caught by the 2026-07-10 smoke test).
+					if ( ! is_string( $source['field_key'] )
+						|| strpos( $source['field_key'], '_' ) === 0
+						|| sanitize_key( $source['field_key'] ) !== $source['field_key'] ) {
+						return new WP_Error(
+							'pcptpages_invalid_source_field_key',
+							__( 'meta_match field_key must be a valid post-field key (lowercase alphanumeric + underscores, no leading underscore).', 'promptless-cpt-pages' )
+						);
+					}
+					if ( strlen( $source['field_key'] ) > self::MAX_META_KEY_LENGTH ) {
+						return new WP_Error(
+							'pcptpages_invalid_source_field_key_length',
+							/* translators: %d: max allowed field key length */
+							sprintf( __( 'meta_match field_key must be %d characters or fewer.', 'promptless-cpt-pages' ), self::MAX_META_KEY_LENGTH )
+						);
+					}
 				}
 
-				if ( strlen( $meta_key_raw ) > self::MAX_META_KEY_LENGTH ) {
+				if ( $has_meta_key ) {
+					// meta_key: must be a string, in canonical sanitize_key
+					// form, and within the practical length cap. Strict equality
+					// with sanitize_key() rejects silent transformation (mirrors
+					// the taxonomy slug check and the ReusableElementsService
+					// key check).
+					if ( ! is_string( $source['meta_key'] ) ) {
+						return new WP_Error(
+							'pcptpages_invalid_source_meta_key',
+							__( 'meta_match source requires a meta_key (non-empty string).', 'promptless-cpt-pages' )
+						);
+					}
+
+					$meta_key_raw = $source['meta_key'];
+					// Allow a single leading underscore (the WordPress convention
+					// for "private" meta) but otherwise enforce sanitize_key form.
+					$meta_key_normalized = preg_replace( '/^_+/', '', $meta_key_raw );
+					if ( $meta_key_normalized === '' || sanitize_key( $meta_key_normalized ) !== $meta_key_normalized ) {
+						return new WP_Error(
+							'pcptpages_invalid_source_meta_key',
+							__( 'meta_match meta_key must be a valid post-meta key (lowercase alphanumeric + underscores, optionally prefixed with _).', 'promptless-cpt-pages' )
+						);
+					}
+
+					if ( strlen( $meta_key_raw ) > self::MAX_META_KEY_LENGTH ) {
+						return new WP_Error(
+							'pcptpages_invalid_source_meta_key_length',
+							/* translators: %d: max allowed meta key length */
+							sprintf( __( 'meta_match meta_key must be %d characters or fewer.', 'promptless-cpt-pages' ), self::MAX_META_KEY_LENGTH )
+						);
+					}
+				}
+
+				// post_type (optional, data-version 0.5.0): query a different
+				// CPT than the host post's — the cross-CPT reverse-lookup
+				// shape. Form-only check here (mirrors the taxonomy slug
+				// check); existence is verified at resolve time, where a
+				// missing post type fails soft to an empty item list.
+				if ( isset( $source['post_type'] ) ) {
+					if ( ! is_string( $source['post_type'] ) || $source['post_type'] === ''
+						|| sanitize_key( $source['post_type'] ) !== $source['post_type'] ) {
+						return new WP_Error(
+							'pcptpages_invalid_source_post_type',
+							__( 'meta_match post_type must be a valid post type key (lowercase alphanumeric + underscores).', 'promptless-cpt-pages' )
+						);
+					}
+				}
+
+				// match_against (optional, data-version 0.5.0): what the
+				// TARGET posts' meta value is compared to. Closed enum.
+				if ( isset( $source['match_against'] )
+					&& ! in_array( $source['match_against'], self::META_MATCH_AGAINST, true ) ) {
 					return new WP_Error(
-						'pcptpages_invalid_source_meta_key_length',
-						/* translators: %d: max allowed meta key length */
-						sprintf( __( 'meta_match meta_key must be %d characters or fewer.', 'promptless-cpt-pages' ), self::MAX_META_KEY_LENGTH )
+						'pcptpages_invalid_source_match_against',
+						/* translators: %s: list of allowed match_against values */
+						sprintf( __( 'meta_match match_against must be one of: %s', 'promptless-cpt-pages' ), implode( ', ', self::META_MATCH_AGAINST ) )
 					);
 				}
 

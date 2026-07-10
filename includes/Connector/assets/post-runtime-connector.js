@@ -231,7 +231,7 @@ const TOOLS = [
   {
     name: "postruntime_define_grouping",
     description:
-      "Define a grouping (named cluster of items with shared layout) for a CPT. featured-card variant REQUIRES max_items=1 (the validator enforces this). Source modes: 'manual' (items stored explicitly per post), 'child_posts' (auto-populated from hierarchical children), {type:'taxonomy_match',taxonomy:'<slug>'} (auto-populated from posts sharing a taxonomy term — the taxonomy must already exist), or {type:'meta_match',meta_key:'<key>'} (auto-populated from posts in the same CPT whose value for the post-meta key matches the current post's value — typical use cases: 'more from this agent' / 'other openings from this employer' / 'other locations of this business'; the meta_key may start with a single underscore for WordPress private meta).",
+      "Define a grouping (named cluster of items with shared layout) for a CPT. featured-card variant REQUIRES max_items=1 (the validator enforces this). Source modes: 'manual' (items stored explicitly per post), 'child_posts' (auto-populated from hierarchical children), {type:'taxonomy_match',taxonomy:'<slug>'} (auto-populated from posts sharing a taxonomy term — the taxonomy must already exist), or {type:'meta_match',...} (auto-populated from posts whose meta value equals a value derived from the current post). meta_match has two shapes: MIRROR (default) — {type:'meta_match',meta_key:'_agent_id'} finds same-CPT siblings sharing the current post's value ('more from this agent'); REVERSE LOOKUP — {type:'meta_match',post_type:'listing',field_key:'agent',match_against:'current_title'} pulls posts from a DIFFERENT CPT whose post-field names the current post (an Agent page pulling its Listings, a Neighborhood page pulling area Listings). Prefer field_key (a PRE post-field key — the meta this connector writes via set_post_field_values) over raw meta_key; exactly one of the two is required. match_against: same_key (default) | current_id | current_slug | current_title.",
     inputSchema: {
       type: "object",
       properties: {
@@ -267,12 +267,26 @@ const TOOLS = [
                 meta_key: {
                   type: "string",
                   maxLength: 64,
-                  description: "Post-meta key whose value identifies related posts. Lowercase alphanumeric + underscores; may start with a single underscore for private meta.",
+                  description: "Raw post-meta key whose value identifies related posts. Lowercase alphanumeric + underscores; may start with a single underscore for private meta. EXACTLY ONE of meta_key/field_key.",
+                },
+                field_key: {
+                  type: "string",
+                  maxLength: 64,
+                  description: "PRE post-field key (resolved to _pcptpages_field_{key} storage). Prefer this over meta_key — post-field values are the meta this connector writes. EXACTLY ONE of meta_key/field_key.",
+                },
+                post_type: {
+                  type: "string",
+                  description: "CPT slug to query. Defaults to the host CPT; set it to pull from a DIFFERENT CPT (cross-CPT reverse lookup).",
+                },
+                match_against: {
+                  type: "string",
+                  enum: ["same_key", "current_id", "current_slug", "current_title"],
+                  description: "What the TARGET posts' meta is compared to. same_key (default) = current post's own value for the same key (mirror). current_id/current_slug/current_title = the current post itself (reverse lookup — parent pulls children).",
                 },
                 limit: { type: "integer", minimum: 1, maximum: 100 },
                 exclude_self: { type: "boolean" },
               },
-              required: ["type", "meta_key"],
+              required: ["type"],
             },
           ],
         },

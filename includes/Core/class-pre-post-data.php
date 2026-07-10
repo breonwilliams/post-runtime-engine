@@ -238,6 +238,30 @@ class PCPTPages_Post_Data {
 			}
 		}
 
+		// Inherit the definition's default_source when an entry omits
+		// `source` and carries no items (2026-07-10 smoke-test finding).
+		// This mirrors the admin meta box save path, which snapshots
+		// $def['default_source'] into every entry it writes — without this,
+		// a connector caller attaching an auto-sourced grouping with a bare
+		// {grouping_key} entry silently got source:'manual' + items:[] and
+		// the grouping rendered nothing, making define_grouping's
+		// default_source unreachable through the connector. Entries that
+		// omit source but DO carry items keep the implicit-manual behavior
+		// (items only make sense on a manual source, and the caller clearly
+		// meant them to render).
+		foreach ( $groupings as $gi => $gentry ) {
+			if ( ! is_array( $gentry ) || isset( $gentry['source'] ) ) {
+				continue;
+			}
+			if ( ! empty( $gentry['items'] ) ) {
+				continue;
+			}
+			$gkey = isset( $gentry['grouping_key'] ) ? (string) $gentry['grouping_key'] : '';
+			if ( $gkey !== '' && isset( $cpt_groupings[ $gkey ]['default_source'] ) ) {
+				$groupings[ $gi ]['source'] = $cpt_groupings[ $gkey ]['default_source'];
+			}
+		}
+
 		$valid = $this->validator->validate_post_groupings( $groupings, $post->post_type, $cpt_groupings );
 		if ( is_wp_error( $valid ) ) {
 			return $valid;

@@ -167,28 +167,74 @@ class PCPTPages_Source_Resolver {
 	 * Resolve meta_match source. Returns items from posts whose configured
 	 * meta_key value equals the current post's value for the same key.
 	 *
-	 * Mirrors how taxonomy_match works: reads a parameter from the current
-	 * post and finds related posts in the same CPT. Use cases:
+	 * Two shapes, controlled by `match_against` (default 'same_key'):
+	 *
+	 * MIRROR (same_key, the original v0.3.0 behavior): posts in the same
+	 * CPT whose value for the key equals the CURRENT post's value for the
+	 * same key. Use cases:
 	 *   - "More listings from this agent"  (meta_key: '_agent_id')
 	 *   - "Other openings from this employer"  (meta_key: '_employer_id')
 	 *   - "Other locations of this business"  (meta_key: '_business_id')
 	 *
-	 * If the current post has no value for the meta_key (or the value is
-	 * an empty string), the resolver returns an empty array — same fail-safe
-	 * behavior as taxonomy_match when the post has no terms.
+	 * REVERSE LOOKUP (current_id / current_slug / current_title, added at
+	 * data-version 0.5.0): posts whose value for the key equals the current
+	 * post's ID, slug, or title — the parent-pulls-children shape, usually
+	 * combined with `post_type` to query a DIFFERENT CPT:
+	 *   - Agent page pulling its Listings: {post_type:'listing',
+	 *     field_key:'agent', match_against:'current_title'}
+	 *   - Neighborhood page pulling area Listings: {post_type:'listing',
+	 *     field_key:'neighborhood', match_against:'current_title'}
+	 *
+	 * `field_key` references a PRE post-field by its definition key and is
+	 * resolved to the `_pcptpages_field_{key}` storage key here; `meta_key`
+	 * remains the raw escape hatch for meta written by other code. The
+	 * validator enforces exactly one of the two.
+	 *
+	 * If the derived match value is empty, the resolver returns an empty
+	 * array — same fail-safe behavior as taxonomy_match when the post has
+	 * no terms. A configured post_type that doesn't exist also fails soft
+	 * to empty (mirrors the taxonomy_exists() handling above).
 	 *
 	 * @param WP_Post $post   Current post.
-	 * @param array   $source Source config ({type, meta_key, limit, exclude_self}).
+	 * @param array   $source Source config ({type, meta_key|field_key, post_type, match_against, limit, exclude_self}).
 	 * @param array   $def    Grouping definition.
 	 * @return array<int,array>
 	 */
 	private function resolve_meta_match( WP_Post $post, array $source, array $def ) {
 		$meta_key = isset( $source['meta_key'] ) ? (string) $source['meta_key'] : '';
+		if ( $meta_key === '' && ! empty( $source['field_key'] ) && is_string( $source['field_key'] ) ) {
+			$meta_key = PCPTPages_Post_Data::FIELD_VALUE_META_PREFIX . sanitize_key( $source['field_key'] );
+		}
 		if ( $meta_key === '' ) {
 			return array();
 		}
 
-		$current_value = get_post_meta( $post->ID, $meta_key, true );
+		// Target post type: defaults to the current post's CPT (mirror
+		// shape). A configured post_type enables cross-CPT reverse lookups.
+		$target_post_type = $post->post_type;
+		if ( ! empty( $source['post_type'] ) && is_string( $source['post_type'] ) ) {
+			$target_post_type = sanitize_key( $source['post_type'] );
+			if ( ! post_type_exists( $target_post_type ) ) {
+				return array();
+			}
+		}
+
+		// Derive the value the target posts' meta must equal.
+		$match_against = isset( $source['match_against'] ) ? (string) $source['match_against'] : 'same_key';
+		switch ( $match_against ) {
+			case 'current_id':
+				$current_value = (string) $post->ID;
+				break;
+			case 'current_slug':
+				$current_value = $post->post_name;
+				break;
+			case 'current_title':
+				$current_value = $post->post_title;
+				break;
+			default: // same_key — the original mirror behavior.
+				$current_value = get_post_meta( $post->ID, $meta_key, true );
+				break;
+		}
 
 		// Empty / unset values short-circuit. Matching against "" would return
 		// every post that ALSO has no value for the key — which is virtually
@@ -210,7 +256,7 @@ class PCPTPages_Source_Resolver {
 		$exclude_self = ! isset( $source['exclude_self'] ) || $source['exclude_self'];
 
 		$args = array(
-			'post_type'        => $post->post_type,
+			'post_type'        => $target_post_type,
 			'post_status'      => 'publish',
 			'numberposts'      => $limit,
 			'orderby'          => 'date',

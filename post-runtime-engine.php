@@ -422,17 +422,35 @@ final class Promptless_CPT_Pages {
 
 				$meta_key = isset( $source['meta_key'] ) ? (string) $source['meta_key'] : '';
 				if ( $meta_key === '' ) {
+					// field_key sources reference PRE post-fields, whose
+					// `_pcptpages_field_*` meta is already managed (written via
+					// set_post_field_values / the meta box) — nothing to
+					// auto-register, and registering protected-prefix meta for
+					// open REST writes would be wrong.
 					continue;
 				}
 
-				$dedupe_key = $cpt_slug . '|' . $meta_key;
+				// The meta values live on the posts being QUERIED. For the
+				// mirror shape that's the host CPT; for a cross-CPT reverse
+				// lookup (post_type set, data-version 0.5.0) it's the target
+				// post type — register there so the key is REST-writable where
+				// the values are actually stored.
+				$target_cpt = $cpt_slug;
+				if ( ! empty( $source['post_type'] ) && is_string( $source['post_type'] ) ) {
+					$target_cpt = sanitize_key( $source['post_type'] );
+					if ( ! post_type_exists( $target_cpt ) ) {
+						continue;
+					}
+				}
+
+				$dedupe_key = $target_cpt . '|' . $meta_key;
 				if ( isset( $registered[ $dedupe_key ] ) ) {
 					continue;
 				}
 				$registered[ $dedupe_key ] = true;
 
 				register_post_meta(
-					$cpt_slug,
+					$target_cpt,
 					$meta_key,
 					array(
 						'single'        => true,
@@ -454,10 +472,13 @@ final class Promptless_CPT_Pages {
 				/**
 				 * Fires after a meta_match meta key is auto-registered.
 				 *
-				 * @param string $cpt_slug CPT the meta is attached to.
-				 * @param string $meta_key The registered meta key.
+				 * @param string $target_cpt CPT the meta is attached to (the
+				 *                           queried post type — differs from the
+				 *                           grouping's host CPT for cross-CPT
+				 *                           reverse lookups).
+				 * @param string $meta_key   The registered meta key.
 				 */
-				do_action( 'pcptpages_meta_match_key_registered', $cpt_slug, $meta_key );
+				do_action( 'pcptpages_meta_match_key_registered', $target_cpt, $meta_key );
 			}
 		}
 	}

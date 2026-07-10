@@ -350,11 +350,25 @@ Source can be a string (`"manual"` or `"child_posts"`) or an object form for the
 }
 
 // Match by shared post-meta value — "more from this agent / employer / business"
+// (MIRROR shape: same-CPT siblings sharing the current post's value)
 "default_source": {
   "type": "meta_match",
-  "meta_key": "_agent_id", // required; max 64 chars; may start with _ for private meta
+  "meta_key": "_agent_id", // EXACTLY ONE of meta_key/field_key; max 64 chars; may start with _ for private meta
   "limit": 6,              // optional
   "exclude_self": true     // optional
+}
+
+// Cross-CPT reverse lookup (data-version 0.5.0) — parent pulls children:
+// an Agent page pulling the Listings whose "agent" post-field names it.
+"default_source": {
+  "type": "meta_match",
+  "field_key": "agent",            // EXACTLY ONE of meta_key/field_key — a PRE post-field key,
+                                   // resolved to _pcptpages_field_agent storage. Prefer this form:
+                                   // post-field values are the meta this connector writes.
+  "post_type": "listing",          // optional; CPT to query (defaults to the host CPT)
+  "match_against": "current_title",// optional; same_key (default) | current_id | current_slug | current_title
+  "limit": 12,
+  "exclude_self": true
 }
 ```
 
@@ -363,11 +377,15 @@ Source can be a string (`"manual"` or `"child_posts"`) or an object form for the
 - `manual` — items curated per post (e.g. a Listing's hand-picked Features)
 - `child_posts` — natural WP hierarchy (a Course post with Lesson child posts)
 - `taxonomy_match` — relationship is "shares a category / tag / term"
-- `meta_match` — relationship is a stored entity ID (the resolver reads the current post's value for the configured `meta_key` and finds other posts in the same CPT with the same value)
+- `meta_match` — relationship is a stored value. Two shapes controlled by `match_against`:
+  - **Mirror** (`same_key`, default): the resolver reads the current post's own value for the configured key and finds other posts *in the same CPT* with the same value — "more from this agent" on a listing page.
+  - **Reverse lookup** (`current_id` / `current_slug` / `current_title`, data-version 0.5.0): the resolver finds posts whose value for the key equals the current post's ID, slug, or title — the parent-pulls-children shape, usually combined with `post_type` to query a *different* CPT. Use `current_title` when the child's post-field stores the human-readable name shown on cards (e.g. a Listing's visible "Agent" field); use `current_id` with a `hidden`-position post-field when you want a rename-proof link.
 
-`meta_match` short-circuits to an empty array when the current post has no value for the configured `meta_key`, so it is safe to enable on a CPT before every post has the meta populated. It scopes to the parent's post type — cross-CPT matching is out of scope for v1.
+`meta_match` short-circuits to an empty array when the derived match value is empty (and when a configured `post_type` isn't registered), so it is safe to define before every post has its fields populated.
 
-**Auto-registration of meta keys (v0.4.0+):** When a grouping is defined with a `meta_match` source, PRE auto-calls `register_post_meta()` on the parent CPT for the configured `meta_key` with `show_in_rest: true` and an `edit_post` auth callback. This makes the meta key writable through the standard WP REST API (`POST /wp/v2/{cpt}/{id}` with `meta: {your_key: value}`) on sites that don't have a field plugin (ACF, MetaBox, Pods) installed. Sites that do use a field plugin can opt out via the `pre_auto_register_meta_match_keys` filter. Underscore-prefixed keys are accepted (the standard WordPress private-meta convention).
+**`field_key` vs `meta_key`:** `field_key` references a PRE post-field by its definition key and is resolved to the `_pcptpages_field_{key}` storage key at render time — prefer it, because post-field values are exactly the meta this connector can write (`set_post_field_values` / `values` on create). `meta_key` remains the raw escape hatch for meta written by other plugins or code. Exactly one of the two is required (`pcptpages_meta_match_key_conflict` if both).
+
+**Auto-registration of meta keys (v0.4.0+):** When a grouping is defined with a `meta_match` source using a raw `meta_key`, PRE auto-calls `register_post_meta()` for that key with `show_in_rest: true` and an `edit_post` auth callback — on the post type being *queried* (the host CPT for the mirror shape; the configured `post_type` for cross-CPT reverse lookups, since that's where the values live). This makes the meta key writable through the standard WP REST API (`POST /wp/v2/{cpt}/{id}` with `meta: {your_key: value}`) on sites that don't have a field plugin (ACF, MetaBox, Pods) installed. Sites that do use a field plugin can opt out via the `pre_auto_register_meta_match_keys` filter. Underscore-prefixed keys are accepted (the standard WordPress private-meta convention). `field_key` sources skip auto-registration entirely — post-field meta is already PRE-managed.
 
 `max_items: 0` means no cap. `featured-card` variant requires `max_items: 1` (validator enforces).
 
@@ -397,8 +415,13 @@ Source can be a string (`"manual"` or `"child_posts"`) or an object form for the
 - `pre_taxonomy_match_needs_object` — taxonomy_match given as bare string
 - `pre_invalid_source_taxonomy` — taxonomy doesn't exist or is missing
 - `pre_meta_match_needs_object` — meta_match given as bare string
-- `pre_invalid_source_meta_key` — meta_key missing or fails canonical-form check
+- `pre_invalid_source_meta_key` — neither meta_key nor field_key given, or meta_key fails canonical-form check
 - `pre_invalid_source_meta_key_length` — meta_key longer than 64 characters
+- `pre_meta_match_key_conflict` — both meta_key AND field_key given (exactly one required)
+- `pre_invalid_source_field_key` — field_key fails canonical form (lowercase alphanumeric + underscores, no leading underscore)
+- `pre_invalid_source_field_key_length` — field_key longer than 64 characters
+- `pre_invalid_source_post_type` — post_type not a valid post-type key (form check only; existence is checked at render, failing soft to empty)
+- `pre_invalid_source_match_against` — match_against not one of {same_key, current_id, current_slug, current_title}
 - `pre_invalid_source_limit` — limit out of [1, 100]
 - `pre_invalid_source_exclude_self` — exclude_self not a boolean
 
@@ -947,9 +970,14 @@ From `PRE_Validator`:
 | `pre_featured_card_max_items` | featured-card variant requires max_items: 1 | Set max_items to 1 |
 | `pre_taxonomy_match_needs_object` | taxonomy_match given as bare string | Use object form: `{type, taxonomy}` |
 | `pre_invalid_source_taxonomy` | Referenced taxonomy doesn't exist | Register the taxonomy first |
-| `pre_meta_match_needs_object` | meta_match given as bare string | Use object form: `{type, meta_key}` |
-| `pre_invalid_source_meta_key` | meta_key missing, empty, or fails canonical-form check | Use lowercase alphanumeric + underscores; one leading underscore allowed |
+| `pre_meta_match_needs_object` | meta_match given as bare string | Use object form: `{type, meta_key}` or `{type, field_key}` |
+| `pre_invalid_source_meta_key` | Neither meta_key nor field_key given, or meta_key fails canonical-form check | Provide exactly one key; meta_key is lowercase alphanumeric + underscores, one leading underscore allowed |
 | `pre_invalid_source_meta_key_length` | meta_key longer than 64 chars | Shorten the key — 64 char cap |
+| `pre_meta_match_key_conflict` | Both meta_key and field_key given | Provide exactly one — field_key for PRE post-fields, meta_key for raw meta |
+| `pre_invalid_source_field_key` | field_key fails canonical form | Lowercase alphanumeric + underscores, NO leading underscore (the storage prefix is added automatically) |
+| `pre_invalid_source_field_key_length` | field_key longer than 64 chars | Shorten the key — 64 char cap |
+| `pre_invalid_source_post_type` | post_type not a valid post-type key | Use the CPT slug in sanitize_key form (e.g. `listing`) |
+| `pre_invalid_source_match_against` | match_against not in the closed enum | Use same_key, current_id, current_slug, or current_title |
 | `pre_invalid_source_limit` | limit out of [1, 100] | Use an integer between 1 and 100 |
 | `pre_invalid_source_exclude_self` | exclude_self not a boolean | Use true or false |
 | `pre_invalid_item` | Item not an array | Pass an array |

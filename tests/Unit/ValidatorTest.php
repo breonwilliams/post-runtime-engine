@@ -63,6 +63,14 @@ class ValidatorTest extends UnitTestCase {
         );
     }
 
+    public function test_meta_match_against_constant_lists_exactly_four_values() {
+        $this->assertSame(
+            array( 'same_key', 'current_id', 'current_slug', 'current_title' ),
+            \PCPTPages_Validator::META_MATCH_AGAINST,
+            'META_MATCH_AGAINST must list exactly the four documented values (data-version 0.5.0). Do not extend without updating docs/CONNECTOR_SPEC.md and the connector source_modes descriptor first.'
+        );
+    }
+
     public function test_reserved_cpt_slugs_includes_wp_core_and_woocommerce() {
         // Spot-check a few critical reserved slugs. If WordPress adds new
         // built-in post types or this list expands for a new plugin, this
@@ -607,6 +615,130 @@ class ValidatorTest extends UnitTestCase {
         ) );
         $this->assertInstanceOf( '\\WP_Error', $result );
         $this->assertSame( 'pcptpages_invalid_source_exclude_self', $result->get_error_code() );
+    }
+
+    // -----------------------------------------------------------------
+    // Source value validation — meta_match reverse-lookup params
+    // (field_key / post_type / match_against, data-version 0.5.0)
+    //
+    // These guard the cross-CPT parent-pulls-children shape: an Agent
+    // page pulling Listings whose post-field names this agent. field_key
+    // references a PRE post-field (resolved to _pcptpages_field_{key} at
+    // render); exactly one of meta_key/field_key is required.
+    // -----------------------------------------------------------------
+
+    public function test_validate_source_value_accepts_meta_match_with_field_key() {
+        $result = $this->validator->validate_source_value( array(
+            'type'      => 'meta_match',
+            'field_key' => 'agent',
+        ) );
+        $this->assertTrue( $result, 'field_key alone must satisfy the key requirement (connector-writable post-field form).' );
+    }
+
+    public function test_validate_source_value_accepts_meta_match_reverse_lookup_shape() {
+        $result = $this->validator->validate_source_value( array(
+            'type'          => 'meta_match',
+            'field_key'     => 'agent',
+            'post_type'     => 'listing',
+            'match_against' => 'current_title',
+            'limit'         => 12,
+            'exclude_self'  => true,
+        ) );
+        $this->assertTrue( $result, 'The full cross-CPT reverse-lookup shape (the real-estate agent→listings pattern) must validate cleanly.' );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_with_both_meta_key_and_field_key() {
+        $result = $this->validator->validate_source_value( array(
+            'type'      => 'meta_match',
+            'meta_key'  => '_agent_id',
+            'field_key' => 'agent',
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame(
+            'pcptpages_meta_match_key_conflict',
+            $result->get_error_code(),
+            'meta_key and field_key are mutually exclusive — ambiguous key resolution must be rejected, not guessed.'
+        );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_field_key_with_underscore_prefix() {
+        // Post-field keys are plain (the _pcptpages_field_ storage prefix is
+        // added by the resolver) — a leading underscore signals the caller
+        // confused field_key with a raw meta_key.
+        $result = $this->validator->validate_source_value( array(
+            'type'      => 'meta_match',
+            'field_key' => '_agent',
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_source_field_key', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_field_key_with_uppercase() {
+        $result = $this->validator->validate_source_value( array(
+            'type'      => 'meta_match',
+            'field_key' => 'AgentName',  // sanitize_key would silently transform; we reject
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_source_field_key', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_field_key_too_long() {
+        $result = $this->validator->validate_source_value( array(
+            'type'      => 'meta_match',
+            'field_key' => str_repeat( 'a', 65 ),  // MAX_META_KEY_LENGTH is 64
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_source_field_key_length', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_accepts_meta_match_with_valid_post_type() {
+        $result = $this->validator->validate_source_value( array(
+            'type'      => 'meta_match',
+            'meta_key'  => '_agent_id',
+            'post_type' => 'listing',
+        ) );
+        $this->assertTrue( $result, 'A sanitize_key-form post_type must be accepted (existence is checked at resolve time, failing soft to empty).' );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_with_malformed_post_type() {
+        $result = $this->validator->validate_source_value( array(
+            'type'      => 'meta_match',
+            'meta_key'  => '_agent_id',
+            'post_type' => 'My Listings',  // spaces + uppercase — not sanitize_key form
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_source_post_type', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_rejects_meta_match_with_empty_post_type() {
+        $result = $this->validator->validate_source_value( array(
+            'type'      => 'meta_match',
+            'meta_key'  => '_agent_id',
+            'post_type' => '',
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_source_post_type', $result->get_error_code() );
+    }
+
+    public function test_validate_source_value_accepts_each_match_against_value() {
+        foreach ( \PCPTPages_Validator::META_MATCH_AGAINST as $value ) {
+            $result = $this->validator->validate_source_value( array(
+                'type'          => 'meta_match',
+                'meta_key'      => '_agent_id',
+                'match_against' => $value,
+            ) );
+            $this->assertTrue( $result, "match_against '{$value}' is in META_MATCH_AGAINST and must be accepted." );
+        }
+    }
+
+    public function test_validate_source_value_rejects_unknown_match_against() {
+        $result = $this->validator->validate_source_value( array(
+            'type'          => 'meta_match',
+            'meta_key'      => '_agent_id',
+            'match_against' => 'current_author',  // not in the closed enum
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_source_match_against', $result->get_error_code() );
     }
 
     // -----------------------------------------------------------------

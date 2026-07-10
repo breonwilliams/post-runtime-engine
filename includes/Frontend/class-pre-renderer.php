@@ -224,12 +224,33 @@ class PCPTPages_Renderer {
 		$cached       = get_transient( $cache_key );
 
 		if ( is_array( $cached )
-			&& isset( $cached['html'], $cached['post_modified'], $cached['defs_changed'] )
+			// Requiring the 'styles' key rejects entries cached by builds
+			// that predate asset-handle capture — those replay nothing and
+			// would stay broken until TTL expiry; treating them as a miss
+			// heals every page on first view after deploy.
+			&& isset( $cached['html'], $cached['post_modified'], $cached['defs_changed'], $cached['styles'] )
 			&& $cached['post_modified'] === $post->post_modified
 			&& (int) $cached['defs_changed'] === $defs_changed
 		) {
-			// Cache hit. Echo the cached HTML and append a debug comment
-			// when WP_DEBUG is on.
+			// Cache hit. Replay the asset enqueues that the original render
+			// triggered as side effects (see the capture below) BEFORE
+			// echoing — shortcodes inside the cached HTML (e.g. a Promptless
+			// Forms [pforms_form] in post_content) never execute on a hit,
+			// so without this their stylesheets/scripts were silently
+			// dropped and anonymous visitors got unstyled markup while
+			// editors (who always bypass the cache) saw a styled page
+			// (Harbor & Oak request-a-showing form, 2026-07-10). Handles
+			// are registered globally on wp_enqueue_scripts by their owning
+			// plugins — the standard register-early/enqueue-at-render WP
+			// pattern — so enqueueing by handle here restores the exact
+			// assets; enqueueing an unregistered handle is a harmless no-op.
+			foreach ( (array) ( $cached['styles'] ?? array() ) as $handle ) {
+				wp_enqueue_style( $handle );
+			}
+			foreach ( (array) ( $cached['scripts'] ?? array() ) as $handle ) {
+				wp_enqueue_script( $handle );
+			}
+
 			echo $cached['html']; // phpcs:ignore WordPress.Security.EscapeOutput
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				echo "\n<!-- pre-render-cache: HIT -->\n";
@@ -237,10 +258,19 @@ class PCPTPages_Renderer {
 			return;
 		}
 
-		// Cache miss. Render fresh, capture, store.
+		// Cache miss. Render fresh, capture, store. Snapshot the style /
+		// script queues around the render so any handles enqueued DURING it
+		// (shortcode side effects) are stored with the HTML and replayed on
+		// cache hits above.
+		$styles_before  = wp_styles()->queue;
+		$scripts_before = wp_scripts()->queue;
+
 		ob_start();
 		$this->render_internal( $post );
 		$html = ob_get_clean();
+
+		$render_styles  = array_values( array_diff( wp_styles()->queue, $styles_before ) );
+		$render_scripts = array_values( array_diff( wp_scripts()->queue, $scripts_before ) );
 
 		/**
 		 * Filter the render-cache TTL in seconds.
@@ -260,6 +290,8 @@ class PCPTPages_Renderer {
 				'html'          => $html,
 				'post_modified' => $post->post_modified,
 				'defs_changed'  => $defs_changed,
+				'styles'        => $render_styles,
+				'scripts'       => $render_scripts,
 			),
 			$lifetime
 		);

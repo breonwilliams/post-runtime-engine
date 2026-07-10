@@ -258,6 +258,11 @@ class PCPTPages_Filter_Descriptors {
 	/**
 	 * URL param-name map for a widget, all derived from the field key.
 	 *
+	 * Every generated name passes through collision_safe_param() — see its
+	 * docblock. Bare-key widgets (pill_select / checkbox_group / taxonomy
+	 * facets) are the exposed cases; the suffixed names are routed through
+	 * the same guard for uniformity.
+	 *
 	 * @param string $key    Field key (or taxonomy slug).
 	 * @param string $widget Widget id.
 	 * @return array
@@ -265,22 +270,68 @@ class PCPTPages_Filter_Descriptors {
 	private static function params_for_widget( $key, $widget ) {
 		switch ( $widget ) {
 			case 'range':
-				return array( 'min' => $key . '_min', 'max' => $key . '_max' );
+				return array(
+					'min' => self::collision_safe_param( $key . '_min' ),
+					'max' => self::collision_safe_param( $key . '_max' ),
+				);
 			case 'stepper':
-				return array( 'min' => $key . '_min' );
+				return array( 'min' => self::collision_safe_param( $key . '_min' ) );
 			case 'date_toggle':
-				return array( 'when' => $key . '_when' );
+				return array( 'when' => self::collision_safe_param( $key . '_when' ) );
 			case 'date_range':
-				return array( 'after' => $key . '_after', 'before' => $key . '_before' );
+				return array(
+					'after'  => self::collision_safe_param( $key . '_after' ),
+					'before' => self::collision_safe_param( $key . '_before' ),
+				);
 			case 'text_search':
-				return array( 'q' => $key . '_q' );
+				return array( 'q' => self::collision_safe_param( $key . '_q' ) );
 			case 'pill_select':
-				return array( 'value' => $key );
+				return array( 'value' => self::collision_safe_param( $key ) );
 			case 'checkbox_group':
-				return array( 'values' => $key );
+				return array( 'values' => self::collision_safe_param( $key ) );
 			default:
 				return array();
 		}
+	}
+
+	/**
+	 * Namespace a filter URL param when its name collides with a WordPress
+	 * public query variable.
+	 *
+	 * A filterable field key that equals a registered query var never
+	 * reaches the filter system: WordPress core claims the parameter first
+	 * and canonical-redirects the archive page away. Found live on Harbor &
+	 * Oak (2026-07-10): the listing CPT's `neighborhood` select emitted
+	 * `?neighborhood=downtown`, but `neighborhood` is ALSO a registered CPT
+	 * whose query var WP resolved to the nearest neighborhood post —
+	 * 301-redirecting /listings/ to /neighborhood/downtown-st-pete/ before
+	 * the filter ran. The same hijack applies to any field key or taxonomy
+	 * facet named after a post type slug, a taxonomy query var, or a core
+	 * public var (name, author, s, order, m, ...).
+	 *
+	 * Colliding names get an `f_` prefix (`neighborhood` → `f_neighborhood`).
+	 * The check reads WordPress's LIVE public-query-var registry, so it
+	 * covers core vars plus every registered CPT/taxonomy — current and
+	 * future — with zero maintenance. Non-colliding keys keep their clean
+	 * bare names, so existing working filter URLs are untouched (colliding
+	 * URLs never worked — they redirected — so no live links can break).
+	 * Downstream consumers (form input names, query parsing, chips, SEO
+	 * noindex) all read the descriptor's params map, so the rename is
+	 * complete by construction.
+	 *
+	 * @param string $name Proposed URL param name.
+	 * @return string Safe param name (prefixed when colliding).
+	 */
+	private static function collision_safe_param( $name ) {
+		$public_vars = isset( $GLOBALS['wp']->public_query_vars )
+			? (array) $GLOBALS['wp']->public_query_vars
+			: array();
+
+		if ( in_array( $name, $public_vars, true ) ) {
+			return 'f_' . $name;
+		}
+
+		return $name;
 	}
 
 	/**
@@ -443,7 +494,11 @@ class PCPTPages_Filter_Descriptors {
 			'key'        => $slug,
 			'label'      => isset( $tax->labels->singular_name ) ? (string) $tax->labels->singular_name : $slug,
 			'widget'     => 'checkbox_group',
-			'params'     => array( 'values' => $slug ),
+			// collision_safe_param: a public taxonomy's slug IS its own query
+			// var, so the facet param must be namespaced or WP core would
+			// intercept it (redirect to the term archive) before the filter
+			// runs — same hijack class as the field-key case above.
+			'params'     => array( 'values' => self::collision_safe_param( $slug ) ),
 			'query'      => array( 'handler' => 'generic', 'mode' => 'tax_in', 'taxonomy' => $slug, 'field' => 'slug' ),
 			'options'    => $options,
 			'range'      => null,

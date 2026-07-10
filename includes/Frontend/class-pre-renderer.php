@@ -931,6 +931,15 @@ class PCPTPages_Renderer {
 				$image_size = 'large';
 			} elseif ( in_array( $variant, array( 'compact-grid', 'horizontal-row' ), true ) ) {
 				$image_size = 'thumbnail';
+			} else {
+				// card-grid: the rendered cell is ~330px wide (auto-fill
+				// minmax grid), but wp_get_attachment_image('medium') claims
+				// sizes="...300px" — the browser then picks the 300w
+				// candidate for a 330px slot and never upgrades for
+				// high-DPR screens. Declare the real slot so the srcset
+				// negotiation picks a sharp candidate (100vw below the
+				// grid's single-column collapse).
+				$image_args['sizes'] = '(max-width: 640px) 100vw, 340px';
 			}
 
 			$image_html = wp_get_attachment_image(

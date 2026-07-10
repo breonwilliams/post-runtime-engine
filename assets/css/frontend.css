@@ -967,6 +967,32 @@ body:has(.pre-single--hero-full) {
 	border-radius: var(--aisb-section-radius-image, 8px);
 }
 
+/*
+ * Image-optimizer <picture> wrappers (EWWW picture-WebP, WebP Express, CDN
+ * rewriters) insert a <picture> element between the media box and the <img>.
+ * <picture> defaults to display:inline and shrink-wraps, so the img's
+ * width:100%/height:100% resolve against the wrapped picture instead of the
+ * media box — card images rendered as part-width slivers (Harbor & Oak agent
+ * page) and split-hero images left a bottom gap whenever the photo's aspect
+ * was shorter than the media frame (Harbor & Oak listing page, 2026-07-10;
+ * both invisible on hosts without an optimizer).
+ *
+ * display:contents removes the picture from layout entirely: the <img>
+ * participates in the media box exactly as the direct child every PRE image
+ * rule was written against — width AND height chains, aspect-ratio frames,
+ * and the overlay backdrop all behave identically with or without an
+ * optimizer. (An earlier fix used display:block + width:100%, which repaired
+ * widths but not fixed-height/aspect frames — superseded by this.)
+ * PRE never emits <picture> itself, so this only ever targets optimizer
+ * wrappers. Same rule ships in Promptless WP (.aisb-section picture) and the
+ * Promptless theme.
+ */
+.pre-grouping__media picture,
+.pre-hero__media picture,
+.pre-hero__backdrop picture {
+	display: contents;
+}
+
 /* ----------------------------------------------------------------------- */
 /* Variant: compact-grid                                                    */
 /* Icon + heading, multi-column. No supporting text.                        */
@@ -1040,7 +1066,13 @@ body:has(.pre-single--hero-full) {
 }
 
 .pre-grouping--card-grid .pre-grouping__image {
-	max-height: 160px;
+	/* Explicit box (not max-height) so every card's image fills the same
+	   160px band regardless of the source photo's aspect ratio — max-height
+	   left wide/panoramic photos shorter than their neighbors, and the
+	   height must not depend on the img's natural size when an optimizer's
+	   <picture> wrapper intervenes (see the picture rules above). */
+	width: 100%;
+	height: 160px;
 	object-fit: cover;
 }
 

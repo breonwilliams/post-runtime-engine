@@ -79,6 +79,7 @@ Privacy policy: https://iconify.design/privacy/
 == Changelog ==
 
 = 0.6.5 =
+* Fixed: deleting a stale duplicate copy of the plugin (two installs under different folder names) no longer wipes the shared configuration - cleanup now runs only when the last installed copy is removed.
 * Added: meta_match groupings can now pull posts from a DIFFERENT post type - "this agent's listings" on an agent page, "area listings" on a neighborhood page. New optional source parameters: post_type (which CPT to query), match_against (compare against the current post's title, slug, or ID), and field_key (reference a post field instead of a raw meta key). Fully backward compatible - existing meta_match groupings behave identically.
 * Added: activating an auto-populated grouping on a post now inherits the grouping's configured source automatically - a bare grouping entry just works instead of silently rendering nothing.
 * Fixed: archive filters whose field key matches a WordPress query variable (like a post type named "neighborhood") no longer get hijacked by WordPress core - their URL parameters are automatically namespaced so the filter reaches the archive instead of redirecting away.

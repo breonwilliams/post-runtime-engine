@@ -46,6 +46,34 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 /**
+ * Duplicate-install guard (2026-07-11).
+ *
+ * When a second copy of this plugin exists under a DIFFERENT folder name
+ * (e.g. one installed from the release ZIP into `promptless-cpt-pages/`
+ * alongside an older copy in `post-runtime-engine/` from a GitHub source
+ * ZIP or a copied dev folder), deleting the stale copy through the Plugins
+ * screen runs THIS file — which would wipe the shared, database-stored
+ * configuration (CPT definitions, groupings, settings) out from under the
+ * copy that is still installed. Found live on a test environment during
+ * the v0.6.5 release verification.
+ *
+ * If any other installed copy of the plugin remains (identified by its
+ * `post-runtime-engine.php` main file in a different plugin folder), skip
+ * cleanup entirely: the surviving copy owns the data. Full cleanup runs
+ * only when the LAST copy is deleted.
+ */
+$pcptpages_own_dir = dirname( WP_UNINSTALL_PLUGIN );
+$pcptpages_mains   = glob( WP_PLUGIN_DIR . '/*/post-runtime-engine.php' );
+if ( is_array( $pcptpages_mains ) && '' !== $pcptpages_own_dir && '.' !== $pcptpages_own_dir ) {
+	foreach ( $pcptpages_mains as $pcptpages_main ) {
+		if ( basename( dirname( $pcptpages_main ) ) !== $pcptpages_own_dir ) {
+			return; // Another copy is still installed — preserve shared data.
+		}
+	}
+}
+unset( $pcptpages_own_dir, $pcptpages_mains, $pcptpages_main );
+
+/**
  * Run the full uninstall cleanup. Wrapped in a function so intermediate
  * variables are function-scoped rather than globals — uninstall.php runs
  * in global scope, and PHPCS otherwise flags every local `$var` here as

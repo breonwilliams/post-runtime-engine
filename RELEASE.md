@@ -154,6 +154,44 @@ The Plugin Check report against the **staged build** (`build/promptless-cpt-page
 
 ---
 
+## Test-install policy (duplicate-plugin prevention)
+
+Learned during the v0.6.5 release verification (2026-07-11): a test
+environment showed **two copies of the plugin** after uploading the new
+release ZIP, because its older copy had been installed from a source whose
+folder name differed.
+
+**The rules:**
+
+1. **The ONLY sanctioned install artifacts are `build/promptless-cpt-pages.zip`
+   (built by `bin/build-release.sh`) and the WordPress.org directory.** Both
+   install into `wp-content/plugins/promptless-cpt-pages/`, so upgrades
+   always trigger WordPress's "Replace current with uploaded" flow.
+2. **Never install on a test site from GitHub's auto-generated "Source
+   code (zip)"** (its root folder is `post-runtime-engine-{tag}/`) **or by
+   copying the dev repo folder** (`post-runtime-engine/`). Either lands in
+   a differently-named folder, and every future release-ZIP upload will then
+   install as a duplicate instead of replacing.
+3. **Verification step for every release:** install the built ZIP on a test
+   site that already has the previous version (installed from the same
+   channel). WordPress must show the "Replace current with uploaded"
+   screen. If it offers a fresh install instead, STOP — the folder names
+   diverged somewhere.
+
+**If a duplicate already exists** (two "Promptless CPT Pages" rows):
+
+1. Deactivate the old row, activate the new one — all data lives in the
+   database and carries over instantly.
+2. **Do NOT click Delete on the old row.** Deleting through the Plugins
+   screen runs `uninstall.php`, which removes the shared CPT/grouping
+   configuration the surviving copy depends on. (Since 2026-07-11,
+   `uninstall.php` carries a duplicate-install guard that skips cleanup
+   while another copy remains — but don't rely on it for copies older
+   than that guard.) Instead, delete the stale plugin FOLDER from disk;
+   the row disappears from the Plugins screen on refresh.
+
+---
+
 ## Emergency rollback
 
 WordPress.org serves whatever version `trunk/readme.txt`'s `Stable tag` points at. If a bad release ships:

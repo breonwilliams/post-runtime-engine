@@ -4,6 +4,11 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [Unreleased]
+
+### Fixed
+- **Duplicate-install guard in `uninstall.php`** (v0.6.5 release verification, 2026-07-11). When two copies of the plugin exist under different folder names (a release-ZIP install in `promptless-cpt-pages/` alongside an older copy from a GitHub source ZIP or copied dev folder), deleting the stale copy through the Plugins screen ran `uninstall.php` and wiped the shared database-stored configuration (CPT definitions, groupings, settings) out from under the surviving copy. Cleanup now runs only when the LAST installed copy is deleted. `RELEASE.md` gains a "Test-install policy" section documenting sanctioned install sources and the safe duplicate-cleanup playbook. Sibling guards shipped in Promptless WP and Promptless Forms.
+
 ## [0.6.5] — 2026-07-11
 
 ### Fixed

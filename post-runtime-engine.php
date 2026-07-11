@@ -3,7 +3,7 @@
  * Plugin Name: Promptless CPT Pages
  * Plugin URI: https://promptlesswp.com
  * Description: Render CPT single pages with structured data display, layout variants, and admin or AI population. Works standalone or with Promptless WP.
- * Version: 0.6.4
+ * Version: 0.6.5
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: Promptless WP
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin version. Bumped on every meaningful release.
-define( 'PCPTPages_VERSION', '0.6.4' );
+define( 'PCPTPages_VERSION', '0.6.5' );
 
 // Minimum data-storage schema version. Bumped when option / post-meta shapes
 // change in a way that requires migration, or when a new capability needs to
@@ -42,7 +42,14 @@ define( 'PCPTPages_VERSION', '0.6.4' );
 //           CPTs without post fields render identically to v0.3.x.
 //           Version bump exists as a marker so future upgrades can
 //           confidently assume the v1.1 storage shape is available.
-define( 'PCPTPages_DATA_VERSION', '0.4.0' );
+//   0.5.0 — meta_match cross-CPT reverse lookup: the stored source object
+//           may now carry optional post_type / match_against / field_key
+//           params (validator accepts exactly one of meta_key|field_key).
+//           No data migration required — purely additive vocabulary; there
+//           is intentionally no migrate_to_0_5_0(). Marker so future
+//           upgrades can assume the extended meta_match shape is valid in
+//           stored grouping definitions.
+define( 'PCPTPages_DATA_VERSION', '0.5.0' );
 
 // Plugin paths and URLs.
 define( 'PCPTPages_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );

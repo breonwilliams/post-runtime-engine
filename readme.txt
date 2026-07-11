@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.6.4
+Stable tag: 0.6.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -77,6 +77,13 @@ Privacy policy: https://iconify.design/privacy/
 5. Claude Cowork connector setup — opt-in App Password generation, default-disabled kill switch
 
 == Changelog ==
+
+= 0.6.5 =
+* Added: meta_match groupings can now pull posts from a DIFFERENT post type - "this agent's listings" on an agent page, "area listings" on a neighborhood page. New optional source parameters: post_type (which CPT to query), match_against (compare against the current post's title, slug, or ID), and field_key (reference a post field instead of a raw meta key). Fully backward compatible - existing meta_match groupings behave identically.
+* Added: activating an auto-populated grouping on a post now inherits the grouping's configured source automatically - a bare grouping entry just works instead of silently rendering nothing.
+* Fixed: archive filters whose field key matches a WordPress query variable (like a post type named "neighborhood") no longer get hijacked by WordPress core - their URL parameters are automatically namespaced so the filter reaches the archive instead of redirecting away.
+* Fixed: cached single-post pages now reload the stylesheets and scripts of shortcodes embedded in their content (e.g. Promptless Forms) - anonymous visitors previously could receive an unstyled form when the page was served from the render cache.
+* Fixed: grouping card and hero images no longer collapse or leave gaps when an image optimizer (e.g. EWWW WebP delivery) wraps images in <picture> tags; card images also render at a uniform height regardless of photo aspect ratio, with sharper candidates on high-DPI screens.
 
 = 0.6.4 =
 * Added: Hero theme option (Inherit / Light band / Dark band) per CPT - force the single-post hero into a contrasting band independent of the page's light/dark mode. Colors flow from the site's design tokens with WCAG-corrected link/icon colors.
@@ -153,6 +160,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.6.5 =
+Cross-CPT relationships arrive: meta_match groupings can now auto-pull posts from another post type (an agent page listing its properties). Important fixes: archive filters named after post types no longer redirect away, cached pages no longer serve unstyled embedded forms to anonymous visitors, and image-optimizer <picture> wrapping no longer breaks card/hero image layout. Recommended for all users.
 
 = 0.6.4 =
 New hero design options per CPT: contrasting light/dark hero bands, full-width hero, and an overlay layout with text over the featured image. Fully opt-in - existing CPTs render identically until you change their Hero settings. Also fixes status badge contrast on dark backgrounds.

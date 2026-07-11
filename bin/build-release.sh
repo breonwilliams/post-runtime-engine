@@ -86,6 +86,7 @@ trap "rm -f ${EXCLUDE_FILE}" EXIT
 cat > "${EXCLUDE_FILE}" <<'EXCLUDES'
 .git
 .gitignore
+.github
 .DS_Store
 .idea
 .vscode
@@ -158,6 +159,7 @@ done
 echo "Creating zip..."
 (
     cd "${BUILD_DIR}"
+    rm -f "${ZIP_NAME}"
     zip -r "${ZIP_NAME}" "${PLUGIN_SLUG}/" -x "*.DS_Store" "*/.git/*" "*/node_modules/*" >/dev/null
 )
 

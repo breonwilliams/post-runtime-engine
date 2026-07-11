@@ -8,7 +8,7 @@
 > | Plugin header / text domain | `Promptless CPT Pages` / `promptless-cpt-pages` |
 > | Class prefix | `PCPTPages_*` (files remain `class-pre-*.php`) |
 > | Main class / accessor | `Promptless_CPT_Pages`, `pcptpages()` (`class_alias` keeps `Post_Runtime_Engine` working) |
-> | Constants | `PCPTPages_VERSION` (0.6.4), `PCPTPages_DATA_VERSION` (0.4.0) |
+> | Constants | `PCPTPages_VERSION` (0.6.5), `PCPTPages_DATA_VERSION` (0.5.0) |
 > | Actions/filters | `pcptpages_*` (e.g. `pcptpages_cpt_registered`, `pcptpages_grouping_defined`, `pcptpages_render_cache_enabled`) |
 > | Options | `pcptpages_*` (`pcptpages_cpts`, `pcptpages_groupings_{cpt}`, `pcptpages_post_fields_{cpt}`, `pcptpages_connector_enabled`) |
 > | Post meta | `_pcptpages_*` (`_pcptpages_groupings`, `_pcptpages_field_{key}`, `_pcptpages_field_visibility`) |
@@ -19,7 +19,7 @@
 >
 > The **plugin root** (`post-runtime-engine/includes/…`) is the live source tree. `build/` contains only build output — never edit there.
 
-**Status (as of 2026-07-04, version 0.6.4):** Phases 1–6 (v1.0 scope) shipped, **plus v1.1 post fields and the v1.2 events/filters layer — all implemented, not planned**. Feature surface: data layer, admin UI for CPT + grouping + post-field management, frontend rendering with all four layout variants and **four** source modes (manual, child_posts, taxonomy_match, meta_match — the 4th added at data-version 0.3.0), template router for registered CPT singles, connector REST API (18 route registrations / 24+ method-level endpoints), and a 29-tool MCP surface for Cowork. Programmatic access via `pcptpages()->cpts`, `->groupings`, `->post_fields`, `->post_data`. v1.0 ship readiness still pending unit-test coverage (target >80%, currently smoke-level — see `POST_RUNTIME_AUDIT.md`).
+**Status (as of 2026-07-11, version 0.6.5):** Phases 1–6 (v1.0 scope) shipped, **plus v1.1 post fields and the v1.2 events/filters layer — all implemented, not planned**. Feature surface: data layer, admin UI for CPT + grouping + post-field management, frontend rendering with all four layout variants and **four** source modes (manual, child_posts, taxonomy_match, meta_match — the 4th added at data-version 0.3.0), template router for registered CPT singles, connector REST API (18 route registrations / 24+ method-level endpoints), and a 29-tool MCP surface for Cowork. Programmatic access via `pcptpages()->cpts`, `->groupings`, `->post_fields`, `->post_data`. v1.0 ship readiness still pending unit-test coverage (target >80%, currently smoke-level — see `POST_RUNTIME_AUDIT.md`).
 
 **v1.1 post fields (SHIPPED):** second field type — scalar **post fields** with a closed enum of 9 display types (currency, number_with_label, badge, meta_pair, date, text, rating, progress, multi_badge) and 5 positions symmetric across single-post hero and card contexts (image_overlay, headline, subtitle, meta_strip, footer_meta, plus `hidden`). Implemented in `PCPTPages_Post_Field_Registry`, `PCPTPages_Card_Renderer`, `PCPTPages_Meta_Box_Post_Fields`, with full REST/MCP CRUD + reorder + per-post values/visibility. Design contract: **[`docs/POST_FIELDS_V1_1_DESIGN.md`](docs/POST_FIELDS_V1_1_DESIGN.md)**.
 
@@ -169,13 +169,13 @@ The folder name `post-runtime-engine` was retained for repo continuity even thou
 | 7–12 | v1.1 post fields (registry, meta box, card renderer, REST/MCP CRUD) | — | ✅ Complete |
 | v1.2 | Events vertical + schema-driven filters + PostGrid/theme card hooks + SEO meta tags | — | ✅ Complete (v0.6.x) |
 
-See `docs/ROADMAP.md` for full phase detail and per-phase changelog. Current shipped version: **v0.6.4** (`PCPTPages_VERSION`), data-schema version 0.4.0 (`PCPTPages_DATA_VERSION`). **Outstanding work before v1.0 ship** is documented in `POST_RUNTIME_AUDIT.md` (test coverage scaffold, doc-spec drift on connector preflight fields, optional production-polish items).
+See `docs/ROADMAP.md` for full phase detail and per-phase changelog. Current shipped version: **v0.6.5** (`PCPTPages_VERSION`), data-schema version 0.5.0 (`PCPTPages_DATA_VERSION`). **Outstanding work before v1.0 ship** is documented in `POST_RUNTIME_AUDIT.md` (test coverage scaffold, doc-spec drift on connector preflight fields, optional production-polish items).
 
 ## Releasing New Versions
 
 **Canonical release procedure: [`RELEASE.md`](RELEASE.md)** at the plugin root. That document is the single source of truth — version-stamp locations, pre-release checklist, build commands, tag pattern, `gh release create` invocation, post-release verification.
 
-**One-line summary:** update version stamps in `post-runtime-engine.php` (header + `PCPTPages_VERSION` constant), `readme.txt` (Stable tag + Changelog + Upgrade Notice), and `CHANGELOG.md` → commit "Release X.Y.Z" → push → `./bin/build-release.sh` → `wp plugin check build/promptless-cpt-pages` → publish `build/promptless-cpt-pages/` to WordPress.org SVN trunk + `tags/X.Y.Z` (see RELEASE.md for exact rsync/svn commands) → `git tag vX.Y.Z && git push --tags` for repo history. **Distribution is WordPress.org-exclusive — do NOT create GitHub release assets** (the GitHub updater was retired per WP.org guideline #8). The build script verifies the ZIP's internal structure and aborts on a flattened/hand-assembled archive — never package a release by hand.
+**One-line summary:** update version stamps in `post-runtime-engine.php` (header + `PCPTPages_VERSION` constant), `readme.txt` (Stable tag + Changelog + Upgrade Notice), and `CHANGELOG.md` → commit "Release X.Y.Z" → push → `./bin/build-release.sh` → `wp plugin check build/promptless-cpt-pages` → `git tag vX.Y.Z && git push --tags` → `gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes` → publish `build/promptless-cpt-pages/` to WordPress.org SVN trunk + `tags/X.Y.Z` (see RELEASE.md for exact rsync/svn commands). **Distribution is WordPress.org-exclusive — do NOT attach ZIP assets to GitHub releases** (the GitHub updater was retired per WP.org guideline #8; GitHub releases are fine for marking versions, just don't upload the ZIP). The build script verifies the ZIP's internal structure and aborts on a flattened/hand-assembled archive — never package a release by hand.
 
 ## Post-launch maintenance constraints (formerly "guardrails")
 

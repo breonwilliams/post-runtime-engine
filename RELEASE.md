@@ -63,6 +63,11 @@ git push origin main
 
 # 4. Verify the STAGED build with Plugin Check before it goes near SVN.
 wp plugin check build/promptless-cpt-pages --format=table
+
+# 5. Create git tag and GitHub release.
+git tag v0.5.4
+git push --tags
+gh release create v0.5.4 --title "v0.5.4" --generate-notes
 ```
 
 ### Publish to the WordPress.org SVN repo
@@ -74,7 +79,7 @@ SVN is a *release* system, not a dev VCS — only commit ready-to-ship versions.
 svn co https://plugins.svn.wordpress.org/promptless-cpt-pages svn-promptless-cpt-pages
 cd svn-promptless-cpt-pages
 
-# 5. Sync the freshly staged build into trunk (mirror exactly — add new files,
+# 6. Sync the freshly staged build into trunk (mirror exactly — add new files,
 #    remove deleted ones). Point rsync at the staged tree from step 3.
 rsync -av --delete \
   --exclude='.svn' \
@@ -82,12 +87,12 @@ rsync -av --delete \
 svn add --force trunk
 svn status | grep '^!' | awk '{print $2}' | xargs -r svn rm   # stage deletions
 
-# 6. Tag the release by copying trunk -> tags/<version>.
+# 7. Tag the release by copying trunk -> tags/<version>.
 svn cp trunk "tags/0.5.4"
 
-# 7. Confirm trunk/readme.txt "Stable tag: 0.5.4" points at the new tag.
+# 8. Confirm trunk/readme.txt "Stable tag: 0.5.4" points at the new tag.
 
-# 8. Commit trunk + tag together.
+# 9. Commit trunk + tag together.
 svn ci -m "Release 0.5.4"
 ```
 
@@ -159,4 +164,4 @@ WordPress.org serves whatever version `trunk/readme.txt`'s `Stable tag` points a
 
 ---
 
-**Last updated:** 2026-06-15
+**Last updated:** 2026-07-11

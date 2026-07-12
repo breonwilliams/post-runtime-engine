@@ -846,28 +846,21 @@
 }
 
 /* ----------------------------------------------------------------------- */
-/* Neo-brutalist mode                                                       */
+/* Neo-brutalist mode — DELIBERATELY NO FIELD-CHIP RULES                     */
 /*                                                                          */
-/* When Promptless WP's neo-brutalist mode is on (body class                */
-/* aisb-neo-brutalist-cards), bump badge borders + drop the soft radii      */
-/* on progress bars. Mirrors frontend.css's existing neo treatment.         */
+/* Promptless WP's card/button border emphasis (body classes                 */
+/* aisb-neo-brutalist-cards / -outline) applies to CARDS and BUTTONS —       */
+/* surfaces. Post-field chips (badges, multi-badge pills, progress bars,     */
+/* meta pairs, ratings) are data display, not surfaces: they must keep       */
+/* their color-intent styling identical across every card style. An          */
+/* earlier version of this file gave badges a currentColor border and        */
+/* overrode their intent background with --pre-color-background under        */
+/* neo mode, which visually destroyed tier badges in PostGrid/archive        */
+/* cards and single-post positions the moment a site enabled Outline or      */
+/* Lifted (found in demo-site testing, 2026-07-12). Do not re-add chip-      */
+/* level neo rules here; the card CONTAINERS (.aisb-postgrid__item,          */
+/* .pre-grouping__item, theme archive cards) already carry the mode.         */
 /* ----------------------------------------------------------------------- */
-
-body.aisb-neo-brutalist-cards .pre-field--badge,
-body.aisb-neo-brutalist-cards .pre-field__multi-badge-pill {
-	border: var(--aisb-neo-border-width, 2px) solid currentColor;
-	border-radius: var(--aisb-section-radius-button, 4px);
-	background: var(--pre-color-background);
-}
-
-body.aisb-neo-brutalist-cards .pre-field--progress .pre-field__progress-track {
-	border-radius: 0;
-	border-width: var(--aisb-neo-border-width, 2px);
-}
-
-body.aisb-neo-brutalist-cards .pre-field--progress .pre-field__progress-bar {
-	border-radius: 0;
-}
 
 /* ----------------------------------------------------------------------- */
 /* Print styles — keep the field values legible, drop decorative chrome     */

@@ -4,6 +4,11 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [Unreleased]
+
+### Fixed
+- **Post-field chips no longer inherit the card border emphasis** (demo-site testing, 2026-07-12). When Promptless WP's Card & Button Style was set to Outline or Lifted (body class `aisb-neo-brutalist-cards[-outline]`), `cards.css` gave badge chips and multi-badge pills a `currentColor` border and — worse — overrode their color-intent background with the plain surface color, visually destroying tier/status badges in PostGrid cards, theme archive cards, and single-post field positions. Progress bars were also forced square with thickened borders. Field chips are data display, not card surfaces: the neo-mode rules are removed entirely and the exclusion is documented in-file so they don't come back. Card containers (`.aisb-postgrid__item`, `.pre-grouping__item`, theme archive cards) keep the border treatment — that's where the mode belongs. Ecosystem-wide sweep confirmed no other chip-level element in PRE, Promptless WP, Promptless Forms, or the theme is targeted by any `aisb-neo-*` rule.
+
 ## [0.6.5] — 2026-07-11
 
 ### Fixed

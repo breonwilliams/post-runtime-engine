@@ -414,6 +414,14 @@ class PCPTPages_CPT_Registry {
 			// rather than the post's create-date).
 			'archive_show_post_date'   => true,
 			'archive_show_post_author' => true,
+
+			// Archive card featured-image aspect ratio. Answered to the
+			// theme through the promptless_archive_image_aspect filter
+			// (PCPTPages_Card_Filter_Hooks). '16:9' matches the theme's
+			// historical hardcoded crop, so existing CPTs render
+			// unchanged; people-centric CPTs typically want '1:1' or
+			// '4:5'. Enum: PCPTPages_Validator::ARCHIVE_IMAGE_ASPECTS.
+			'archive_image_aspect'     => '16:9',
 		);
 
 		// wp_parse_args is shallow — it only fills missing top-level keys.

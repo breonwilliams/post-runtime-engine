@@ -147,6 +147,16 @@ const TOOLS = [
           description:
             "Optional fallback icon used when a grouping item resolves to no media. Accepts EITHER a legacy curated id (e.g. 'home', 'user', 'shield' — call postruntime_list_icons to discover all 53 inline-SVG icons) OR any Iconify code in collection:name form (e.g. 'mdi:home', 'logos:wordpress', 'fa6-solid:tooth' — 200,000+ icons at icon-sets.iconify.design). Especially relevant for compact-grid and horizontal-row variants (icon-only by design). Pick a generic shape that fits the CPT (e.g. 'mdi:home' for listings, 'mdi:account' for team members). Leave empty to render iconless.",
         },
+        archive_image_aspect: {
+          type: "string",
+          enum: ["16:9", "4:3", "1:1", "4:5"],
+          default: "16:9",
+          description:
+            "Featured-image aspect ratio on the theme's archive cards for this CPT. " +
+            "1:1 (square) or 4:5 (portrait) for people-centric CPTs (agents, team members); " +
+            "4:3 for property/product photography; 16:9 (default) for editorial content. " +
+            "Requires the Promptless theme; matches the PostGrid section's card_image_aspect_ratio vocabulary.",
+        },
         archive_show_post_date: {
           type: "boolean",
           default: true,
@@ -198,6 +208,7 @@ const TOOLS = [
         hero_theme: { type: "string", enum: ["inherit", "light", "dark"], description: "Hero contrast band: 'dark' forces a dark hero on any page mode, 'light' forces light, 'inherit' follows the page (default)." },
         hero_width: { type: "string", enum: ["contained", "full"], description: "'full' bleeds the hero band background viewport-wide; content stays grid-aligned. Default 'contained'." },
         default_icon: { type: "string", description: "Curated icon id (e.g. 'home') OR Iconify code in collection:name form (e.g. 'mdi:home'), or empty string to remove the fallback. See postruntime_list_icons." },
+        archive_image_aspect: { type: "string", enum: ["16:9", "4:3", "1:1", "4:5"], description: "Featured-image aspect ratio on theme archive cards. 1:1/4:5 for people, 4:3 for property/product photos, 16:9 (default) for editorial." },
         archive_show_post_date: { type: "boolean", description: "Hide the theme-rendered post create-date on archive cards by setting false. Default true." },
         archive_show_post_author: { type: "boolean", description: "Hide the theme-rendered post author byline on archive cards by setting false. Default true." },
       },
@@ -866,6 +877,7 @@ async function handleTool(name, args) {
         "default_icon",
         "archive_show_post_date",
         "archive_show_post_author",
+        "archive_image_aspect",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
@@ -899,6 +911,7 @@ async function handleTool(name, args) {
         "default_icon",
         "archive_show_post_date",
         "archive_show_post_author",
+        "archive_image_aspect",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });

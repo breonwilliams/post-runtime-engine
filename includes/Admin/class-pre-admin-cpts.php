@@ -741,6 +741,30 @@ class PCPTPages_Admin_CPTs {
 						</p>
 					</td>
 				</tr>
+				<tr>
+					<th scope="row">
+						<label for="pcptpages_archive_image_aspect"><?php esc_html_e( 'Card image aspect ratio', 'promptless-cpt-pages' ); ?></label>
+					</th>
+					<td>
+						<select id="pcptpages_archive_image_aspect" name="archive_image_aspect">
+							<option value="16:9" <?php selected( $values['archive_image_aspect'], '16:9' ); ?>>
+								<?php esc_html_e( '16:9 — Wide (default)', 'promptless-cpt-pages' ); ?>
+							</option>
+							<option value="4:3" <?php selected( $values['archive_image_aspect'], '4:3' ); ?>>
+								<?php esc_html_e( '4:3 — Standard', 'promptless-cpt-pages' ); ?>
+							</option>
+							<option value="1:1" <?php selected( $values['archive_image_aspect'], '1:1' ); ?>>
+								<?php esc_html_e( '1:1 — Square', 'promptless-cpt-pages' ); ?>
+							</option>
+							<option value="4:5" <?php selected( $values['archive_image_aspect'], '4:5' ); ?>>
+								<?php esc_html_e( '4:5 — Portrait', 'promptless-cpt-pages' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Featured-image crop on this CPT\'s archive cards. Square or Portrait suit people (agents, team members); Standard suits property and product photos; Wide suits editorial content. Requires the Promptless theme.', 'promptless-cpt-pages' ); ?>
+						</p>
+					</td>
+				</tr>
 			</table>
 
 			<?php submit_button( $is_edit ? __( 'Save changes', 'promptless-cpt-pages' ) : __( 'Register post type', 'promptless-cpt-pages' ) ); ?>
@@ -900,6 +924,17 @@ class PCPTPages_Admin_CPTs {
 			? sanitize_key( wp_unslash( $_POST['default_icon'] ) )
 			: '';
 
+		// archive_image_aspect values contain ':' (16:9), which sanitize_key
+		// would strip — whitelist against the validator enum instead. Any
+		// unexpected value falls back to the default rather than storing a
+		// mangled string.
+		$archive_image_aspect = isset( $_POST['archive_image_aspect'] )
+			? sanitize_text_field( wp_unslash( $_POST['archive_image_aspect'] ) )
+			: '16:9';
+		if ( ! in_array( $archive_image_aspect, PCPTPages_Validator::ARCHIVE_IMAGE_ASPECTS, true ) ) {
+			$archive_image_aspect = '16:9';
+		}
+
 		return array(
 			'slug'                => is_string( $slug ) ? trim( $slug ) : '',
 			'label_singular'      => isset( $_POST['label_singular'] ) ? sanitize_text_field( wp_unslash( $_POST['label_singular'] ) ) : '',
@@ -929,6 +964,7 @@ class PCPTPages_Admin_CPTs {
 			// explicit choice always wins.
 			'archive_show_post_date'   => ! empty( $_POST['archive_show_post_date'] ),
 			'archive_show_post_author' => ! empty( $_POST['archive_show_post_author'] ),
+			'archive_image_aspect'     => $archive_image_aspect,
 		);
 	}
 
@@ -1037,6 +1073,7 @@ class PCPTPages_Admin_CPTs {
 			'archive_show_post_author' => array_key_exists( 'archive_show_post_author', $definition )
 				? (bool) $definition['archive_show_post_author']
 				: true,
+			'archive_image_aspect'     => $definition['archive_image_aspect'] ?? '16:9',
 		);
 	}
 
@@ -1070,6 +1107,7 @@ class PCPTPages_Admin_CPTs {
 			'default_icon'        => '',
 			'archive_show_post_date'   => true,
 			'archive_show_post_author' => true,
+			'archive_image_aspect'     => '16:9',
 		);
 	}
 }

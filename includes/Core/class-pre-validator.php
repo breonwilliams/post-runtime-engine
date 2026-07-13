@@ -151,6 +151,32 @@ class PCPTPages_Validator {
 	);
 
 	/**
+	 * Allowed archive card image aspect ratios (CPT-level).
+	 *
+	 * Applied to the theme's archive-card featured image via the
+	 * `promptless_archive_image_aspect` filter handshake (same pattern as
+	 * archive_show_post_date/author). The vocabulary deliberately matches
+	 * the Promptless WP PostGrid section's card_image_aspect_ratio enum so
+	 * the ecosystem speaks one aspect language:
+	 *
+	 *   - 16:9 — wide (default; the theme's historical hardcoded value)
+	 *   - 4:3  — standard photography (property/product shots)
+	 *   - 1:1  — square (headshots, logos, team directories)
+	 *   - 4:5  — portrait (people-first cards)
+	 *
+	 * Closed enum. Do NOT extend without also adding the matching
+	 * `.promptless-archive__grid--image-*` CSS class in the theme's
+	 * archive.css and the class map in
+	 * promptless_get_archive_grid_classes().
+	 */
+	const ARCHIVE_IMAGE_ASPECTS = array(
+		'16:9',
+		'4:3',
+		'1:1',
+		'4:5',
+	);
+
+	/**
 	 * Maximum length of a post-meta key referenced by a meta_match source.
 	 *
 	 * WordPress's wp_postmeta.meta_key is varchar(255) but practical keys are
@@ -752,6 +778,25 @@ class PCPTPages_Validator {
 						/* translators: %s: the offending key */
 						__( 'CPT %s must be a boolean.', 'promptless-cpt-pages' ),
 						$bool_key
+					)
+				);
+			}
+		}
+
+		// archive_image_aspect — optional; enum (see ARCHIVE_IMAGE_ASPECTS).
+		// Controls the featured-image crop on the theme's archive cards for
+		// this CPT. Square/portrait suit people-centric CPTs (agents, team),
+		// 4:3 suits property/product photography, 16:9 (default) suits
+		// editorial content.
+		if ( isset( $definition['archive_image_aspect'] ) ) {
+			if ( ! in_array( $definition['archive_image_aspect'], self::ARCHIVE_IMAGE_ASPECTS, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_archive_image_aspect',
+					sprintf(
+						/* translators: %1$s: the invalid aspect; %2$s: list of allowed aspects */
+						__( 'CPT archive_image_aspect %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+						is_string( $definition['archive_image_aspect'] ) ? $definition['archive_image_aspect'] : 'non-string',
+						implode( ', ', self::ARCHIVE_IMAGE_ASPECTS )
 					)
 				);
 			}

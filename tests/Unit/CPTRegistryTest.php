@@ -91,6 +91,7 @@ class CPTRegistryTest extends UnitTestCase {
         $this->assertSame( 'inherit', $stored['hero_theme'], 'hero_theme must default to inherit (no-op).' );
         $this->assertSame( 'contained', $stored['hero_width'], 'hero_width must default to contained (no-op).' );
         $this->assertSame( 'center', $stored['hero_overlay_focus'], 'hero_overlay_focus must default to center.' );
+        $this->assertSame( '16:9', $stored['archive_image_aspect'], 'archive_image_aspect must default to 16:9 (the theme historical crop) so existing sites render unchanged.' );
     }
 
     public function test_register_round_trips_hero_opt_in_values() {

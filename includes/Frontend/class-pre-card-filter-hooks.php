@@ -77,6 +77,12 @@ class PCPTPages_Card_Filter_Hooks {
 		add_filter( 'promptless_archive_card_show_date', array( $this, 'filter_archive_show_date' ), 10, 2 );
 		add_filter( 'promptless_archive_card_show_author', array( $this, 'filter_archive_show_author' ), 10, 2 );
 
+		// Archive card image aspect ratio (theme 1.3.0+). The theme resolves
+		// the archive grid's aspect modifier class through this filter; PRE
+		// answers with the CPT's `archive_image_aspect` setting so e.g. an
+		// agents CPT renders square headshots while listings stay 16:9.
+		add_filter( 'promptless_archive_image_aspect', array( $this, 'filter_archive_image_aspect' ), 10, 2 );
+
 		// Events vertical (v1.2): decoupled PostGrid query shaping. Promptless
 		// WP's PostGrid exposes its assembled WP_Query args via this generic
 		// filter; PRE injects an event date-status meta_query + ordering when
@@ -267,6 +273,38 @@ class PCPTPages_Card_Filter_Hooks {
 	 */
 	public function filter_archive_show_author( $show, $post_id ) {
 		return $this->cpt_toggle( $show, $post_id, 'archive_show_post_author' );
+	}
+
+	/**
+	 * Filter callback: return the CPT's `archive_image_aspect` for the
+	 * theme's archive grid when the archive belongs to a PRE-registered
+	 * CPT. Falls through to the theme's default ('16:9') for post types
+	 * PRE doesn't manage, empty post types (search results), and any
+	 * stored value that isn't in the validator enum (defensive — the
+	 * validator already rejects those at write time).
+	 *
+	 * @param string $aspect    Theme's incoming default ('16:9').
+	 * @param string $post_type The archive's queried post type ('' when
+	 *                          indeterminate).
+	 * @return string One of PCPTPages_Validator::ARCHIVE_IMAGE_ASPECTS.
+	 */
+	public function filter_archive_image_aspect( $aspect, $post_type ) {
+		if ( ! is_string( $post_type ) || '' === $post_type ) {
+			return $aspect;
+		}
+		$plugin = function_exists( 'pcptpages' ) ? pcptpages() : null;
+		if ( ! $plugin || ! $plugin->cpts || ! $plugin->cpts->exists( $post_type ) ) {
+			return $aspect;
+		}
+		$def = $plugin->cpts->get( $post_type );
+		if ( ! is_array( $def ) || empty( $def['archive_image_aspect'] ) ) {
+			return $aspect;
+		}
+		$stored = (string) $def['archive_image_aspect'];
+		if ( ! in_array( $stored, PCPTPages_Validator::ARCHIVE_IMAGE_ASPECTS, true ) ) {
+			return $aspect;
+		}
+		return $stored;
 	}
 
 	/**

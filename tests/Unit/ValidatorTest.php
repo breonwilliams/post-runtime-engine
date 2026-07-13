@@ -253,6 +253,25 @@ class ValidatorTest extends UnitTestCase {
         $this->assertSame( 'pcptpages_invalid_hero_overlay_focus', $result->get_error_code() );
     }
 
+    public function test_validate_cpt_definition_accepts_each_valid_archive_image_aspect() {
+        foreach ( \PCPTPages_Validator::ARCHIVE_IMAGE_ASPECTS as $aspect ) {
+            $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'archive_image_aspect', $aspect ) );
+            $this->assertTrue( $result, "archive_image_aspect '{$aspect}' must validate cleanly." );
+        }
+    }
+
+    public function test_validate_cpt_definition_rejects_unknown_archive_image_aspect() {
+        // 'square' is the HERO aspect vocabulary — the archive enum speaks
+        // ratio strings ('1:1'), so the word form must be rejected.
+        $result = $this->validator->validate_cpt_definition( $this->cpt_with( 'archive_image_aspect', 'square' ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_archive_image_aspect', $result->get_error_code() );
+    }
+
+    public function test_archive_image_aspects_constant_lists_exactly_four_values() {
+        $this->assertSame( array( '16:9', '4:3', '1:1', '4:5' ), \PCPTPages_Validator::ARCHIVE_IMAGE_ASPECTS );
+    }
+
     public function test_validate_cpt_definition_accepts_full_phase_a_b_combination() {
         $result = $this->validator->validate_cpt_definition( array(
             'slug'               => 'listing',

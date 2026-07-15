@@ -1370,6 +1370,41 @@ body.aisb-card-image-inset
 	object-fit: cover;
 }
 
+/*
+ * Media is a fixed-size flex item, never a shrink target.
+ *
+ * In a horizontal item (.pre-body__sidebar card-grid and horizontal-row both
+ * set flex-direction: row) the siblings are: media | content | arrow.
+ * .pre-grouping__content is `flex: 1 1 auto` (greedy) and the arrow is
+ * explicitly protected with `flex: 0 0 auto` — but the media wrapper was left
+ * at the flex default `0 1 auto`. So when the content's natural width pushed
+ * the row past its bounds, the browser shrank the only unprotected item: the
+ * thumbnail. Measured on Sharp /publications/: a 340x226 image told
+ * `width: 60px` above rendered 15px wide — a vertical sliver.
+ *
+ * BOTH levels need protecting. .pre-grouping__media is itself display:flex, so
+ * the <img> is ALSO a flex item and its `width: 60px` was being shrunk out from
+ * under it by its own parent's squeeze.
+ *
+ * This is why the bug only appears with IMAGES, never icons: at
+ * --pre-icon-size: 1.5rem an icon is small enough that the greedy content
+ * column absorbs all the slack and nothing ever overflows, so no shrink
+ * pressure reaches the media. A 60px thumbnail crosses that threshold.
+ *
+ * featured-card is deliberately excluded — its media is `width: 100%` (a
+ * full-bleed column, not a row thumbnail) and has no shrink exposure.
+ */
+.pre-body__sidebar .pre-grouping--card-grid .pre-grouping__media,
+.pre-grouping--horizontal-row .pre-grouping__media {
+	flex: 0 0 auto;
+}
+
+/* Descendant, not child: .pre-grouping__media picture is `display: contents`
+   (see ~line 990), so the <img> may not be a direct child. */
+.pre-grouping__media .pre-grouping__image {
+	flex-shrink: 0;
+}
+
 .pre-body__sidebar .pre-grouping--card-grid .pre-grouping__heading {
 	font-size: 0.9375rem;
 }

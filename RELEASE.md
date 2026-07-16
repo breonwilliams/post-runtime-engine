@@ -72,7 +72,28 @@ gh release create v0.5.4 --title "v0.5.4" --generate-notes
 
 ### Publish to the WordPress.org SVN repo
 
-SVN is a *release* system, not a dev VCS — only commit ready-to-ship versions. Your SVN username is your WordPress.org username; the SVN password is set separately under profiles.wordpress.org → Account & Security.
+SVN is a *release* system, not a dev VCS — only commit ready-to-ship versions.
+
+> **The SVN committer for this plugin is `promptlesswp`** — NOT the personal `breonwilliams` account, and not whatever SVN has cached from another repo. Committing as the wrong account fails with a confusing error that looks like a permissions problem rather than an identity one:
+>
+> ```
+> svn: E165001: Commit blocked by pre-commit hook (exit code 1) with output:
+> Access denied: user 'BreonWilliams' cannot modify:
+>   /promptless-cpt-pages/tags/0.6.6
+>   ... (every path in the commit)
+> ```
+>
+> That is the ACL rejecting an account that is not on the committer list — the code, the build, and the staged working copy are all fine. Nothing is sent, so just re-run the commit with the right identity; there is no cleanup:
+>
+> ```bash
+> svn ci --username promptlesswp -m "Release X.Y.Z"
+> ```
+>
+> If SVN keeps offering a stale identity, clear the cached auth and retry: `rm -rf ~/.subversion/auth/svn.simple`.
+>
+> The committer list lives at https://wordpress.org/plugins/promptless-cpt-pages/advanced/ under Committers.
+
+The SVN password is set separately under profiles.wordpress.org → Account & Security — it is **not** the WordPress.org login password.
 
 ```bash
 # One-time: check out the SVN repo somewhere OUTSIDE this git repo.

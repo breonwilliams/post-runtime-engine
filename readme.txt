@@ -78,6 +78,12 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.6.6 =
+* Fixed: grouping thumbnails rendered as thin vertical slivers in sidebar and horizontal card layouts. The image was the only item in the row the browser was allowed to shrink, so long text squeezed a 60px thumbnail down to ~15px. Only affected image-bearing groupings; icons were never large enough to trigger it.
+* Added: per-CPT archive image crop (archive_image_aspect) - 16:9 (default), 4:3, 1:1, or 4:5 - answered to the theme's archive grid. People-centric CPTs like agents or team members typically want 1:1 or 4:5. Existing CPTs are unchanged.
+* Changed: newly registered CPTs now default to hiding the post date and author byline on archive cards. These describe WordPress bookkeeping (when the record was created, and which account created it) rather than the record itself - an agent card bylined with the site admin's name is misleading. Existing CPTs keep their current setting; toggle either per CPT at any time.
+* Fixed: neo-brutalist and lifted card styles no longer leak onto post-field chips in PostGrid.
+
 = 0.6.5 =
 * Fixed: deleting a stale duplicate copy of the plugin (two installs under different folder names) no longer wipes the shared configuration - cleanup now runs only when the last installed copy is removed.
 * Added: meta_match groupings can now pull posts from a DIFFERENT post type - "this agent's listings" on an agent page, "area listings" on a neighborhood page. New optional source parameters: post_type (which CPT to query), match_against (compare against the current post's title, slug, or ID), and field_key (reference a post field instead of a raw meta key). Fully backward compatible - existing meta_match groupings behave identically.
@@ -161,6 +167,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.6.6 =
+Fixes grouping thumbnails rendering as thin slivers in sidebar and horizontal card layouts. Adds a per-CPT archive image crop (square, 4:3, 4:5, 16:9) — useful for people-centric CPTs like agents or team members. New CPTs now default to hiding the post date and author byline on archive cards, since those describe WordPress bookkeeping rather than the record itself; existing CPTs are unchanged. Recommended for all users.
 
 = 0.6.5 =
 Cross-CPT relationships arrive: meta_match groupings can now auto-pull posts from another post type (an agent page listing its properties). Important fixes: archive filters named after post types no longer redirect away, cached pages no longer serve unstyled embedded forms to anonymous visitors, and image-optimizer <picture> wrapping no longer breaks card/hero image layout. Recommended for all users.

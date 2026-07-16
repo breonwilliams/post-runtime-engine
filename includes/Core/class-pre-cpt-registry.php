@@ -407,13 +407,36 @@ class PCPTPages_CPT_Registry {
 			'default_icon'        => '',
 
 			// Archive card meta — whether the theme should render the post
-			// date and author byline on archive cards. Default true to
-			// preserve existing-site behavior; turn off per-CPT when the
-			// CPT already exposes a date field of its own (e.g. an event
-			// CPT whose `event_date` post field is the meaningful date
-			// rather than the post's create-date).
-			'archive_show_post_date'   => true,
-			'archive_show_post_author' => true,
+			// date and author byline on archive cards. Answered to the theme
+			// through promptless_archive_card_show_date / _show_author
+			// (PCPTPages_Card_Filter_Hooks).
+			//
+			// DEFAULT FALSE, changed 2026-07-15. These defaulted to true,
+			// which was inherited blog-post thinking and wrong for what this
+			// plugin is for. Date and author answer "who wrote this, and
+			// when?" — a question nobody asks about a real estate agent, a
+			// property listing, or a team member. WordPress already has the
+			// `post` type (with its own archive) for content where that
+			// question makes sense. PRE exists for structured records.
+			//
+			// The deciding argument was the FAILURE MODE, not the aesthetics.
+			// The author byline renders the WP account that happened to
+			// create the record — observed live on Harbor & Oak: an agent
+			// card for "Sofia Marchetti" bylined "Jon Doe", the admin login.
+			// That is not merely superfluous, it is WRONG information that
+			// reads as plausible, so nobody catches it. Defaulting off fails
+			// the other way: a CPT that genuinely wants a date (a
+			// publications/news CPT) shows none, which is obvious on first
+			// look and is one toggle to fix. Silent-and-wrong is worse than
+			// obvious-and-missing.
+			//
+			// SAFE FOR EXISTING SITES: defaults apply only when a CPT is
+			// registered. Every stored CPT definition carries its own value,
+			// and cpt_toggle() defers to the theme when the key is absent
+			// (see PCPTPages_Card_Filter_Hooks::cpt_toggle) — so no existing
+			// archive changes. Only newly registered CPTs start off.
+			'archive_show_post_date'   => false,
+			'archive_show_post_author' => false,
 
 			// Archive card featured-image aspect ratio. Answered to the
 			// theme through the promptless_archive_image_aspect filter

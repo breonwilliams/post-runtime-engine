@@ -4,7 +4,7 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
-## [Unreleased]
+## [0.6.6] - 2026-07-16
 
 ### Added
 - **Per-CPT archive card image aspect ratio** (`archive_image_aspect`, demo-site pressure testing 2026-07-12). New CPT definition key controlling the featured-image crop on the theme's archive cards: `16:9` (default — the theme's historical hardcoded crop, existing sites unchanged), `4:3`, `1:1`, `4:5`. Square/portrait suit people-centric CPTs (agents, team directories); 4:3 suits property/product photography. Answered to the theme through the new `promptless_archive_image_aspect` filter (theme 1.3.0+) — the same handshake as `archive_show_post_date/author`. Vocabulary matches the PostGrid section's `card_image_aspect_ratio` enum so the ecosystem speaks one aspect language. Wired end-to-end: validator enum (`PCPTPages_Validator::ARCHIVE_IMAGE_ASPECTS`), registry default, admin CPT form, connector REST field hints, MCP `register_cpt`/`update_cpt` schemas + payload allowlists, unit tests.

@@ -13,6 +13,8 @@
 
 namespace PRE\Tests\Unit;
 
+use Brain\Monkey\Functions;
+
 /**
  * Tests for PCPTPages_Validator.
  */
@@ -39,11 +41,11 @@ class ValidatorTest extends UnitTestCase {
     // Constants — these are the contract surface; pin them.
     // -----------------------------------------------------------------
 
-    public function test_variants_constant_lists_exactly_four_options() {
+    public function test_variants_constant_lists_exactly_five_options() {
         $this->assertSame(
-            array( 'compact-grid', 'card-grid', 'featured-card', 'horizontal-row' ),
+            array( 'compact-grid', 'card-grid', 'featured-card', 'horizontal-row', 'gallery' ),
             \PCPTPages_Validator::VARIANTS,
-            'VARIANTS must list exactly the four documented variants. Adding a fifth requires an architectural conversation per CLAUDE.md.'
+            'VARIANTS must list exactly the five documented variants. gallery was added 2026-07 via the architectural conversation recorded in docs/GALLERY_VARIANT_DESIGN.md (the process CLAUDE.md requires). Adding a sixth requires the same: a design contract in docs/ first.'
         );
     }
 
@@ -453,6 +455,198 @@ class ValidatorTest extends UnitTestCase {
             'default_position' => 'above_main',
         ) );
         $this->assertTrue( $result, 'Omitted max_items must be allowed for featured-card.' );
+    }
+
+    // -----------------------------------------------------------------
+    // Gallery variant (docs/GALLERY_VARIANT_DESIGN.md, data-version 0.6.0)
+    //
+    // Item-shape reinterpretation is the INVERSE of the icon-only
+    // variants: image_id is required-to-render (imageless items are
+    // valid but skipped — "stage now, photo later"), icon_id is
+    // rejected outright, heading becomes an optional caption. The
+    // definition-level gallery_image_aspect reuses the shared
+    // ARCHIVE_IMAGE_ASPECTS vocabulary — one aspect language across
+    // archive cards, AISB sections, and gallery tiles.
+    // -----------------------------------------------------------------
+
+    public function test_validate_grouping_definition_accepts_gallery_variant() {
+        $result = $this->validator->validate_grouping_definition( array(
+            'key'              => 'photos',
+            'label'            => 'Photos',
+            'default_variant'  => 'gallery',
+            'default_position' => 'below_main',
+        ) );
+        $this->assertTrue( $result );
+    }
+
+    public function test_validate_grouping_definition_accepts_each_valid_gallery_image_aspect() {
+        foreach ( \PCPTPages_Validator::ARCHIVE_IMAGE_ASPECTS as $aspect ) {
+            $result = $this->validator->validate_grouping_definition( array(
+                'key'                  => 'photos',
+                'label'                => 'Photos',
+                'default_variant'      => 'gallery',
+                'default_position'     => 'below_main',
+                'gallery_image_aspect' => $aspect,
+            ) );
+            $this->assertTrue( $result, sprintf( 'Aspect "%s" should validate — vocabulary is shared with archive_image_aspect.', $aspect ) );
+        }
+    }
+
+    public function test_validate_grouping_definition_rejects_unknown_gallery_image_aspect() {
+        $result = $this->validator->validate_grouping_definition( array(
+            'key'                  => 'photos',
+            'label'                => 'Photos',
+            'default_variant'      => 'gallery',
+            'default_position'     => 'below_main',
+            'gallery_image_aspect' => '21:9',
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_gallery_image_aspect', $result->get_error_code() );
+    }
+
+    public function test_validate_grouping_definition_rejects_non_string_gallery_image_aspect() {
+        $result = $this->validator->validate_grouping_definition( array(
+            'key'                  => 'photos',
+            'label'                => 'Photos',
+            'default_variant'      => 'gallery',
+            'default_position'     => 'below_main',
+            'gallery_image_aspect' => 169,
+        ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_gallery_image_aspect', $result->get_error_code() );
+    }
+
+    public function test_validate_grouping_definition_accepts_gallery_image_aspect_on_non_gallery_variant() {
+        // Harmless on a non-gallery grouping — the renderer only reads it
+        // for the gallery variant. Rejecting it here would break the
+        // "switch variants without redefining" workflow.
+        $result = $this->validator->validate_grouping_definition( array(
+            'key'                  => 'features',
+            'label'                => 'Features',
+            'default_variant'      => 'card-grid',
+            'default_position'     => 'below_main',
+            'gallery_image_aspect' => '4:3',
+        ) );
+        $this->assertTrue( $result );
+    }
+
+    public function test_validate_grouping_item_rejects_icon_id_under_gallery_variant() {
+        $definition = array(
+            'key'             => 'photos',
+            'label'           => 'Photos',
+            'default_variant' => 'gallery',
+        );
+        $result = $this->validator->validate_grouping_item(
+            array(
+                'heading' => 'Front elevation',
+                'icon_id' => 'home',
+            ),
+            $definition,
+            'gallery'
+        );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_gallery_icon_rejected', $result->get_error_code() );
+    }
+
+    public function test_validate_grouping_item_accepts_image_only_item_under_gallery_variant() {
+        Functions\when( 'get_post' )->alias( function ( $id ) {
+            $p            = new \stdClass();
+            $p->ID        = (int) $id;
+            $p->post_type = 'attachment';
+            return $p;
+        } );
+        // Heading requirement is auto-relaxed under gallery — the heading
+        // is an optional caption, and image-only tiles are the norm.
+        $definition = array(
+            'key'              => 'photos',
+            'label'            => 'Photos',
+            'default_variant'  => 'gallery',
+            'heading_required' => true, // Explicitly true — gallery still relaxes it.
+        );
+        $result = $this->validator->validate_grouping_item(
+            array( 'image_id' => 42 ),
+            $definition,
+            'gallery'
+        );
+        $this->assertTrue( $result, 'Image-only gallery items must validate even when the definition says heading_required.' );
+    }
+
+    public function test_validate_grouping_item_accepts_imageless_item_under_gallery_variant() {
+        // Imageless items are valid-but-skipped at render — authors can
+        // stage an item (caption first) and attach the photo later.
+        $definition = array(
+            'key'             => 'photos',
+            'label'           => 'Photos',
+            'default_variant' => 'gallery',
+        );
+        $result = $this->validator->validate_grouping_item(
+            array( 'heading' => 'Coming soon' ),
+            $definition,
+            'gallery'
+        );
+        $this->assertTrue( $result );
+    }
+
+    public function test_validate_grouping_item_without_variant_arg_keeps_legacy_behavior() {
+        Functions\when( 'get_post' )->alias( function ( $id ) {
+            $p            = new \stdClass();
+            $p->ID        = (int) $id;
+            $p->post_type = 'attachment';
+            return $p;
+        } );
+        // Backwards compatibility: the third argument is optional, and
+        // omitting it must behave exactly as before the gallery variant
+        // existed (heading required per the definition flag).
+        $definition = array(
+            'key'             => 'photos',
+            'label'           => 'Photos',
+            'default_variant' => 'gallery',
+        );
+        $result = $this->validator->validate_grouping_item(
+            array( 'image_id' => 42 ),
+            $definition
+        );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_missing_heading', $result->get_error_code() );
+    }
+
+    public function test_validate_post_groupings_applies_variant_override_to_item_rules() {
+        // Effective-variant awareness: a per-post variant_override of
+        // "gallery" must drive item validation even when the definition
+        // defaults to card-grid — and vice versa.
+        $cpt_groupings = array(
+            'photos' => array(
+                'key'              => 'photos',
+                'label'            => 'Photos',
+                'default_variant'  => 'card-grid',
+                'default_position' => 'below_main',
+            ),
+        );
+        $entries = array(
+            array(
+                'grouping_key'     => 'photos',
+                'variant_override' => 'gallery',
+                'items'            => array(
+                    array(
+                        'heading' => 'X',
+                        'icon_id' => 'home',
+                    ),
+                ),
+            ),
+        );
+
+        $result = $this->validator->validate_post_groupings( $entries, 'listing', $cpt_groupings );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame(
+            'pcptpages_gallery_icon_rejected',
+            $result->get_error_code(),
+            'variant_override must decide which item rules apply, not the definition default.'
+        );
+
+        // Same payload with the override removed validates under the
+        // card-grid default (icon items are the card-grid norm).
+        $entries[0]['variant_override'] = null;
+        $this->assertTrue( $this->validator->validate_post_groupings( $entries, 'listing', $cpt_groupings ) );
     }
 
     // -----------------------------------------------------------------

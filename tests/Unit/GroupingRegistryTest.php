@@ -63,6 +63,37 @@ class GroupingRegistryTest extends UnitTestCase {
         $this->assertSame( 'card-grid', $stored['default_variant'] );
     }
 
+    public function test_define_defaults_gallery_image_aspect_to_16_9() {
+        // merge_defaults fills gallery_image_aspect with the 16:9 base so
+        // the renderer and connector always see a definite value —
+        // vocabulary shared with archive_image_aspect (one aspect
+        // language; docs/GALLERY_VARIANT_DESIGN.md §8-D2a).
+        $this->registry->define( 'listing', $this->valid_grouping() );
+        $stored = $this->registry->get( 'listing', 'features' );
+        $this->assertSame( '16:9', $stored['gallery_image_aspect'] );
+    }
+
+    public function test_define_persists_explicit_gallery_image_aspect() {
+        $this->registry->define( 'listing', $this->valid_grouping( array(
+            'key'                  => 'photos',
+            'label'                => 'Photos',
+            'default_variant'      => 'gallery',
+            'gallery_image_aspect' => '4:3',
+        ) ) );
+        $stored = $this->registry->get( 'listing', 'photos' );
+        $this->assertSame( 'gallery', $stored['default_variant'] );
+        $this->assertSame( '4:3', $stored['gallery_image_aspect'] );
+    }
+
+    public function test_define_rejects_invalid_gallery_image_aspect() {
+        $result = $this->registry->define( 'listing', $this->valid_grouping( array(
+            'default_variant'      => 'gallery',
+            'gallery_image_aspect' => '21:9',
+        ) ) );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_gallery_image_aspect', $result->get_error_code() );
+    }
+
     public function test_groupings_are_scoped_per_cpt() {
         // The architectural decision: each CPT has its own option bucket
         // (`pre_groupings_{cpt}`). A grouping with the same key on two

@@ -788,6 +788,14 @@ class PCPTPages_Renderer {
 			return;
 		}
 
+		// Gallery variant renders its own dedicated markup (photo grid +
+		// lightbox), not the shared items list. GALLERY_VARIANT_DESIGN.md.
+		if ( $variant === 'gallery' ) {
+			$aspect = isset( $g['def']['gallery_image_aspect'] ) ? (string) $g['def']['gallery_image_aspect'] : '16:9';
+			$this->render_gallery_grouping( $key, $label, $items, $aspect );
+			return;
+		}
+
 		?>
 		<section class="pre-grouping pre-grouping--<?php echo esc_attr( $variant ); ?>" data-grouping="<?php echo esc_attr( $key ); ?>">
 			<?php if ( $label !== '' ) : ?>
@@ -799,6 +807,161 @@ class PCPTPages_Renderer {
 					<?php $this->render_item( $item, $variant, $cpt_default_icon ); ?>
 				<?php endforeach; ?>
 			</ul>
+		</section>
+		<?php
+	}
+
+	/**
+	 * Render a gallery-variant grouping: a responsive photo grid with a
+	 * lightbox. Design contract: docs/GALLERY_VARIANT_DESIGN.md.
+	 *
+	 * Item-shape reinterpretation (contract §2):
+	 *   - image_id required — items without one are SKIPPED (staged items
+	 *     are legal data, they just don't render)
+	 *   - icon_id never renders (validator rejects it on write; skipped
+	 *     defensively here for pre-existing data)
+	 *   - heading = optional <figcaption> caption
+	 *   - supporting_text / link / link_post_id are not rendered — the
+	 *     tile's single interaction is opening the lightbox
+	 *
+	 * Performance (contract §9): tiles reserve space via CSS aspect-ratio
+	 * (zero CLS), load lazily with async decoding, and carry a `sizes`
+	 * attribute matched to the 3/2/2 grid so browsers fetch tile-sized
+	 * files. Full-size URLs ship only as JSON for the lightbox to load on
+	 * demand.
+	 *
+	 * Accessibility (contract §10): tiles are real <button>s (Enter/Space
+	 * for free, focusable, named via the caption or image alt); captions
+	 * are <figcaption> inside <figure>; the lightbox behavior contract
+	 * lives in assets/js/pre-lightbox.js.
+	 *
+	 * @param string $key    Sanitized grouping key.
+	 * @param string $label  Grouping label ('' hides the heading).
+	 * @param array  $items  Resolved items.
+	 * @param string $aspect Tile crop ratio from the grouping definition's
+	 *                       gallery_image_aspect (validator-enforced enum:
+	 *                       16:9 | 4:3 | 1:1 | 4:5). Tiles only — the
+	 *                       lightbox always shows the uncropped image.
+	 */
+	private function render_gallery_grouping( $key, $label, array $items, $aspect = '16:9' ) {
+		// Resolve renderable tiles first — imageless items are skipped, and
+		// if nothing survives the whole grouping is hidden (mirrors the
+		// empty-grouping rule above).
+		$tiles = array();
+		foreach ( $items as $item ) {
+			$image_id = isset( $item['image_id'] ) ? (int) $item['image_id'] : 0;
+			if ( $image_id < 1 ) {
+				continue;
+			}
+
+			$full = wp_get_attachment_image_src( $image_id, 'full' );
+			if ( ! $full ) {
+				continue; // Attachment deleted since the item was saved.
+			}
+
+			$tiles[] = array(
+				'image_id' => $image_id,
+				'caption'  => isset( $item['heading'] ) ? trim( (string) $item['heading'] ) : '',
+				'full_url' => $full[0],
+				'alt'      => (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true ),
+			);
+		}
+
+		if ( empty( $tiles ) ) {
+			return;
+		}
+
+		// The lightbox script is registered on every managed page (cheap)
+		// but enqueued only when a gallery actually renders — mid-render
+		// enqueues land in the footer queue, so pages without galleries
+		// never ship the JS. Mirrors the "never ship assets a page can't
+		// use" gating philosophy.
+		wp_enqueue_script( 'pcptpages-lightbox' );
+
+		// Lightbox payload: full-size URLs + captions + alt, consumed by
+		// pre-lightbox.js via the adjacent data script (same JSON-script
+		// pattern the AISB gallery uses — no data attributes to escape).
+		$lightbox_data = array();
+		foreach ( $tiles as $tile ) {
+			$lightbox_data[] = array(
+				'url'     => $tile['full_url'],
+				'alt'     => $tile['alt'],
+				'caption' => $tile['caption'],
+			);
+		}
+
+		/* translators: %s: grouping label */
+		$region_label = $label !== '' ? $label : __( 'Image gallery', 'promptless-cpt-pages' );
+
+		// `sizes` matched to the fixed 3/2/2 grid (contract §3/§9): 2-up
+		// below 1024px, 3-up within the single-post content column above.
+		$sizes = '(max-width: 1023px) 50vw, 400px';
+
+		// Aspect modifier class: "16:9" → "pre-gallery--aspect-16-9". The
+		// validator already enum-checked the value; sanitize_html_class is
+		// belt-and-suspenders. 16:9 is also the CSS base, so its modifier is
+		// a no-op — emitted anyway for a self-documenting DOM.
+		$aspect_class = 'pre-gallery--aspect-' . sanitize_html_class( str_replace( ':', '-', $aspect ) );
+
+		?>
+		<section class="pre-grouping pre-grouping--gallery" data-grouping="<?php echo esc_attr( $key ); ?>" aria-label="<?php echo esc_attr( $region_label ); ?>">
+			<?php if ( $label !== '' ) : ?>
+				<h2 class="pre-grouping__label"><?php echo esc_html( $label ); ?></h2>
+			<?php endif; ?>
+
+			<div class="pre-gallery__grid <?php echo esc_attr( $aspect_class ); ?>" data-pre-lightbox="<?php echo esc_attr( $key ); ?>">
+				<?php foreach ( $tiles as $index => $tile ) : ?>
+					<figure class="pre-gallery__tile">
+						<button
+							type="button"
+							class="pre-gallery__tile-button"
+							data-pre-lightbox-index="<?php echo esc_attr( (string) $index ); ?>"
+							aria-haspopup="dialog"
+							aria-label="<?php
+								/* translators: 1: image caption or alt text; 2: image position; 3: total image count */
+								echo esc_attr( sprintf(
+									__( 'View image: %1$s (%2$d of %3$d)', 'promptless-cpt-pages' ),
+									$tile['caption'] !== '' ? $tile['caption'] : ( $tile['alt'] !== '' ? $tile['alt'] : __( 'photo', 'promptless-cpt-pages' ) ),
+									$index + 1,
+									count( $tiles )
+								) );
+							?>"
+						>
+							<?php
+							// Tile-sized rendition with srcset from WP core.
+							// 'large' caps the fallback file sensibly; the
+							// sizes attr steers srcset selection to actual
+							// tile dimensions. loading/decoding: galleries
+							// render below the CPT hero, so no tile is an
+							// LCP candidate — lazy everything (contract §9).
+							echo wp_get_attachment_image(
+								$tile['image_id'],
+								'large',
+								false,
+								array(
+									'class'    => 'pre-gallery__tile-image',
+									'sizes'    => $sizes,
+									'loading'  => 'lazy',
+									'decoding' => 'async',
+									// Attachment alt flows automatically;
+									// empty alt stays empty (decorative),
+									// never filename junk.
+								)
+							);
+							?>
+						</button>
+						<?php if ( $tile['caption'] !== '' ) : ?>
+							<figcaption class="pre-gallery__caption"><?php echo esc_html( $tile['caption'] ); ?></figcaption>
+						<?php endif; ?>
+					</figure>
+				<?php endforeach; ?>
+			</div>
+
+			<script type="application/json" class="pre-gallery-lightbox-data"><?php
+				// wp_json_encode with JSON_HEX flags keeps `</script>`
+				// sequences impossible inside the JSON payload.
+				echo wp_json_encode( $lightbox_data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
+			?></script>
 		</section>
 		<?php
 	}

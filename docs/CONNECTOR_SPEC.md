@@ -89,7 +89,7 @@ Every `4xx` and `5xx` response has the same shape:
 ```json
 {
   "code": "pre_invalid_variant",
-  "message": "Invalid variant 'card-fancy'. Allowed: compact-grid, card-grid, featured-card, horizontal-row.",
+  "message": "Invalid variant 'card-fancy'. Allowed: compact-grid, card-grid, featured-card, horizontal-row, gallery.",
   "data": {
     "status": 422,
     "details": { ... optional, error-specific context ... }
@@ -196,11 +196,12 @@ Agents should call preflight before any content-creation work and SHOULD pass `c
     "groupings_item_shape": {
       "compact-grid":   ["heading", "icon_id", "link", "link_post_id", "link_text", "link_target"],
       "horizontal-row": ["heading", "icon_id"],
+      "gallery": ["image_id", "heading"],
       "card-grid":      ["heading", "supporting_text", "icon_id", "image_id", "link", "link_post_id", "link_text", "link_target"],
       "featured-card":  ["heading", "supporting_text", "icon_id", "image_id", "link", "link_post_id", "link_text", "link_target"]
     },
     "cpt_definition":      ["slug", "label_singular", "label_plural", "supports", "public", "has_archive", "show_in_rest", "show_in_menu", "menu_position", "menu_icon", "taxonomies", "capability_type", "description", "rewrite", "hero_layout", "hero_image_position", "hero_image_aspect", "default_icon"],
-    "grouping_definition": ["key", "label", "description", "default_variant", "default_position", "default_source", "max_items", "heading_required", "supporting_text_required", "link_required", "icon_or_image_required"],
+    "grouping_definition": ["key", "label", "description", "default_variant", "default_position", "default_source", "max_items", "heading_required", "supporting_text_required", "link_required", "icon_or_image_required", "gallery_image_aspect"],
     "notes": "icon_id and image_id are mutually exclusive on a single item. featured-card has max_items=1 enforced. Compact-grid and horizontal-row are icon-only — image_id is dropped at render time. link_post_id is preferred over literal `link` URLs for internal references; both can be set (link is the fallback when link_post_id resolution fails)."
   }
 }
@@ -227,7 +228,7 @@ Agents should call preflight before any content-creation work and SHOULD pass `c
 
 **Stability contract for `critical_rules`:** the set of keys is part of the connector contract. A key is removed only after the corresponding smoke-test assertion is removed AND `CHANGELOG.md` documents the removal. New keys are added freely as new authoring failure modes are discovered. Agents should treat unknown keys as informational (read-them-but-don't-crash), not as schema violations.
 
-**Stability contract for `field_name_hints`:** the per-variant arrays mirror `PRE_Validator`'s allow-list. When the validator gains support for a new field name, this list updates in lockstep. When the validator drops a field name, this list updates in lockstep. The `groupings_item_shape` keys (variant names: `compact-grid`, `horizontal-row`, `card-grid`, `featured-card`) match `PRE_Validator::VARIANTS` exactly.
+**Stability contract for `field_name_hints`:** the per-variant arrays mirror `PRE_Validator`'s allow-list. When the validator gains support for a new field name, this list updates in lockstep. When the validator drops a field name, this list updates in lockstep. The `groupings_item_shape` keys (variant names: `compact-grid`, `horizontal-row`, `card-grid`, `featured-card`, `gallery`) match `PRE_Validator::VARIANTS` exactly. Gallery items take `image_id` + optional `heading` (caption) only — `icon_id` is rejected by the validator, and `supporting_text`/`link` are accepted-but-not-rendered (the tile opens the lightbox). Items without `image_id` are valid but skipped at render. See `critical_rules.gallery_variant` and docs/GALLERY_VARIANT_DESIGN.md.
 
 ---
 
@@ -408,7 +409,7 @@ Source can be a string (`"manual"` or `"child_posts"`) or an object form for the
 **Failure:** `422` with codes including:
 - `pre_invalid_grouping_key`
 - `pre_duplicate_grouping_key`
-- `pre_invalid_variant` — not in {compact-grid, card-grid, featured-card, horizontal-row}
+- `pre_invalid_variant` — not in {compact-grid, card-grid, featured-card, horizontal-row, gallery}
 - `pre_invalid_position` — not in {above_main, below_main, sidebar}
 - `pre_invalid_source` — source not one of {manual, child_posts, taxonomy_match, meta_match}
 - `pre_featured_card_max_items` — featured-card requires max_items: 1
@@ -964,7 +965,9 @@ From `PRE_Validator`:
 | `pre_invalid_grouping` | Grouping shape malformed | Re-read the grouping shape spec |
 | `pre_invalid_grouping_key` | Key not snake_case | Use snake_case |
 | `pre_duplicate_grouping_key` | Key already defined for this CPT | Pick a different key |
-| `pre_invalid_variant` | Variant not in {compact-grid, card-grid, featured-card, horizontal-row} | Use `postruntime_list_variants` to verify |
+| `pre_invalid_variant` | Variant not in {compact-grid, card-grid, featured-card, horizontal-row, gallery} | Use `postruntime_list_variants` to verify |
+| `pre_invalid_gallery_image_aspect` | `gallery_image_aspect` not in {16:9, 4:3, 1:1, 4:5} | Use one of the four shared aspect values |
+| `pre_gallery_icon_rejected` | Gallery-variant item has `icon_id` | Galleries render images only — set `image_id` |
 | `pre_invalid_position` | Position not in {above_main, below_main, sidebar} | Use `postruntime_list_positions` |
 | `pre_invalid_source` | Source not in {manual, child_posts, taxonomy_match, meta_match} | Pick a valid source |
 | `pre_featured_card_max_items` | featured-card variant requires max_items: 1 | Set max_items to 1 |

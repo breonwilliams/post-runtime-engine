@@ -63,6 +63,13 @@
 			addItem($grouping);
 		});
 
+		// Gallery bulk-add: one wp.media trip, multiple selections, one item
+		// per selected image (GALLERY_VARIANT_DESIGN.md §5).
+		$grouping.on('click', '.pre-add-gallery-images', function (e) {
+			e.preventDefault();
+			addGalleryImages($grouping);
+		});
+
 		// Remove item.
 		$grouping.on('click', '.pre-remove-item', function (e) {
 			e.preventDefault();
@@ -271,7 +278,7 @@
 	function addItem($grouping) {
 		var $template = $grouping.find('.pre-item-template').first();
 		if (!$template.length) {
-			return;
+			return null;
 		}
 
 		// <template> contents — use innerHTML on the actual element.
@@ -292,6 +299,45 @@
 
 		updateAddButtonVisibility($grouping);
 		renumberIndices($list, $grouping.data('grouping-key'));
+
+		return $newItem;
+	}
+
+	/**
+	 * Gallery bulk-add: open wp.media in multi-select mode and create one
+	 * item per selected image. Respects max_items — selections past the cap
+	 * are dropped (the media modal can't know the cap ahead of time, so we
+	 * trim on the way in rather than failing the whole batch).
+	 */
+	function addGalleryImages($grouping) {
+		var frame = wp.media({
+			title: window.pcptpagesMetaBox.galleryTitle || 'Add gallery images',
+			button: { text: window.pcptpagesMetaBox.galleryButton || 'Add to gallery' },
+			library: { type: 'image' },
+			multiple: 'add'
+		});
+
+		frame.on('select', function () {
+			var selection = frame.state().get('selection').toJSON();
+			if (!selection || !selection.length) {
+				return;
+			}
+
+			var max = parseInt($grouping.data('max-items'), 10) || 0;
+			var $list = $grouping.find('.pre-items-list').first();
+
+			selection.forEach(function (attachment) {
+				if (max > 0 && $list.children('.pre-item').length >= max) {
+					return; // Cap reached mid-batch — drop the remainder.
+				}
+				var $item = addItem($grouping);
+				if ($item && $item.length) {
+					setItemImage($item, attachment);
+				}
+			});
+		});
+
+		frame.open();
 	}
 
 	/**
@@ -495,7 +541,14 @@
 		var override = ($overrideSelect.val() || '').toString();
 		var effective = override !== '' ? override : defaultVariant;
 		var isIconOnly = ICON_ONLY_VARIANTS.indexOf(effective) !== -1;
+		var isGallery = effective === 'gallery';
 		$grouping.toggleClass('is-icon-only', isIconOnly);
+		// Gallery variant (GALLERY_VARIANT_DESIGN.md §2): the inverse of
+		// icon-only — image is the medium, icon controls hide, supporting
+		// text / link fields hide (not rendered by the gallery), heading
+		// stays as the optional caption. CSS in admin.css keys off
+		// .is-gallery; the bulk "Add images" button shows only here.
+		$grouping.toggleClass('is-gallery', isGallery);
 		// Toggle the grouping-level explanatory note visibility. There is
 		// exactly one note element per grouping (rendered above the items
 		// list in class-pre-meta-box.php — formerly rendered per-item,
@@ -510,6 +563,19 @@
 				$note.attr('hidden', 'hidden');
 			}
 		}
+		var $galleryNote = $grouping.find('.pre-meta-grouping__gallery-note').first();
+		if ($galleryNote.length) {
+			if (isGallery) {
+				$galleryNote.removeAttr('hidden');
+			} else {
+				$galleryNote.attr('hidden', 'hidden');
+			}
+		}
+		// Gallery bulk-add button visibility is owned by
+		// updateAddButtonVisibility (single mechanism — the `hidden`
+		// property — so the variant gate and the max-items cap can't
+		// fight over inline display styles).
+		updateAddButtonVisibility($grouping);
 	}
 
 	/**
@@ -527,13 +593,24 @@
 	 * Hide the "Add item" button when max_items is reached for this grouping.
 	 */
 	function updateAddButtonVisibility($grouping) {
-		var max     = parseInt($grouping.data('max-items'), 10) || 0;
-		var $list   = $grouping.find('.pre-items-list').first();
-		var $addBtn = $grouping.find('.pre-add-item').first();
-		if (max > 0 && $list.children('.pre-item').length >= max) {
+		var max         = parseInt($grouping.data('max-items'), 10) || 0;
+		var $list       = $grouping.find('.pre-items-list').first();
+		var $addBtn     = $grouping.find('.pre-add-item').first();
+		var $galleryBtn = $grouping.find('.pre-add-gallery-images').first();
+		var atCap = max > 0 && $list.children('.pre-item').length >= max;
+
+		if (atCap) {
 			$addBtn.hide();
 		} else {
 			$addBtn.show();
+		}
+
+		// Gallery bulk-add: visible only when the effective variant is
+		// gallery AND the cap isn't reached. One mechanism (the hidden
+		// property) so the variant gate and the cap never fight over
+		// inline display styles.
+		if ($galleryBtn.length) {
+			$galleryBtn.prop('hidden', !($grouping.hasClass('is-gallery') && !atCap));
 		}
 	}
 })(jQuery);

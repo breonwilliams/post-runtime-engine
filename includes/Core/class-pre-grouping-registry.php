@@ -258,6 +258,7 @@ class PCPTPages_Grouping_Registry {
 			'description'              => '',
 			'default_source'           => 'manual',
 			'max_items'                => null,
+			'gallery_image_aspect'     => '16:9',
 			'heading_required'         => true,
 			'supporting_text_required' => false,
 			'link_required'            => false,

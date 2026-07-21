@@ -387,6 +387,40 @@ class PCPTPages_Admin_Groupings {
 						</p>
 					</td>
 				</tr>
+				<?php
+				// Gallery-only: tile aspect ratio. Row visibility follows the
+				// Default variant select (admin-groupings.js), mirroring the
+				// source-row toggle pattern. Vocabulary reuses the shared
+				// aspect enum (matches archive_image_aspect + Promptless
+				// section aspect controls — one aspect language).
+				// GALLERY_VARIANT_DESIGN.md §3 (amended).
+				?>
+				<tr class="pre-gallery-row">
+					<th scope="row">
+						<label for="pcptpages_gallery_image_aspect"><?php esc_html_e( 'Gallery tile aspect ratio', 'promptless-cpt-pages' ); ?></label>
+					</th>
+					<td>
+						<select id="pcptpages_gallery_image_aspect" name="gallery_image_aspect">
+							<?php
+							$aspect_labels = array(
+								'16:9' => __( '16:9 — wide (default; interiors, vehicles, landscapes)', 'promptless-cpt-pages' ),
+								'4:3'  => __( '4:3 — standard (product and property photography)', 'promptless-cpt-pages' ),
+								'1:1'  => __( '1:1 — square (portfolio grids, food)', 'promptless-cpt-pages' ),
+								'4:5'  => __( '4:5 — portrait (people, tall subjects)', 'promptless-cpt-pages' ),
+							);
+							$current_aspect = $values['gallery_image_aspect'] ?? '16:9';
+							foreach ( $aspect_labels as $aspect => $label ) :
+								?>
+								<option value="<?php echo esc_attr( $aspect ); ?>" <?php selected( $current_aspect, $aspect ); ?>>
+									<?php echo esc_html( $label ); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Crop shape for gallery tiles. Applies only when the variant is Gallery. The lightbox always shows the full uncropped image.', 'promptless-cpt-pages' ); ?>
+						</p>
+					</td>
+				</tr>
 				<tr>
 					<th scope="row">
 						<label for="pcptpages_default_position"><?php esc_html_e( 'Default position', 'promptless-cpt-pages' ); ?></label>
@@ -644,6 +678,9 @@ class PCPTPages_Admin_Groupings {
 			'label'                    => isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '',
 			'description'              => isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '',
 			'default_variant'          => isset( $_POST['default_variant'] ) ? sanitize_key( wp_unslash( $_POST['default_variant'] ) ) : '',
+			// Aspect values contain a colon (16:9) — sanitize_key would strip
+			// it, so use sanitize_text_field; the validator enum-checks it.
+			'gallery_image_aspect'     => isset( $_POST['gallery_image_aspect'] ) ? sanitize_text_field( wp_unslash( $_POST['gallery_image_aspect'] ) ) : '16:9',
 			'default_position'         => isset( $_POST['default_position'] ) ? sanitize_key( wp_unslash( $_POST['default_position'] ) ) : '',
 			'max_items'                => isset( $_POST['max_items'] ) && $_POST['max_items'] !== '' ? max( 1, min( 100, (int) $_POST['max_items'] ) ) : null,
 			'source_type'              => isset( $_POST['source_type'] ) ? sanitize_key( wp_unslash( $_POST['source_type'] ) ) : 'manual',
@@ -676,6 +713,7 @@ class PCPTPages_Admin_Groupings {
 			'label'                    => $values['label'],
 			'description'              => $values['description'],
 			'default_variant'          => $values['default_variant'],
+			'gallery_image_aspect'     => $values['gallery_image_aspect'],
 			'default_position'         => $values['default_position'],
 			'heading_required'         => $values['heading_required'],
 			'supporting_text_required' => $values['supporting_text_required'],
@@ -742,6 +780,7 @@ class PCPTPages_Admin_Groupings {
 			'label'                    => $definition['label'] ?? '',
 			'description'              => $definition['description'] ?? '',
 			'default_variant'          => $definition['default_variant'] ?? 'compact-grid',
+			'gallery_image_aspect'     => $definition['gallery_image_aspect'] ?? '16:9',
 			'default_position'         => $definition['default_position'] ?? 'above_main',
 			'max_items'                => $definition['max_items'] ?? null,
 			'source_type'              => is_array( $source ) ? ( $source['type'] ?? 'manual' ) : (string) $source,
@@ -769,6 +808,7 @@ class PCPTPages_Admin_Groupings {
 			'label'                    => '',
 			'description'              => '',
 			'default_variant'          => 'compact-grid',
+			'gallery_image_aspect'     => '16:9',
 			'default_position'         => 'above_main',
 			'max_items'                => null,
 			'source_type'              => 'manual',
@@ -793,6 +833,7 @@ class PCPTPages_Admin_Groupings {
 			'card-grid'      => __( 'Card grid (icon + heading + supporting text, multi-column)', 'promptless-cpt-pages' ),
 			'featured-card'  => __( 'Featured card (image + heading + text + CTA, single item)', 'promptless-cpt-pages' ),
 			'horizontal-row' => __( 'Horizontal row (inline chips for at-a-glance specs)', 'promptless-cpt-pages' ),
+			'gallery'        => __( 'Gallery (photo grid with lightbox; heading = optional caption)', 'promptless-cpt-pages' ),
 		);
 	}
 

@@ -869,3 +869,41 @@
 		gap: 4px;
 	}
 }
+
+/* =========================================================================
+   Gallery variant meta-box state (docs/GALLERY_VARIANT_DESIGN.md §2/§5)
+   -------------------------------------------------------------------------
+   The inverse of .is-icon-only: images are the medium. Icon controls hide
+   (the validator rejects icon_id on gallery items), and the supporting-
+   text + link fields hide because the gallery renders neither — the meta
+   box never accepts data the renderer will drop. Heading stays visible as
+   the optional caption. The Clear button stays for removing a photo.
+   ========================================================================= */
+
+.pre-meta-grouping__gallery-note {
+	margin: 8px 0 12px;
+	padding: 8px 12px;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #1e40af;
+	background: #dbeafe;
+	border-left: 3px solid #3b82f6;
+	border-radius: 0 4px 4px 0;
+}
+
+.pre-meta-grouping__gallery-note[hidden] {
+	display: none;
+}
+
+.pre-meta-grouping.is-gallery .pre-item__icon-input,
+.pre-meta-grouping.is-gallery .pre-item__icon-help,
+.pre-meta-grouping.is-gallery .pre-item__icon-select,
+.pre-meta-grouping.is-gallery .pre-item__supporting,
+.pre-meta-grouping.is-gallery .pre-item__link,
+.pre-meta-grouping.is-gallery .pre-item__link-wrap {
+	display: none;
+}
+
+.pre-add-gallery-images[hidden] {
+	display: none;
+}

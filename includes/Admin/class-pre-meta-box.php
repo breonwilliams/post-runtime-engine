@@ -144,9 +144,11 @@ class PCPTPages_Meta_Box {
 			'pcptpages-meta-box',
 			'pcptpagesMetaBox',
 			array(
-				'icons'       => $this->icon_data_for_js(),
-				'mediaTitle'  => __( 'Choose Image', 'promptless-cpt-pages' ),
-				'mediaButton' => __( 'Use this image', 'promptless-cpt-pages' ),
+				'icons'         => $this->icon_data_for_js(),
+				'mediaTitle'    => __( 'Choose Image', 'promptless-cpt-pages' ),
+				'mediaButton'   => __( 'Use this image', 'promptless-cpt-pages' ),
+				'galleryTitle'  => __( 'Add gallery images', 'promptless-cpt-pages' ),
+				'galleryButton' => __( 'Add to gallery', 'promptless-cpt-pages' ),
 				// /wp/v2/search returns matches from any post type whose
 				// show_in_rest=true. The X-WP-Nonce header authenticates the
 				// request as the current user so private/draft posts the user
@@ -307,6 +309,7 @@ class PCPTPages_Meta_Box {
 						<option value="card-grid" <?php selected( $variant_override, 'card-grid' ); ?>><?php esc_html_e( 'Card grid', 'promptless-cpt-pages' ); ?></option>
 						<option value="featured-card" <?php selected( $variant_override, 'featured-card' ); ?>><?php esc_html_e( 'Featured card', 'promptless-cpt-pages' ); ?></option>
 						<option value="horizontal-row" <?php selected( $variant_override, 'horizontal-row' ); ?>><?php esc_html_e( 'Horizontal row', 'promptless-cpt-pages' ); ?></option>
+						<option value="gallery" <?php selected( $variant_override, 'gallery' ); ?>><?php esc_html_e( 'Gallery', 'promptless-cpt-pages' ); ?></option>
 					</select>
 				</label>
 			</div>
@@ -331,6 +334,16 @@ class PCPTPages_Meta_Box {
 						<?php esc_html_e( 'This layout uses icons only — uploaded images are not displayed. Change the Variant above to "Card grid" or "Featured card" to use images.', 'promptless-cpt-pages' ); ?>
 					</p>
 
+					<?php
+					// Grouping-level gallery note — counterpart of the icon-only
+					// note above. Toggled by meta-box.js evaluateGroupingVariant()
+					// via the .is-gallery class when the effective variant is
+					// gallery (GALLERY_VARIANT_DESIGN.md §2/§5).
+					?>
+					<p class="pre-meta-grouping__gallery-note" hidden>
+						<?php esc_html_e( 'Gallery layout: each item is a photo (heading becomes an optional caption; icons, supporting text, and links are not displayed). Use "Add images" to select multiple photos at once.', 'promptless-cpt-pages' ); ?>
+					</p>
+
 					<ol class="pre-items-list" data-grouping-key="<?php echo esc_attr( $key ); ?>">
 						<?php foreach ( $items as $i => $item ) : ?>
 							<?php $this->render_item_row( $key, $i, $item ); ?>
@@ -339,6 +352,17 @@ class PCPTPages_Meta_Box {
 
 					<button type="button" class="button pre-add-item" data-grouping-key="<?php echo esc_attr( $key ); ?>">
 						+ <?php esc_html_e( 'Add item', 'promptless-cpt-pages' ); ?>
+					</button>
+
+					<?php
+					// Gallery bulk-add: opens wp.media in multi-select mode and
+					// creates one item per selected image (contract §5 — "ten
+					// photos become ten items in one media-library trip").
+					// Hidden unless the effective variant is gallery; handled by
+					// meta-box.js addGalleryImages().
+					?>
+					<button type="button" class="button pre-add-gallery-images" data-grouping-key="<?php echo esc_attr( $key ); ?>" hidden>
+						+ <?php esc_html_e( 'Add images', 'promptless-cpt-pages' ); ?>
 					</button>
 
 					<template class="pre-item-template" data-grouping-key="<?php echo esc_attr( $key ); ?>">

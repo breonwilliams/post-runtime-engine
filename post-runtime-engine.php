@@ -49,7 +49,13 @@ define( 'PCPTPages_VERSION', '0.6.6' );
 //           is intentionally no migrate_to_0_5_0(). Marker so future
 //           upgrades can assume the extended meta_match shape is valid in
 //           stored grouping definitions.
-define( 'PCPTPages_DATA_VERSION', '0.5.0' );
+//   0.6.0 — gallery grouping variant (docs/GALLERY_VARIANT_DESIGN.md):
+//           `gallery` joins the VARIANTS enum. No data migration required —
+//           purely additive vocabulary (existing groupings untouched; the
+//           variant is opt-in per definition/override). Marker so future
+//           upgrades can assume stored default_variant / variant_override
+//           values may legally be "gallery".
+define( 'PCPTPages_DATA_VERSION', '0.6.0' );
 
 // Plugin paths and URLs.
 define( 'PCPTPages_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );

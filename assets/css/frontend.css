@@ -1529,3 +1529,234 @@ body.aisb-card-image-inset
 	margin: 0;
 	transition: var(--aisb-section-transition-base, 200ms ease);
 }
+
+/* =========================================================================
+   Gallery variant (docs/GALLERY_VARIANT_DESIGN.md)
+   -------------------------------------------------------------------------
+   Responsive photo grid + lightbox for `variant: gallery` groupings.
+   Contract §3: fixed 3-up desktop / 2-up below 1024px, 16:9 tiles,
+   figure/figcaption markup, tiles are real <button>s.
+   Contract §9: aspect-ratio reserves space (zero CLS).
+   Contract §10: WCAG 2.2 AA — visible focus, ≥24px targets, reduced motion.
+   All tokens below are already documented in docs/AISB_TOKEN_CONTRACT.md
+   (no new token consumption).
+   ========================================================================= */
+
+.pre-gallery__grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: var(--aisb-section-space-sm, 16px);
+}
+
+@media (min-width: 1024px) {
+	.pre-gallery__grid {
+		grid-template-columns: repeat(3, 1fr);
+	}
+}
+
+.pre-gallery__tile {
+	margin: 0; /* figure reset */
+	min-width: 0;
+}
+
+/* The tile button is the single interaction: full-bleed image, zero
+   button chrome. aspect-ratio reserves layout space before the lazy
+   image arrives — CLS stays at 0 by construction. */
+.pre-gallery__tile-button {
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	padding: 0;
+	border: none;
+	background: none;
+	cursor: zoom-in;
+	border-radius: var(--aisb-section-radius-image, 8px);
+	overflow: hidden;
+}
+
+.pre-gallery__tile-image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform var(--aisb-section-transition-base, 200ms ease);
+}
+
+.pre-gallery__tile-button:hover .pre-gallery__tile-image {
+	transform: scale(1.03);
+}
+
+/* Visible focus indicator (WCAG 2.4.11/2.4.13-friendly): 2px ring offset
+   outside the tile, using the smart surface-link token like the other
+   grouping focus styles. */
+.pre-gallery__tile-button:focus-visible {
+	outline: 2px solid var(--pre-color-surface-link, var(--aisb-color-primary, #6366f1));
+	outline-offset: 2px;
+}
+
+/* Definition-level tile crop (gallery_image_aspect — validator enum,
+   shared with archive_image_aspect and the AISB section vocabulary:
+   16:9 wide / 4:3 standard / 1:1 square / 4:5 portrait). 16:9 is the
+   base rule above; the others override per grid. Tiles only — the
+   lightbox always shows the full uncropped image. */
+.pre-gallery--aspect-4-3 .pre-gallery__tile-button {
+	aspect-ratio: 4 / 3;
+}
+
+.pre-gallery--aspect-1-1 .pre-gallery__tile-button {
+	aspect-ratio: 1 / 1;
+}
+
+.pre-gallery--aspect-4-5 .pre-gallery__tile-button {
+	aspect-ratio: 4 / 5;
+}
+
+.pre-gallery__caption {
+	margin-top: 0.5rem;
+	font-size: 0.875rem;
+	color: var(--pre-color-text-muted, var(--aisb-color-text-muted, #6b7280));
+	font-family: var(--aisb-section-font-body, inherit);
+}
+
+/* Sidebar position: single-column thumbnails (contract §3). */
+.pre-sidebar .pre-gallery__grid {
+	grid-template-columns: 1fr;
+}
+
+/* -------------------------------------------------------------------------
+   Lightbox (rendered by assets/js/pre-lightbox.js into <body>)
+   WAI-ARIA APG dialog styling: fixed overlay, centered stage, visible
+   prev/next/close controls (≥44px targets — comfortably past the 24px
+   WCAG 2.2 §2.5.8 minimum), caption + counter strip.
+   ------------------------------------------------------------------------- */
+
+.pre-lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.92);
+	opacity: 1;
+	transition: opacity var(--aisb-section-transition-base, 200ms ease);
+}
+
+.pre-lightbox[hidden] {
+	display: none;
+}
+
+.pre-lightbox__stage {
+	max-width: min(1200px, 92vw);
+	max-height: 78vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.pre-lightbox__image {
+	max-width: 100%;
+	max-height: 78vh;
+	width: auto;
+	height: auto;
+	display: block;
+	border-radius: var(--aisb-section-radius-image, 8px);
+}
+
+.pre-lightbox__meta {
+	margin-top: 0.75rem;
+	max-width: min(1200px, 92vw);
+	text-align: center;
+	color: #ffffff;
+	font-family: var(--aisb-section-font-body, inherit);
+}
+
+.pre-lightbox__caption {
+	font-size: 0.9375rem;
+	margin: 0 0 0.25rem;
+}
+
+.pre-lightbox__counter {
+	font-size: 0.8125rem;
+	opacity: 0.75;
+	margin: 0;
+}
+
+/* Controls: real buttons, high-contrast on the dark overlay, 44px hit
+   areas. Drag/swipe is an enhancement — these buttons are the baseline
+   navigation path (WCAG 2.2 §2.5.7 dragging alternatives). */
+.pre-lightbox__control {
+	position: absolute;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.12);
+	color: #ffffff;
+	cursor: pointer;
+	transition: background var(--aisb-section-transition-base, 200ms ease);
+}
+
+.pre-lightbox__control:hover {
+	background: rgba(255, 255, 255, 0.28);
+}
+
+.pre-lightbox__control:focus-visible {
+	outline: 2px solid #ffffff;
+	outline-offset: 2px;
+}
+
+.pre-lightbox__control svg {
+	width: 22px;
+	height: 22px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.pre-lightbox__close {
+	top: 16px;
+	right: 16px;
+}
+
+.pre-lightbox__prev {
+	left: 16px;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.pre-lightbox__next {
+	right: 16px;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+@media (max-width: 640px) {
+	.pre-lightbox__prev {
+		left: 8px;
+	}
+
+	.pre-lightbox__next {
+		right: 8px;
+	}
+}
+
+/* Reduced motion: no fades, no tile zoom (contract §10). */
+@media (prefers-reduced-motion: reduce) {
+	.pre-lightbox {
+		transition: none;
+	}
+
+	.pre-gallery__tile-image,
+	.pre-gallery__tile-button:hover .pre-gallery__tile-image {
+		transition: none;
+		transform: none;
+	}
+}

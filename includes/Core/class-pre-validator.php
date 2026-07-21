@@ -26,12 +26,23 @@ class PCPTPages_Validator {
 
 	/**
 	 * Allowed layout variants. Locked in v1.0; v1.1+ may add more via filter.
+	 *
+	 * `gallery` (added per docs/GALLERY_VARIANT_DESIGN.md, 2026-07-18):
+	 * renders items as a responsive photo grid with a lightbox. Item-shape
+	 * reinterpretation is the inverse of the icon-only variants: image_id is
+	 * the required medium (items without one are skipped at render),
+	 * icon_id is REJECTED at validation (not silently dropped — galleries
+	 * are image-by-definition, so an icon on a gallery item is an authoring
+	 * error worth surfacing), heading becomes an optional caption, and
+	 * supporting_text / link / link_post_id are not rendered (tile click
+	 * opens the lightbox).
 	 */
 	const VARIANTS = array(
 		'compact-grid',
 		'card-grid',
 		'featured-card',
 		'horizontal-row',
+		'gallery',
 	);
 
 	/**
@@ -888,6 +899,25 @@ class PCPTPages_Validator {
 			);
 		}
 
+		// gallery_image_aspect — optional; enum. Reuses ARCHIVE_IMAGE_ASPECTS
+		// so the plugin speaks ONE aspect vocabulary everywhere (archive cards,
+		// AISB sections, gallery tiles). Controls the tile crop for the gallery
+		// variant only; the lightbox always shows the full uncropped image.
+		// Harmless if set on a non-gallery grouping (ignored by the renderer).
+		if ( isset( $definition['gallery_image_aspect'] ) ) {
+			if ( ! in_array( $definition['gallery_image_aspect'], self::ARCHIVE_IMAGE_ASPECTS, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_gallery_image_aspect',
+					sprintf(
+						/* translators: %1$s: the invalid aspect; %2$s: list of allowed aspects */
+						__( 'Grouping gallery_image_aspect %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+						is_string( $definition['gallery_image_aspect'] ) ? $definition['gallery_image_aspect'] : 'non-string',
+						implode( ', ', self::ARCHIVE_IMAGE_ASPECTS )
+					)
+				);
+			}
+		}
+
 		// Default source — optional; defaults to 'manual'.
 		if ( isset( $definition['default_source'] ) ) {
 			$source_check = $this->validate_source_value( $definition['default_source'] );
@@ -1087,9 +1117,17 @@ class PCPTPages_Validator {
 					);
 				}
 
-				// Validate each item.
+				// Validate each item against the ENTRY's effective variant —
+				// a per-post variant_override changes which item shapes are
+				// legal (e.g. gallery rejects icon_id and relaxes heading),
+				// so item validation must see the override, not just the
+				// definition's default_variant.
+				$effective_variant = ! empty( $grouping['variant_override'] )
+					? (string) $grouping['variant_override']
+					: (string) ( $definition['default_variant'] ?? 'compact-grid' );
+
 				foreach ( $items as $item_index => $item ) {
-					$item_check = $this->validate_grouping_item( $item, $definition );
+					$item_check = $this->validate_grouping_item( $item, $definition, $effective_variant );
 					if ( is_wp_error( $item_check ) ) {
 						$item_check->add_data(
 							array(
@@ -1121,11 +1159,25 @@ class PCPTPages_Validator {
 	 *   resolving via get_permalink(link_post_id) when set, falling back to
 	 *   the stored link string otherwise.
 	 *
-	 * @param mixed $item       The item to validate.
-	 * @param array $definition Grouping definition.
+	 * Gallery-variant items (docs/GALLERY_VARIANT_DESIGN.md §2/§6): when the
+	 * entry's effective variant is `gallery`, icon_id is REJECTED (galleries
+	 * are image-by-definition — an icon here is an authoring error, unlike
+	 * the icon-only variants where a stray image is silently dropped because
+	 * the item may be shared across variants) and heading becomes optional
+	 * regardless of the definition's heading_required (captions are
+	 * optional by contract). A missing image_id stays VALID — the renderer
+	 * skips imageless items and the connector surfaces a non-fatal warning,
+	 * so authors can stage items before uploading photos.
+	 *
+	 * @param mixed  $item              The item to validate.
+	 * @param array  $definition        Grouping definition.
+	 * @param string $effective_variant The entry's effective variant
+	 *                                  (variant_override else default_variant).
+	 *                                  Optional for backwards compatibility;
+	 *                                  empty string applies no variant rules.
 	 * @return true|WP_Error
 	 */
-	public function validate_grouping_item( $item, array $definition ) {
+	public function validate_grouping_item( $item, array $definition, $effective_variant = '' ) {
 		if ( ! is_array( $item ) ) {
 			return new WP_Error(
 				'pcptpages_invalid_item',
@@ -1133,9 +1185,19 @@ class PCPTPages_Validator {
 			);
 		}
 
+		$is_gallery = ( $effective_variant === 'gallery' );
+
 		// Mutual exclusion between image_id and icon_id.
 		$has_image = ! empty( $item['image_id'] );
 		$has_icon  = ! empty( $item['icon_id'] );
+
+		// Gallery variant: icon_id is an authoring error, full stop.
+		if ( $is_gallery && $has_icon ) {
+			return new WP_Error(
+				'pcptpages_gallery_icon_rejected',
+				__( 'Gallery-variant items cannot use icon_id — galleries render images only. Set image_id (heading is an optional caption), or choose a different variant for icon content.', 'promptless-cpt-pages' )
+			);
+		}
 
 		if ( $has_image && $has_icon ) {
 			return new WP_Error(
@@ -1200,6 +1262,13 @@ class PCPTPages_Validator {
 
 		// Heading — required by default; can be made optional per definition.
 		$heading_required = ! isset( $definition['heading_required'] ) || $definition['heading_required'];
+
+		// Gallery variant: heading is an OPTIONAL caption by contract —
+		// overrides the definition-level requirement (GALLERY_VARIANT_DESIGN
+		// §2). Image-only tiles are first-class gallery content.
+		if ( $is_gallery ) {
+			$heading_required = false;
+		}
 		$heading          = isset( $item['heading'] ) ? $item['heading'] : '';
 
 		if ( ! is_string( $heading ) ) {

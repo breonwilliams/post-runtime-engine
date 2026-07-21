@@ -78,6 +78,34 @@ class PCPTPages_Frontend_Assets {
 			true
 		);
 		wp_script_add_data( 'pcptpages-iconify-icon', 'type', 'module' );
+
+		// Gallery lightbox: REGISTERED here (cheap — no output), ENQUEUED
+		// only by the renderer when a gallery-variant grouping actually
+		// renders (mid-render enqueues land in the footer queue). Pages
+		// without a gallery never ship this script — the "never ship
+		// assets a page can't use" gating philosophy.
+		// Behavior contract: WAI-ARIA APG dialog (focus trap, Escape,
+		// arrow keys, visible prev/next buttons, swipe as enhancement) —
+		// docs/GALLERY_VARIANT_DESIGN.md §10.
+		wp_register_script(
+			'pcptpages-lightbox',
+			PCPTPages_PLUGIN_URL . 'assets/js/pre-lightbox.js',
+			array(),
+			PCPTPages_VERSION,
+			true
+		);
+		wp_localize_script(
+			'pcptpages-lightbox',
+			'pcptpagesLightbox',
+			array(
+				'dialogLabel' => __( 'Image viewer', 'promptless-cpt-pages' ),
+				'close'       => __( 'Close', 'promptless-cpt-pages' ),
+				'prev'        => __( 'Previous image', 'promptless-cpt-pages' ),
+				'next'        => __( 'Next image', 'promptless-cpt-pages' ),
+				/* translators: 1: current image number, 2: total image count */
+				'counter'     => __( 'Image %1$s of %2$s', 'promptless-cpt-pages' ),
+			)
+		);
 	}
 
 	/**

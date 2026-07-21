@@ -160,9 +160,19 @@ class PCPTPages_Admin {
 	 */
 	public function enqueue_assets( $hook ) {
 		// Match any of our admin page hooks. WordPress prefixes the parent
-		// menu slug with "toplevel_page_" and submenus with the parent slug.
+		// menu slug with "toplevel_page_" and hidden (null-parent) submenus
+		// with "admin_page_" — e.g. "admin_page_pcptpages-groupings".
+		//
+		// The 'pcptpages' term is the load-bearing one: the Groupings and
+		// Post Fields pages are hidden submenus whose hooks contain neither
+		// MENU_SLUG ('promptless-cpt-pages') nor the planning-era 'pre-'
+		// prefix, so before it was added (2026-07-21) this guard silently
+		// skipped them and admin.css / admin-groupings.js /
+		// post-fields-editor.js never loaded there — rebrand fallout from
+		// the pre-* → pcptpages-* page-slug rename.
 		$is_pcptpages_page = (
 			strpos( $hook, self::MENU_SLUG ) !== false
+			|| strpos( $hook, 'pcptpages' ) !== false
 			|| strpos( $hook, 'pre-' ) !== false
 			|| $hook === 'toplevel_page_' . self::MENU_SLUG
 		);

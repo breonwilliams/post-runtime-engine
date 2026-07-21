@@ -54,7 +54,7 @@ const TOOLS = [
   {
     name: "postruntime_list_variants",
     description:
-      "Layout variant catalog with rendering hints. Returns the 4 variants: compact-grid (icon + heading, no supporting text), card-grid (icon/image + heading + supporting text), featured-card (single item, image-prominent — REQUIRES max_items=1 on the grouping definition), horizontal-row (inline chips for at-a-glance facts). Each entry's `supports_supporting_text` flag tells you whether to populate that field.",
+      "Layout variant catalog with rendering hints. Returns the 5 variants: compact-grid (icon + heading, no supporting text), card-grid (icon/image + heading + supporting text), featured-card (single item, image-prominent — REQUIRES max_items=1 on the grouping definition), horizontal-row (inline chips for at-a-glance facts), gallery (responsive photo grid with an accessible lightbox — items take image_id + optional heading as caption; icon_id is REJECTED on gallery items; tile crop set by the definition-level gallery_image_aspect). Each entry's `supports_supporting_text` flag tells you whether to populate that field.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
@@ -242,7 +242,7 @@ const TOOLS = [
   {
     name: "postruntime_define_grouping",
     description:
-      "Define a grouping (named cluster of items with shared layout) for a CPT. featured-card variant REQUIRES max_items=1 (the validator enforces this). Source modes: 'manual' (items stored explicitly per post), 'child_posts' (auto-populated from hierarchical children), {type:'taxonomy_match',taxonomy:'<slug>'} (auto-populated from posts sharing a taxonomy term — the taxonomy must already exist), or {type:'meta_match',...} (auto-populated from posts whose meta value equals a value derived from the current post). meta_match has two shapes: MIRROR (default) — {type:'meta_match',meta_key:'_agent_id'} finds same-CPT siblings sharing the current post's value ('more from this agent'); REVERSE LOOKUP — {type:'meta_match',post_type:'listing',field_key:'agent',match_against:'current_title'} pulls posts from a DIFFERENT CPT whose post-field names the current post (an Agent page pulling its Listings, a Neighborhood page pulling area Listings). Prefer field_key (a PRE post-field key — the meta this connector writes via set_post_field_values) over raw meta_key; exactly one of the two is required. match_against: same_key (default) | current_id | current_slug | current_title.",
+      "Define a grouping (named cluster of items with shared layout) for a CPT. featured-card variant REQUIRES max_items=1 (the validator enforces this). The gallery variant renders items as a responsive photo grid with an accessible lightbox — set gallery_image_aspect for the tile crop and usually heading_required:false so image-only tiles save cleanly (see preflight critical_rules.gallery_variant). Source modes: 'manual' (items stored explicitly per post), 'child_posts' (auto-populated from hierarchical children), {type:'taxonomy_match',taxonomy:'<slug>'} (auto-populated from posts sharing a taxonomy term — the taxonomy must already exist), or {type:'meta_match',...} (auto-populated from posts whose meta value equals a value derived from the current post). meta_match has two shapes: MIRROR (default) — {type:'meta_match',meta_key:'_agent_id'} finds same-CPT siblings sharing the current post's value ('more from this agent'); REVERSE LOOKUP — {type:'meta_match',post_type:'listing',field_key:'agent',match_against:'current_title'} pulls posts from a DIFFERENT CPT whose post-field names the current post (an Agent page pulling its Listings, a Neighborhood page pulling area Listings). Prefer field_key (a PRE post-field key — the meta this connector writes via set_post_field_values) over raw meta_key; exactly one of the two is required. match_against: same_key (default) | current_id | current_slug | current_title.",
     inputSchema: {
       type: "object",
       properties: {
@@ -252,11 +252,17 @@ const TOOLS = [
         description: { type: "string" },
         default_variant: {
           type: "string",
-          enum: ["compact-grid", "card-grid", "featured-card", "horizontal-row"],
+          enum: ["compact-grid", "card-grid", "featured-card", "horizontal-row", "gallery"],
         },
         default_position: {
           type: "string",
           enum: ["above_main", "below_main", "sidebar"],
+        },
+        gallery_image_aspect: {
+          type: "string",
+          enum: ["16:9", "4:3", "1:1", "4:5"],
+          description:
+            "Tile crop for the gallery variant (default 16:9). Same vocabulary as archive_image_aspect: 4:3 suits property/vehicle photography, 1:1 product shots, 4:5 portraits. Tiles only — the lightbox always shows the full uncropped image. Ignored by non-gallery variants.",
         },
         default_source: {
           oneOf: [
@@ -343,6 +349,11 @@ const TOOLS = [
         supporting_text_required: { type: "boolean" },
         link_required: { type: "boolean" },
         icon_or_image_required: { type: "boolean" },
+        gallery_image_aspect: {
+          type: "string",
+          enum: ["16:9", "4:3", "1:1", "4:5"],
+          description: "Tile crop for the gallery variant. See define_grouping.",
+        },
       },
       required: ["slug", "key", "connector_version"],
     },
@@ -375,7 +386,7 @@ const TOOLS = [
   {
     name: "postruntime_set_post_groupings",
     description:
-      "Replace ALL grouping data for a post atomically. The full groupings array you pass in REPLACES whatever's stored — to update one grouping without touching others, do GET → modify → PUT. Items follow the canonical shape: {image_id, icon_id, heading, supporting_text, link, link_post_id} (image_id and icon_id are mutually exclusive). When linking to internal posts, pass link_post_id alongside the URL — the renderer resolves through get_permalink() at render time, making links domain-portable across staging→production migrations. The data layer creates a backup before the write.",
+      "Replace ALL grouping data for a post atomically. The full groupings array you pass in REPLACES whatever's stored — to update one grouping without touching others, do GET → modify → PUT. Items follow the canonical shape: {image_id, icon_id, heading, supporting_text, link, link_post_id} (image_id and icon_id are mutually exclusive). GALLERY-variant groupings reinterpret the item shape: image_id is required to render (imageless items are valid but skipped), heading becomes the optional photo caption, icon_id is REJECTED by the validator (pcptpages_gallery_icon_rejected), and supporting_text/link are accepted but not rendered. When linking to internal posts, pass link_post_id alongside the URL — the renderer resolves through get_permalink() at render time, making links domain-portable across staging→production migrations. The data layer creates a backup before the write.",
     inputSchema: {
       type: "object",
       properties: {
@@ -950,6 +961,7 @@ async function handleTool(name, args) {
         "supporting_text_required",
         "link_required",
         "icon_or_image_required",
+        "gallery_image_aspect",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
@@ -981,6 +993,7 @@ async function handleTool(name, args) {
         "supporting_text_required",
         "link_required",
         "icon_or_image_required",
+        "gallery_image_aspect",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });

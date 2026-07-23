@@ -102,6 +102,7 @@ vendor
 build
 tests
 bin
+_to_delete
 includes/Updates
 CLAUDE.md
 POST_RUNTIME_AUDIT.md
@@ -159,6 +160,10 @@ done
 echo "Creating zip..."
 (
     cd "${BUILD_DIR}"
+    rm -f "${ZIP_NAME}"
+    # Delete any previous archive first — `zip -r` against an existing zip
+    # runs in UPDATE mode and never removes entries whose source files were
+    # deleted, so a removed file would silently survive in the stale archive.
     rm -f "${ZIP_NAME}"
     zip -r "${ZIP_NAME}" "${PLUGIN_SLUG}/" -x "*.DS_Store" "*/.git/*" "*/node_modules/*" >/dev/null
 )

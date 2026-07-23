@@ -918,8 +918,8 @@ class PCPTPages_Renderer {
 							data-pre-lightbox-index="<?php echo esc_attr( (string) $index ); ?>"
 							aria-haspopup="dialog"
 							aria-label="<?php
-								/* translators: 1: image caption or alt text; 2: image position; 3: total image count */
 								echo esc_attr( sprintf(
+									/* translators: 1: image caption or alt text; 2: image position; 3: total image count */
 									__( 'View image: %1$s (%2$d of %3$d)', 'promptless-cpt-pages' ),
 									$tile['caption'] !== '' ? $tile['caption'] : ( $tile['alt'] !== '' ? $tile['alt'] : __( 'photo', 'promptless-cpt-pages' ) ),
 									$index + 1,

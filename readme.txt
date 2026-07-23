@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.6.6
+Stable tag: 0.6.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -77,6 +77,12 @@ Privacy policy: https://iconify.design/privacy/
 5. Claude Cowork connector setup — opt-in App Password generation, default-disabled kill switch
 
 == Changelog ==
+
+= 0.6.7 =
+* New: Gallery grouping variant — display a grouping's items as a responsive photo grid (3-up desktop / 2-up mobile) with a fully accessible lightbox (keyboard, touch swipe, reduced-motion support). Ideal for property photo tours, vehicle galleries, and portfolios; captions come from item headings and imageless items simply wait for their photo.
+* New: Gallery tile aspect control per grouping definition — 16:9 (default), 4:3, 1:1, or 4:5 tile crops; the lightbox always shows the full image.
+* Fix: Admin styles now load on all plugin admin screens (missing page hooks in the enqueue guard).
+* Internal: bundled MCP connector synced with the gallery vocabulary; unit suite extended (117 tests).
 
 = 0.6.6 =
 * Fixed: grouping thumbnails rendered as thin vertical slivers in sidebar and horizontal card layouts. The image was the only item in the row the browser was allowed to shrink, so long text squeezed a 60px thumbnail down to ~15px. Only affected image-bearing groupings; icons were never large enough to trigger it.
@@ -167,6 +173,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.6.7 =
+Adds the Gallery grouping variant: responsive photo grids with an accessible lightbox and per-definition tile aspect (16:9/4:3/1:1/4:5) — ideal for property photo tours, vehicle galleries, and portfolios. Additive release; existing groupings are unchanged. Recommended for all users.
 
 = 0.6.6 =
 Fixes grouping thumbnails rendering as thin slivers in sidebar and horizontal card layouts. Adds a per-CPT archive image crop (square, 4:3, 4:5, 16:9) — useful for people-centric CPTs like agents or team members. New CPTs now default to hiding the post date and author byline on archive cards, since those describe WordPress bookkeeping rather than the record itself; existing CPTs are unchanged. Recommended for all users.

@@ -271,6 +271,22 @@
 	pointer-events: auto;
 }
 
+/* AISB PostGrid COMPACT side rows (featured display style) relocate the
+ * image_overlay position into the content flow: AISB fires the hook in
+ * the content cell there because a 160px thumbnail can't host overlay
+ * badges, and imageless rows would drop them entirely. Neutralize the
+ * absolute overlay treatment into an in-flow badge row. Deliberately
+ * duplicated in AISB's postgrid.css with the same declarations so
+ * whichever plugin updates first keeps the composition correct
+ * (identical rules cannot conflict). */
+.aisb-postgrid__item--compact .pre-card-fields__position--image-overlay {
+	position: static;
+	top: auto;
+	left: auto;
+	pointer-events: auto;
+	margin-bottom: 0.35em;
+}
+
 /* Vertical rhythm between sibling position blocks. */
 :is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position + .pre-card-fields__position {
 	margin-top: 0.5em;

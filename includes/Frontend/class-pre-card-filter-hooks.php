@@ -431,7 +431,9 @@ class PCPTPages_Card_Filter_Hooks {
 					'pcptpages-cards',
 					PCPTPages_PLUGIN_URL . 'assets/css/cards.css',
 					array(),
-					PCPTPages_VERSION
+					// mtime-appended for cache busting — mirrors the
+					// primary enqueue in PCPTPages_Frontend_Assets.
+					PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/cards.css' )
 				);
 			}
 			wp_enqueue_style( 'pcptpages-cards' );

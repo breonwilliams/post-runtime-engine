@@ -287,6 +287,23 @@
 	margin-bottom: 0.35em;
 }
 
+/* Single-post OVERLAY hero: badges render in flow at the top of the band,
+ * exactly as the renderer comment promises. The generic absolute rule above
+ * pinned them to the inner column's top-left, which is harmless while the
+ * bottom-pinned text block sits far below — but the moment the content fills
+ * the band (small viewports, long titles, many fields) the badge lands ON the
+ * headline (kitchen-sink pressure test, 2026-07-25). In flow, the badge row
+ * pushes content down instead of overlapping it, whatever the metadata. The
+ * stacked/split hero layouts keep the absolute treatment: there the badge
+ * floats over the IMAGE, which is the intended composition. */
+.pre-hero__inner--overlay .pre-card-fields__position--image-overlay {
+	position: static;
+	top: auto;
+	left: auto;
+	pointer-events: auto;
+	margin-bottom: 0.5em;
+}
+
 /* Vertical rhythm between sibling position blocks. */
 :is(.pre-card-fields--single-hero, .pre-hero) .pre-card-fields__position + .pre-card-fields__position {
 	margin-top: 0.5em;

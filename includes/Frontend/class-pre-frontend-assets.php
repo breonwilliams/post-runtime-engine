@@ -40,11 +40,16 @@ class PCPTPages_Frontend_Assets {
 			return;
 		}
 
+		// CSS versions carry the file's own mtime alongside the plugin
+		// version (kitchen-sink pressure test, 2026-07-25): a static
+		// ?ver means an updated stylesheet keeps an identical URL after
+		// a plugin update, so returning browsers serve their stale
+		// cached copy of a file that is new on disk.
 		wp_enqueue_style(
 			'pcptpages-frontend',
 			PCPTPages_PLUGIN_URL . 'assets/css/frontend.css',
 			array(),
-			PCPTPages_VERSION
+			PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/frontend.css' )
 		);
 
 		// v1.1: post-field rendering styles. Loaded on every registered
@@ -57,7 +62,7 @@ class PCPTPages_Frontend_Assets {
 			'pcptpages-cards',
 			PCPTPages_PLUGIN_URL . 'assets/css/cards.css',
 			array( 'pcptpages-frontend' ),
-			PCPTPages_VERSION
+			PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/cards.css' )
 		);
 
 		// Iconify web-component bundle. Bundled locally at

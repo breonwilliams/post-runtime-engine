@@ -1673,14 +1673,28 @@ body.aisb-card-image-inset
 }
 
 .pre-lightbox__caption {
-	font-size: 0.9375rem;
-	margin: 0 0 0.25rem;
+	/* Unified with the AISB gallery lightbox caption (2026-08-04):
+	   same type size, opacity, and measure across both Promptless
+	   lightboxes. AISB design tokens with standalone fallbacks. */
+	font-size: var(--aisb-section-text-base, 1rem);
+	opacity: 0.9;
+	max-width: 600px;
+	margin: 0 auto 0.25rem;
 }
 
 .pre-lightbox__counter {
-	font-size: 0.8125rem;
-	opacity: 0.75;
-	margin: 0;
+	/* Unified with the AISB gallery lightbox counter pill (2026-08-04):
+	   dark scrim at 0.65 with full-opacity white text holds >= 4.5:1
+	   over any backdrop (the old bare text at 0.75 opacity relied on
+	   the overlay being near-black). Same tokens, same shape, one
+	   lightbox language across the stack. */
+	display: inline-block;
+	font-size: var(--aisb-section-text-sm, 0.875rem);
+	color: #ffffff;
+	background: rgba(0, 0, 0, 0.65);
+	padding: var(--aisb-section-space-xs, 6px) var(--aisb-section-space-md, 16px);
+	border-radius: var(--aisb-section-radius-full, 999px);
+	margin: 0.5rem 0 0;
 }
 
 /* Controls: real buttons, high-contrast on the dark overlay, 44px hit

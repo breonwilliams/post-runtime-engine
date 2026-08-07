@@ -15,6 +15,21 @@ PRE (plugin slug **`promptless-cpt-pages`**) ships **exclusively through the Wor
 
 ---
 
+## Which zip is installable (critical)
+
+Every GitHub release page shows auto-generated **"Source code (zip / tar.gz)"** links. **Never install these on a WordPress site.** They are raw repository archives:
+
+- The folder inside is named `post-runtime-engine-<tag>`, so WordPress treats it as a **brand-new plugin** — no update prompt, and it installs alongside the existing copy.
+- Plugin Check derives the expected text domain from that folder name, producing hundreds of false `TextDomainMismatch` ERRORs against the correct `promptless-cpt-pages` domain.
+- Dev-only files (`tests/`, `bin/`, seed scripts, `phpunit.xml.dist`) are present and trigger real Plugin Check ERRORs — the release build strips them.
+
+Installable builds come from exactly two places:
+
+1. **WordPress.org** — the normal user path (Dashboard → Updates, or the plugin directory).
+2. **The `promptless-cpt-pages.zip` asset** attached under **Assets** on the GitHub release (produced by `bin/build-release.sh`; the folder inside is `promptless-cpt-pages/`).
+
+---
+
 ## Version-stamp locations
 
 Every release must update the version number in **every** location below. Mismatches between the plugin header, the `PCPTPages_VERSION` constant, the `readme.txt` Stable tag, and the SVN tag cause confusion at install time (and Plugin Check fails if the header and Stable tag disagree).

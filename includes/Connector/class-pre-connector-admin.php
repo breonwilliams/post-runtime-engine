@@ -266,8 +266,8 @@ class PCPTPages_Connector_Admin {
 				<div id="pre-setup-command-container" style="display:none;">
 					<div class="pre-connector-code-block">
 						<pre id="pre-setup-command"></pre>
-						<button type="button" class="button pre-connector-copy-btn" id="pre-copy-setup-command"><?php esc_html_e( 'Copy Command', 'promptless-cpt-pages' ); ?></button>
 					</div>
+					<button type="button" class="button pre-connector-copy-btn" id="pre-copy-setup-command"><?php esc_html_e( 'Copy Command', 'promptless-cpt-pages' ); ?></button>
 					<p class="description"><?php esc_html_e( 'After running the command, quit Claude Desktop (Cmd+Q) and reopen it. The connector will be active in your next session.', 'promptless-cpt-pages' ); ?></p>
 				</div>
 

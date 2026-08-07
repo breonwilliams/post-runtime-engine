@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.6.7
+Stable tag: 0.6.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -77,6 +77,11 @@ Privacy policy: https://iconify.design/privacy/
 5. Claude Cowork connector setup — opt-in App Password generation, default-disabled kill switch
 
 == Changelog ==
+
+= 0.6.8 =
+* Improved: gallery lightbox caption and counter now share one design language with Promptless WP galleries
+* Fixed: badge collision on overlay-hero cards; CSS now cache-busts by file modification time
+* Improved: image-overlay fields flow into the content area on compact Post Grid rows
 
 = 0.6.7 =
 * New: Gallery grouping variant — display a grouping's items as a responsive photo grid (3-up desktop / 2-up mobile) with a fully accessible lightbox (keyboard, touch swipe, reduced-motion support). Ideal for property photo tours, vehicle galleries, and portfolios; captions come from item headings and imageless items simply wait for their photo.

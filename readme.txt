@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.6.8
+Stable tag: 0.6.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -77,6 +77,9 @@ Privacy policy: https://iconify.design/privacy/
 5. Claude Cowork connector setup — opt-in App Password generation, default-disabled kill switch
 
 == Changelog ==
+
+= 0.6.9 =
+* Improved: the "Copy Command" button on the Connector setup screen now sits below the command block instead of overlaying it, fixing a tap-target overlap and a color-contrast issue.
 
 = 0.6.8 =
 * Improved: gallery lightbox caption and counter now share one design language with Promptless WP galleries

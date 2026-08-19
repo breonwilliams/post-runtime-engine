@@ -907,3 +907,31 @@
 .pre-add-gallery-images[hidden] {
 	display: none;
 }
+
+/* Linked-post indicator on grouping items — shows what an item is
+   connected to when it is linked by post ID (rendered by
+   class-pre-meta-box.php, kept in sync by meta-box.js). */
+.pre-item__link-status {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px 6px;
+	margin: 6px 0 0;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #50575e;
+}
+.pre-item__link-status[hidden] { display: none; }
+.pre-item__link-status .dashicons { font-size: 16px; width: 16px; height: 16px; color: #2271b1; }
+.pre-item__link-status-title { font-weight: 600; }
+.pre-item__link-status-type {
+	color: #646970;
+	background: #f0f0f1;
+	border-radius: 3px;
+	padding: 0 6px;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: .02em;
+}
+.pre-item__link-status--broken { color: #b32d2e; }
+.pre-item__link-status--broken .dashicons { color: #b32d2e; }

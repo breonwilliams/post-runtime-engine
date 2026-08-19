@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.7.0
+Stable tag: 0.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -77,6 +77,10 @@ Privacy policy: https://iconify.design/privacy/
 5. Claude Cowork connector setup — opt-in App Password generation, default-disabled kill switch
 
 == Changelog ==
+
+= 0.7.1 =
+* Fixed: single-post pages (such as a speaker or session profile) now align their content and hero image to the same layout width as the floating navigation and page sections, instead of extending slightly past it on the left and right.
+* Fixed: in the post editor, a grouping item linked to another post now clearly shows which post it is linked to (and the post type), instead of leaving the link field looking empty. A link whose target has been deleted is flagged. Makes existing connections visible and verifiable at a glance. Editor-only; no content or data changes.
 
 = 0.7.0 =
 * Fixed: on phones and tablets, the gallery lightbox prev/next controls now sit in a bottom nav bar with the image counter between them (matching Promptless WP), instead of side arrows overlapping the photo. The counter shows the compact "2 / 4" for consistency, with the full "Image 2 of 4" kept for screen readers.
@@ -184,6 +188,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.7.1 =
+Grouping items linked to another post now show the linked post (and its type) in the editor instead of a blank field, and flag a link whose target no longer exists. Editor-only clarity fix; no content, schema, or front-end changes. Recommended for all users.
 
 = 0.7.0 =
 Gallery lightbox mobile navigation now matches Promptless WP: on phones and tablets the prev/next controls sit in a bottom nav bar with the image counter between them, instead of side arrows overlapping wide photos. Recommended for all users.

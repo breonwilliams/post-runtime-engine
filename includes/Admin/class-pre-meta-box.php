@@ -570,6 +570,37 @@ class PCPTPages_Meta_Box {
 					class="pre-item__link-post-id"
 					name="<?php echo esc_attr( $base ); ?>[link_post_id]"
 					value="<?php echo esc_attr( $link_post_id > 0 ? (string) $link_post_id : '' ); ?>">
+
+				<?php
+				/*
+				 * Linked-post visibility. The visible link field above stores ONLY
+				 * the URL string; when an item is linked to a post by ID (the
+				 * site-portable reference the connector and the picker write), that
+				 * field is empty, so on reload an editor sees a blank box and cannot
+				 * tell the item is connected. Surface the link explicitly so the
+				 * correlation is visible and trustworthy in the editor. meta-box.js
+				 * keeps this in sync as the user picks/clears; this server render
+				 * fixes the on-load case and flags a reference whose target is gone.
+				 */
+				$linked_post = $link_post_id > 0 ? get_post( $link_post_id ) : null;
+				$linked_ok   = ( $linked_post instanceof WP_Post ) && ( 'trash' !== $linked_post->post_status );
+				$linked_type = $linked_ok ? get_post_type_object( $linked_post->post_type ) : null;
+				?>
+				<p class="pre-item__link-status<?php echo ( $link_post_id > 0 && ! $linked_ok ) ? ' pre-item__link-status--broken' : ''; ?>" data-linked-label="<?php echo esc_attr__( 'Linked to', 'promptless-cpt-pages' ); ?>"<?php echo $link_post_id > 0 ? '' : ' hidden'; ?>>
+					<span class="dashicons dashicons-admin-links" aria-hidden="true"></span>
+					<?php if ( $link_post_id > 0 && ! $linked_ok ) : ?>
+						<span class="pre-item__link-status-text"><?php
+						/* translators: %d: the post ID the item still references */
+						printf( esc_html__( 'Linked to a post that no longer exists (ID %d)', 'promptless-cpt-pages' ), (int) $link_post_id );
+						?></span>
+					<?php else : ?>
+						<span class="pre-item__link-status-text"><?php esc_html_e( 'Linked to', 'promptless-cpt-pages' ); ?></span>
+						<a class="pre-item__link-status-title" href="<?php echo $linked_ok ? esc_url( get_permalink( $linked_post ) ) : ''; ?>" target="_blank" rel="noopener"><?php echo $linked_ok ? esc_html( get_the_title( $linked_post ) ) : ''; ?></a>
+						<?php if ( $linked_type ) : ?>
+							<span class="pre-item__link-status-type"><?php echo esc_html( $linked_type->labels->singular_name ); ?></span>
+						<?php endif; ?>
+					<?php endif; ?>
+				</p>
 			</div>
 
 			<button type="button" class="pre-item__remove pre-remove-item" aria-label="<?php esc_attr_e( 'Remove item', 'promptless-cpt-pages' ); ?>">

@@ -4,6 +4,13 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.7.1] - 2026-08-19
+
+### Fixed
+
+- **Single-post hero and content align to the shared layout width.** The single-post template's horizontal gutter now follows the theme's 2-tier responsive scheme (matching `.promptless-container` / the floating nav and AISB sections) via an inherited `--pre-content-gutter`, and its `--aisb-section-max-width` fallback was corrected from 1280px to the canonical 1200px, so the featured image and content no longer overhang the floating nav on single-post pages at any breakpoint. Front-end CSS only; no data or schema change. File: `assets/css/frontend.css`.
+- **Linked grouping items are now visible in the editor.** A grouping item connected to another post by ID previously showed a blank link field on reload, because that field stores the URL string and not the post reference — so an editor could not see or verify the connection (this affected connector-created items, which link by ID). The item now renders a "Linked to {Title} ({Type})" indicator, kept in sync by the post picker on select/clear, and flags a reference whose target has been trashed or deleted ("Linked to a post that no longer exists"). Editor-only; save-safe (reads `link_post_id`, never writes the link field); no content, schema, or front-end change. Files: `includes/Admin/class-pre-meta-box.php`, `assets/js/meta-box.js`, `assets/css/admin.css`.
+
 ## [0.7.0] - 2026-08-17
 
 ### Fixed

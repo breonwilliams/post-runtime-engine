@@ -134,7 +134,11 @@
 		// jQuery .val() and direct .value assignment do NOT fire 'input',
 		// so the autocomplete's programmatic URL fill won't trip this.
 		$grouping.on('input', '.pre-item__link', function () {
-			$(this).closest('.pre-item').find('.pre-item__link-post-id').val('');
+			var $item = $(this).closest('.pre-item');
+			$item.find('.pre-item__link-post-id').val('');
+			// The visible link is now a raw URL, not a picked post — retract
+			// the linked-post indicator so it never claims a stale connection.
+			$item.find('.pre-item__link-status').prop('hidden', true).removeClass('pre-item__link-status--broken');
 		});
 
 		// Variant override changes — re-evaluate icon-only state so the
@@ -236,10 +240,17 @@
 				// when the post is later trashed/deleted), but the post_id
 				// is the canonical reference.
 				if (ui.item && ui.item.id) {
-					$link
-						.closest('.pre-item')
-						.find('.pre-item__link-post-id')
-						.val(ui.item.id);
+					var $item = $link.closest('.pre-item');
+					$item.find('.pre-item__link-post-id').val(ui.item.id);
+					// Keep the linked-post indicator in sync with the pick so the
+					// connection is visible immediately (mirrors the server render).
+					var $status = $item.find('.pre-item__link-status');
+					if ($status.length) {
+						$status.removeClass('pre-item__link-status--broken').prop('hidden', false);
+						$status.find('.pre-item__link-status-text').text($status.data('linkedLabel') || 'Linked to');
+						$status.find('.pre-item__link-status-title').text(ui.item.label || '').attr('href', ui.item.value || '');
+						$status.find('.pre-item__link-status-type').text(ui.item.subtype || '');
+					}
 				}
 				// Default behavior continues — jQuery UI sets the input
 				// value to ui.item.value (the URL).

@@ -415,6 +415,11 @@ Each deferred feature can be scoped against the v1.0 architecture without major 
 
 > **Update 2026-05-20:** Item 2 ("additional field types") is now being scoped as v1.1. The triggering client demand is directory-style sites that need scalar metadata (price, beds/baths, status, rating, duration, salary, etc.) displayed both in the single-post hero AND in card / archive / PostGrid contexts. See `docs/POST_FIELDS_V1_1_DESIGN.md` for the locked design contract and § 11 below for the phased build plan.
 
+> **Update 2026-08-19:** Three follow-on capabilities now have locked design contracts in `docs/`, sequenced after v1.1 and demand-gated — build any one when a client workflow calls for it:
+> - **Relationship fields** — `docs/RELATIONSHIP_FIELDS_V1_2_DESIGN.md`. A first-class post-to-post relationship *input* (sidebar picker, stable-ID references, optional two-way binding) that feeds groupings via a new `relationship` source mode. Resolves deferred item 2's relationship-field line. Ships with an interim fix (already released in 0.7.1) that makes existing link-by-ID grouping items visible in the editor.
+> - **CSV import & export** — `docs/CSV_IMPORT_DESIGN.md`. A schema-derived, self-describing template + validated dry-run import + idempotent re-import for bulk seeding and ACF/Pods migration. Resolves deferred item 1. Depends on relationships for importing connections.
+> - **Location & map display** — `docs/LOCATION_MAP_DESIGN.md`. A `location` post-field display type that ports Promptless WP's address-based Map section (no API key, no coordinates) to per-post maps. Independent and low-risk.
+
 ---
 
 ## 11. v1.1 — Post fields (scalar field type for card + hero metadata)

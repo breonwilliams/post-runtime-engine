@@ -415,7 +415,7 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
  * Narrow viewports (< max-width): the calc() goes negative, max() picks
  * the plain gutter — content sits exactly where .pre-single's own padding
  * would put it. Wide viewports: the calc() term wins and re-centers the
- * content on the 1280px grid.
+ * content on the 1200px grid.
  *
  * 50vw includes the classic-scrollbar gutter, so the band can overhang by
  * ~15px on the right; overflow-x: clip on the article (below) swallows the
@@ -424,8 +424,8 @@ body.aisb-neo-brutalist-cards .pre-footer__list > li {
 .pre-hero--full {
 	margin-inline: calc(50% - 50vw);
 	padding-inline: max(
-		var(--aisb-section-space-md, 1.5rem),
-		calc(50vw - (var(--aisb-section-max-width, 1280px) / 2) + var(--aisb-section-space-md, 1.5rem))
+		var(--pre-content-gutter, var(--aisb-section-space-lg, 2rem)),
+		calc(50vw - (var(--aisb-section-max-width, 1200px) / 2) + var(--pre-content-gutter, var(--aisb-section-space-lg, 2rem)))
 	);
 	/* Edge-to-edge bands don't get card radius. */
 	border-radius: 0;
@@ -473,12 +473,25 @@ body:has(.pre-single--hero-full) {
 /* ----------------------------------------------------------------------- */
 
 .pre-single {
-	max-width: var(--aisb-section-max-width, 1280px);
+	/* Horizontal gutter follows the SAME 2-tier responsive scheme as the
+	 * theme's .promptless-container (space-lg > 640px, space-md <= 640px) so
+	 * single-post content edges line up pixel-perfect with the floating nav
+	 * and AISB plugin sections at every breakpoint. Exposed as a variable so
+	 * the full-bleed hero breakout (.pre-hero--full) re-caps its content on
+	 * the exact same grid by inheriting it. */
+	--pre-content-gutter: var(--aisb-section-space-lg, 2rem);
+	max-width: var(--aisb-section-max-width, 1200px);
 	margin: 0 auto;
-	padding: var(--aisb-section-space-xl, 3rem) var(--aisb-section-space-md, 1.5rem);
+	padding: var(--aisb-section-space-xl, 3rem) var(--pre-content-gutter);
 	font-family: var(--aisb-section-font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
 	color: var(--pre-color-text);
 	background: var(--pre-color-background);
+}
+
+@media (max-width: 640px) {
+	.pre-single {
+		--pre-content-gutter: var(--aisb-section-space-md, 1.5rem);
+	}
 }
 
 .pre-body {
@@ -557,7 +570,7 @@ body:has(.pre-single--hero-full) {
 /* ----- Layout: stacked (default) -----
  * Featured image as a 16:9 banner above the title block. Capped at 540px
  * tall so banners stay banner-shaped on wide viewports — without the cap,
- * a 1280px container at 16:9 produces a 720px tall image, which dominates
+ * a 1200px container at 16:9 produces a 675px tall image, which dominates
  * the fold instead of acting as a lead-in. Falls back to a clean
  * text-only hero when no image is set.
  */

@@ -105,6 +105,7 @@ bin
 _to_delete
 includes/Updates
 CLAUDE.md
+AGENTS.md
 POST_RUNTIME_AUDIT.md
 phpunit.xml
 phpunit.xml.dist

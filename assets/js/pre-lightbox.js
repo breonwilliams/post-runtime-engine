@@ -108,7 +108,8 @@
 			'</button>' +
 			'<div class="pre-lightbox__meta" aria-live="polite">' +
 				'<p class="pre-lightbox__caption"></p>' +
-				'<p class="pre-lightbox__counter"></p>' +
+				'<p class="pre-lightbox__counter" aria-hidden="true"></p>' +
+				'<span class="pre-lightbox__sr-count pre-sr-only"></span>' +
 			'</div>';
 
 		document.body.appendChild(el);
@@ -212,12 +213,17 @@
 		caption.textContent = img.caption || '';
 		caption.style.display = img.caption ? '' : 'none';
 
-		// Counter doubles as the aria-live announcement payload:
-		// "Image 3 of 12" (+ the caption node above, same live region).
-		var counterTemplate = strings.counter || 'Image %1$s of %2$s';
-		el.querySelector('.pre-lightbox__counter').textContent = counterTemplate
-			.replace('%1$s', String(state.index + 1))
-			.replace('%2$s', String(state.images.length));
+		// Visible counter is the compact "3 / 12" — matches the Promptless WP
+		// gallery lightbox and keeps the bottom-bar arrow<->counter gaps consistent
+		// at any count. The descriptive "Image 3 of 12" is preserved for screen
+		// readers in the visually-hidden span, which the aria-live meta announces;
+		// the compact pill is aria-hidden so it is not double-read.
+		var cur = String(state.index + 1), total = String(state.images.length);
+		el.querySelector('.pre-lightbox__counter').textContent = cur + ' / ' + total;
+		var srTemplate = strings.counter || 'Image %1$s of %2$s';
+		el.querySelector('.pre-lightbox__sr-count').textContent = srTemplate
+			.replace('%1$s', cur)
+			.replace('%2$s', total);
 
 		// Single-image galleries need no nav controls.
 		var multi = state.images.length > 1;

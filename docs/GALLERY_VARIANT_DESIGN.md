@@ -86,6 +86,16 @@ asset-gating philosophy: a page never ships assets it can't use.
 
 **Always-on** — no per-grouping toggle (§8-D5).
 
+**Mobile / tablet navigation (max-width 1024px):** prev/next relocate into a bottom nav
+bar with the image counter pinned between them, off the media and in the thumb
+zone; space is reserved at the bottom so the image and caption never sit under
+the bar. This mirrors Promptless WP's gallery lightbox, which moved off side
+arrows because they overlapped wide photos on phone and tablet widths, keeping one lightbox
+convention across the stack. The visible counter is the compact `N / M`
+(matching Promptless WP); the descriptive `Image N of Y` is preserved for
+screen readers. CSS: `assets/css/frontend.css` under
+`@media (max-width: 1024px)`.
+
 ## 5. Sources, caps, admin UX
 
 - **Source modes:** all four work unchanged. `manual` is the primary path.

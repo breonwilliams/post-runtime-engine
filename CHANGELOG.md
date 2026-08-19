@@ -4,6 +4,12 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [0.7.0] - 2026-08-17
+
+### Fixed
+
+- **Gallery lightbox mobile navigation now matches Promptless WP.** On phones and tablets (up to 1024px) the prev/next controls move into a bottom nav bar with the image counter pinned between them, off the media and in the thumb zone, with space reserved at the bottom so the image/caption stack never sits under the bar. This ports the treatment the Promptless WP gallery lightbox adopted (side arrows previously overlapped the image on small screens) so both Promptless lightboxes share one convention, as `GALLERY_VARIANT_DESIGN.md` section 4 intends. The visible image counter is now the compact `3 / 12` (matching Promptless WP and keeping the arrow-to-counter gaps consistent at any count), with the descriptive `Image 3 of 12` preserved for screen readers via a visually-hidden announcement in the existing aria-live region. Desktop unchanged; no data or schema change.
+
 ## [0.6.9] - 2026-08-13
 
 - Connector setup: moved the Copy Command button below the code block (it previously overlaid the command) and removed the `!important` flags from the copy-button styles, resolving the overlap and a color-contrast issue.

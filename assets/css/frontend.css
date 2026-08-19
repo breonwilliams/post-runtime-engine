@@ -1752,13 +1752,70 @@ body.aisb-card-image-inset
 	transform: translateY(-50%);
 }
 
-@media (max-width: 640px) {
+/* Visually-hidden text: the descriptive lightbox counter announcement for
+   screen readers, while the visible pill stays compact. */
+.pre-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Mobile lightbox nav (aligned with the AISB gallery lightbox): on phones and tablets the
+   side prev/next arrows overlapped the media, so relocate them into a bottom
+   nav bar with the counter pinned between them, off the media and in the thumb
+   zone. Space is reserved at the bottom so the centred image/caption stack can
+   never sit under the bar; swipe still drives paging. Mirrors
+   ai-section-builder-modern/src/styles/sections/gallery.css so both Promptless
+   lightboxes share one mobile convention (GALLERY_VARIANT_DESIGN.md section 4). */
+@media (max-width: 1024px) {
+	.pre-lightbox {
+		/* Reserve room for the bottom nav bar (+ iOS home-indicator inset). */
+		padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+	}
+
+	/* Keep the media above the reserved bottom bar. */
+	.pre-lightbox__stage,
+	.pre-lightbox__image {
+		max-height: 68vh;
+	}
+
+	/* Prev/next -> a centred pair at the very bottom, always visible. */
+	.pre-lightbox__prev,
+	.pre-lightbox__next {
+		top: auto;
+		bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+		transform: none;
+		background: rgba(255, 255, 255, 0.16);
+	}
+
 	.pre-lightbox__prev {
-		left: 8px;
+		left: calc(50% - 104px);
+		right: auto;
 	}
 
 	.pre-lightbox__next {
-		right: 8px;
+		right: calc(50% - 104px);
+		left: auto;
+	}
+
+	/* Counter leaves the meta flow and sits in the bar, centred between the
+	   arrows and capped so its pill can never grow under an arrow. */
+	.pre-lightbox__counter {
+		position: fixed;
+		left: 50%;
+		bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+		transform: translateX(-50%);
+		margin: 0;
+		max-width: 120px;
+		white-space: nowrap;
+		text-align: center;
+		z-index: 10;
 	}
 }
 

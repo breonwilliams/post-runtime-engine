@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.6.9
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -77,6 +77,9 @@ Privacy policy: https://iconify.design/privacy/
 5. Claude Cowork connector setup — opt-in App Password generation, default-disabled kill switch
 
 == Changelog ==
+
+= 0.7.0 =
+* Fixed: on phones and tablets, the gallery lightbox prev/next controls now sit in a bottom nav bar with the image counter between them (matching Promptless WP), instead of side arrows overlapping the photo. The counter shows the compact "2 / 4" for consistency, with the full "Image 2 of 4" kept for screen readers.
 
 = 0.6.9 =
 * Improved: the "Copy Command" button on the Connector setup screen now sits below the command block instead of overlaying it, fixing a tap-target overlap and a color-contrast issue.
@@ -181,6 +184,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.7.0 =
+Gallery lightbox mobile navigation now matches Promptless WP: on phones and tablets the prev/next controls sit in a bottom nav bar with the image counter between them, instead of side arrows overlapping wide photos. Recommended for all users.
 
 = 0.6.7 =
 Adds the Gallery grouping variant: responsive photo grids with an accessible lightbox and per-definition tile aspect (16:9/4:3/1:1/4:5) — ideal for property photo tours, vehicle galleries, and portfolios. Additive release; existing groupings are unchanged. Recommended for all users.

@@ -79,10 +79,13 @@ git push origin main
 # 4. Verify the STAGED build with Plugin Check before it goes near SVN.
 wp plugin check build/promptless-cpt-pages --format=table
 
-# 5. Create git tag and GitHub release.
+# 5. Create git tag and the GitHub release (attaches build/promptless-cpt-pages.zip).
+#    NOTE: the gh CLI is NOT installed here; bin/publish-github-release.sh does
+#    the same job using the login your git push already has (no gh needed). It
+#    reads the version from the plugin header and the notes from readme.txt.
 git tag v0.5.4
-git push --tags
-gh release create v0.5.4 --title "v0.5.4" --generate-notes
+git push origin v0.5.4
+bash bin/publish-github-release.sh
 ```
 
 ### Publish to the WordPress.org SVN repo

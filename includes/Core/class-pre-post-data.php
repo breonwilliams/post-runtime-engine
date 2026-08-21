@@ -771,12 +771,20 @@ class PCPTPages_Post_Data {
 
 		// Normalize each entry to ensure both flags are always booleans —
 		// downstream code can use direct bool comparison without isset().
+		// A per-post map_position override (location fields) is preserved when
+		// present and non-empty — this store doubles as the per-post override
+		// store, so a location map can be repositioned per post.
 		$normalized = array();
 		foreach ( $visibility as $field_key => $flags ) {
-			$normalized[ sanitize_key( $field_key ) ] = array(
+			$entry = array(
 				'card_hidden'   => isset( $flags['card_hidden'] ) ? (bool) $flags['card_hidden'] : false,
 				'single_hidden' => isset( $flags['single_hidden'] ) ? (bool) $flags['single_hidden'] : false,
 			);
+			if ( isset( $flags['map_position'] ) && $flags['map_position'] !== ''
+				&& in_array( $flags['map_position'], PCPTPages_Validator::MAP_POSITIONS, true ) ) {
+				$entry['map_position'] = $flags['map_position'];
+			}
+			$normalized[ sanitize_key( $field_key ) ] = $entry;
 		}
 
 		if ( empty( $normalized ) ) {
@@ -848,6 +856,39 @@ class PCPTPages_Post_Data {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Resolve the effective single-post map placement for a `location`
+	 * field on a specific post.
+	 *
+	 * Resolution mirrors a grouping's position resolution exactly: the
+	 * per-post override (stored in the field-visibility/override store) wins;
+	 * otherwise the field definition's `map_position` default; final fallback
+	 * `below_main`. Returns one of MAP_POSITIONS (including `hidden`, meaning
+	 * "do not render the map on this post").
+	 *
+	 * @param int    $post_id   Post ID.
+	 * @param string $field_key Field key.
+	 * @param array  $field_def Field definition (for the map_position default).
+	 * @return string One of PCPTPages_Validator::MAP_POSITIONS.
+	 */
+	public function get_effective_map_position( $post_id, $field_key, array $field_def ) {
+		$post_id   = absint( $post_id );
+		$field_key = sanitize_key( $field_key );
+
+		// Per-post override.
+		if ( $post_id > 0 && $field_key !== '' ) {
+			$visibility = $this->get_field_visibility( $post_id );
+			if ( isset( $visibility[ $field_key ]['map_position'] )
+				&& in_array( $visibility[ $field_key ]['map_position'], PCPTPages_Validator::MAP_POSITIONS, true ) ) {
+				return $visibility[ $field_key ]['map_position'];
+			}
+		}
+
+		// CPT-level default from the definition.
+		$default = $field_def['map_position'] ?? 'below_main';
+		return in_array( $default, PCPTPages_Validator::MAP_POSITIONS, true ) ? $default : 'below_main';
 	}
 
 	/**
@@ -1037,6 +1078,14 @@ class PCPTPages_Post_Data {
 			case 'progress':
 				// Numeric storage normalization.
 				$primary = (string) $primary;
+				break;
+
+			case 'location':
+				// Address string — strip tags/control chars on write. The
+				// renderer additionally escapes on output and the AISB embed
+				// rawurlencodes it, so this is defense-in-depth, not the only
+				// guard. docs/LOCATION_MAP_DESIGN.md § 5.2.
+				$primary = sanitize_text_field( (string) $primary );
 				break;
 
 			default:

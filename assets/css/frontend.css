@@ -1844,3 +1844,54 @@ body.aisb-card-image-inset
 		transform: none;
 	}
 }
+
+/* ----------------------------------------------------------------------- */
+/* Location map block (location display type)                               */
+/*                                                                          */
+/* The map frame itself (.aisb-map__frame, facade, iframe, directions) is   */
+/* styled by Promptless WP's section-map.css, enqueued through the shared   */
+/* aisb_enqueue_map_embed_assets action — PRE only owns the block chrome    */
+/* around it here, so a PRE map and an AISB Map section look identical. When */
+/* AISB is inactive the field degrades to .pre-location__address text.      */
+/* docs/LOCATION_MAP_DESIGN.md § 6.                                          */
+/* ----------------------------------------------------------------------- */
+
+.pre-location {
+	margin-top: var(--aisb-section-space-lg, 2rem);
+}
+
+.pre-location__heading {
+	margin: 0 0 var(--aisb-section-space-sm, 1rem);
+	font-size: var(--aisb-font-size-h3, 1.5rem);
+	font-weight: 600;
+	line-height: 1.25;
+	color: var(--pre-color-text, var(--aisb-color-text, #1f2937));
+}
+
+/* Plain-text fallback (AISB inactive, or a card address rendered inline). */
+.pre-location__address {
+	margin: 0;
+	color: var(--pre-color-text-muted, var(--aisb-color-text-muted, #6b7280));
+}
+
+/* Placement-aware spacing. A location map placed above the content wants
+   bottom spacing (before the content) rather than only top spacing; the
+   first block in the main column shouldn't add a top gap under the hero. */
+.pre-body__main > .pre-location:first-child {
+	margin-top: 0;
+}
+
+/* Sidebar context: the map column is narrow, so tighten the heading and let
+   the AISB map frame (aspect-ratio driven) shrink to fit. Grouping sections
+   and maps in the aside share the same vertical rhythm. */
+.pre-body__sidebar .pre-location {
+	margin-top: var(--aisb-section-space-md, 1.5rem);
+}
+
+.pre-body__sidebar .pre-location:first-child {
+	margin-top: 0;
+}
+
+.pre-body__sidebar .pre-location__heading {
+	font-size: var(--aisb-font-size-h4, 1.25rem);
+}

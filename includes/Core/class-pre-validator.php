@@ -262,6 +262,59 @@ class PCPTPages_Validator {
 		'rating',
 		'progress',
 		'multi_badge',
+		// location — a per-post address string whose single-post render is a
+		// click-to-load map that PRE renders itself (its own map.css + pre-map.js;
+		// no API key, no coordinates, no Promptless WP dependency).
+		// Added 2026-08-20 through the contract-amendment process CLAUDE.md
+		// requires: docs/LOCATION_MAP_DESIGN.md first, then this enum + the
+		// guard test that cites it. Cards show the address as text.
+		'location',
+	);
+
+	/**
+	 * Allowed named zoom levels for the `location` display type. Mirrors the
+	 * Promptless WP Map section's ZOOM_LEVELS keys (street | neighborhood |
+	 * city) so a PRE map and an AISB Map section frame identically. Closed
+	 * enum — see docs/LOCATION_MAP_DESIGN.md § 4.4. The numeric Google Maps
+	 * zoom each maps to lives on the AISB side (MapRenderer::ZOOM_LEVELS); PRE
+	 * only passes the named key across the filter, so the two never drift.
+	 */
+	const MAP_ZOOM_LEVELS = array(
+		'street',
+		'neighborhood',
+		'city',
+	);
+
+	/**
+	 * Allowed load modes for the `location` display type. `click` is the
+	 * privacy-friendly default (a token-styled facade button; no Google
+	 * request until the visitor interacts); `auto` lazy-loads the iframe on
+	 * paint. Closed enum, mirrors the AISB Map section — see
+	 * docs/LOCATION_MAP_DESIGN.md § 4.4 and § 8.
+	 */
+	const MAP_LOAD_MODES = array(
+		'auto',
+		'click',
+	);
+
+	/**
+	 * Where a `location` field's map renders on the single-post page. This is
+	 * the block-level placement vocabulary — the SAME `above_main` /
+	 * `below_main` / `sidebar` positions groupings use (see POSITIONS), plus
+	 * `hidden` to suppress the map entirely. A map is block-level, so it is
+	 * placed like a grouping section, NOT in the inline hero slots that
+	 * FIELD_POSITIONS covers. Closed enum — docs/LOCATION_MAP_DESIGN.md § 6.
+	 *
+	 * The definition carries the CPT-level default (`map_position`); each post
+	 * may override it via the per-post field-visibility store (which doubles
+	 * as the per-post override store), exactly as a grouping's per-post
+	 * `position` overrides its `default_position`.
+	 */
+	const MAP_POSITIONS = array(
+		'above_main',
+		'below_main',
+		'sidebar',
+		'hidden',
 	);
 
 	/**
@@ -2005,11 +2058,18 @@ class PCPTPages_Validator {
 		$is_filterable = ! empty( $definition['filterable'] );
 		$is_sortable   = ! empty( $definition['sortable'] );
 
-		// meta_pair is display-only — it cannot be filtered or sorted.
-		if ( ( $is_filterable || $is_sortable ) && $display_type === 'meta_pair' ) {
+		// meta_pair and location are display-only — they cannot be filtered
+		// or sorted. (An address string is not a useful facet in this phase;
+		// map-based discovery is the deferred multi-marker contract, not a
+		// per-post field. docs/LOCATION_MAP_DESIGN.md § 3 out-of-scope.)
+		if ( ( $is_filterable || $is_sortable ) && in_array( $display_type, array( 'meta_pair', 'location' ), true ) ) {
 			return new WP_Error(
-				'pcptpages_meta_pair_not_filterable',
-				__( 'The meta_pair display type is display-only and cannot be marked filterable or sortable.', 'promptless-cpt-pages' )
+				'pcptpages_display_only_not_filterable',
+				sprintf(
+					/* translators: %s: the display type */
+					__( 'The %s display type is display-only and cannot be marked filterable or sortable.', 'promptless-cpt-pages' ),
+					$display_type
+				)
 			);
 		}
 
@@ -2060,6 +2120,69 @@ class PCPTPages_Validator {
 						is_string( $widget ) ? $widget : 'non-string',
 						$display_type,
 						$allowed ? implode( ', ', $allowed ) : '(this display type is not filterable)'
+					)
+				);
+			}
+		}
+
+		// ----- Location / map (docs/LOCATION_MAP_DESIGN.md § 5.1) additive
+		// attributes. Only meaningful for the `location` display type but
+		// validated regardless of display_type to surface typos early — the
+		// same belt-and-suspenders policy as date_format / currency_code.
+		// These do NOT alter the closed DISPLAY_TYPES / FIELD_POSITIONS enums.
+
+		// map_zoom — optional; must be in MAP_ZOOM_LEVELS.
+		if ( isset( $definition['map_zoom'] ) ) {
+			if ( ! in_array( $definition['map_zoom'], self::MAP_ZOOM_LEVELS, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_map_zoom',
+					sprintf(
+						/* translators: %1$s: invalid zoom, %2$s: list of allowed zoom levels */
+						__( 'Post field map_zoom %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+						is_string( $definition['map_zoom'] ) ? $definition['map_zoom'] : 'non-string',
+						implode( ', ', self::MAP_ZOOM_LEVELS )
+					)
+				);
+			}
+		}
+
+		// map_load — optional; must be in MAP_LOAD_MODES.
+		if ( isset( $definition['map_load'] ) ) {
+			if ( ! in_array( $definition['map_load'], self::MAP_LOAD_MODES, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_map_load',
+					sprintf(
+						/* translators: %1$s: invalid load mode, %2$s: list of allowed load modes */
+						__( 'Post field map_load %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+						is_string( $definition['map_load'] ) ? $definition['map_load'] : 'non-string',
+						implode( ', ', self::MAP_LOAD_MODES )
+					)
+				);
+			}
+		}
+
+		// show_directions — optional boolean.
+		if ( isset( $definition['show_directions'] ) && ! is_bool( $definition['show_directions'] ) ) {
+			return new WP_Error(
+				'pcptpages_invalid_show_directions',
+				__( 'Post field show_directions must be true or false.', 'promptless-cpt-pages' )
+			);
+		}
+
+		// map_position — optional; must be in MAP_POSITIONS. The block-level
+		// placement default for a location map (above_main | below_main |
+		// sidebar | hidden), mirroring a grouping's default_position. A
+		// per-post override lives in the field-visibility store (validated in
+		// validate_post_field_visibility).
+		if ( isset( $definition['map_position'] ) ) {
+			if ( ! in_array( $definition['map_position'], self::MAP_POSITIONS, true ) ) {
+				return new WP_Error(
+					'pcptpages_invalid_map_position',
+					sprintf(
+						/* translators: %1$s: invalid position, %2$s: list of allowed positions */
+						__( 'Post field map_position %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+						is_string( $definition['map_position'] ) ? $definition['map_position'] : 'non-string',
+						implode( ', ', self::MAP_POSITIONS )
 					)
 				);
 			}
@@ -2228,6 +2351,29 @@ class PCPTPages_Validator {
 						sprintf(
 							/* translators: %d: max length */
 							__( 'Text value must be %d characters or fewer.', 'promptless-cpt-pages' ),
+							self::MAX_TEXT_VALUE_LEN
+						)
+					);
+				}
+				return true;
+
+			case 'location':
+				// An address string. Sanitized (sanitize_text_field) on write
+				// in PCPTPages_Post_Data; here we confirm it's a string within
+				// the shared text length cap. The value is exactly what the
+				// author typed — no PRE-side geocoding, so no format to fail.
+				if ( ! is_string( $value ) ) {
+					return new WP_Error(
+						'pcptpages_invalid_location_value',
+						__( 'Location value must be an address string.', 'promptless-cpt-pages' )
+					);
+				}
+				if ( strlen( $value ) > self::MAX_TEXT_VALUE_LEN ) {
+					return new WP_Error(
+						'pcptpages_location_value_too_long',
+						sprintf(
+							/* translators: %d: max length */
+							__( 'Location value must be %d characters or fewer.', 'promptless-cpt-pages' ),
 							self::MAX_TEXT_VALUE_LEN
 						)
 					);
@@ -2405,6 +2551,25 @@ class PCPTPages_Validator {
 							__( 'Visibility flag %2$s for field %1$s must be true or false.', 'promptless-cpt-pages' ),
 							$field_key,
 							$flag_key
+						)
+					);
+				}
+			}
+
+			// Optional per-post map placement override (location fields). This
+			// store doubles as the per-post override store, so a location
+			// field's map can be moved on a single post — the field-type
+			// parallel to a grouping's per-post `position`. Empty / absent =
+			// use the field definition's map_position default.
+			if ( isset( $flags['map_position'] ) && $flags['map_position'] !== '' ) {
+				if ( ! in_array( $flags['map_position'], self::MAP_POSITIONS, true ) ) {
+					return new WP_Error(
+						'pcptpages_invalid_visibility_map_position',
+						sprintf(
+							/* translators: %1$s: field key, %2$s: list of allowed positions */
+							__( 'Per-post map_position for field %1$s is not one of: %2$s', 'promptless-cpt-pages' ),
+							$field_key,
+							implode( ', ', self::MAP_POSITIONS )
 						)
 					);
 				}

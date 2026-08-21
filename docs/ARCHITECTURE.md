@@ -387,7 +387,9 @@ This per-post flexibility is small in code cost (a select element + a renderer f
 
 ## Position model
 
-Three positions in v1.0. Each post can override its grouping definitions' default positions, but cannot invent new positions.
+> **This is the placement model for ALL block-level elements, not just groupings.** A single-post page carries two classes of display element: *inline* metadata that renders inside the hero/card (scalar post fields, positioned by the separate `FIELD_POSITIONS` enum), and *block-level* elements that render as standalone blocks in the body flow. Groupings were the first block-level element; the `location`/map display type is the second (its placement lives in `MAP_POSITIONS`, the same three values). **Any future block-level element reuses this exact model** — the three positions, the per-post override, and the sidebar-triggers-two-column behavior below — rather than being hardcoded into one spot. When adding a new display element, decide inline vs block-level FIRST; if block-level, it is placed here. (See CLAUDE.md/AGENTS.md → "Two placement classes" for the decision checklist. The first `location` build missed this and shipped below-content-only; the fix was to route it through this model.)
+
+Three positions. Each post can override a block-level element's default position, but cannot invent new positions.
 
 - **`above_main`** — renders between hero and main content. Top of body area.
 - **`below_main`** — renders between main content and footer. Bottom of body area.
@@ -395,7 +397,7 @@ Three positions in v1.0. Each post can override its grouping definitions' defaul
 
 The hero, main content, and footer (related posts) are always full-width and always present.
 
-The sidebar column appears only if at least one grouping is positioned in it. Otherwise the body is single-column full-width.
+The sidebar column appears only if at least one block-level element (a grouping or a location map) is positioned in it. Otherwise the body is single-column full-width.
 
 ## Rendering pipeline
 
@@ -516,6 +518,6 @@ These are documented in `CLAUDE.md` and worth restating here:
 - **Do not integrate with ACF, MetaBox, or Pods in v1.0 or v1.1.** This plugin owns the field model end-to-end through both v1.0 (groupings) and v1.1 (post fields).
 - **Honor the design-token contract.** Every `--aisb-*` reference in this plugin's CSS must have a documented fallback in `docs/AISB_TOKEN_CONTRACT.md`.
 - **The default WP editor handles main content.** Do not build a new editing surface for prose.
-- **Three single-post grouping positions; five post-field positions.** Groupings in `PRE_Validator::POSITIONS` (3); post fields in `PRE_Validator::FIELD_POSITIONS` (5 + hidden). Both enums closed.
+- **Two placement classes — decide inline vs block-level FIRST for any new display element.** *Inline* elements place into the hero/card via `FIELD_POSITIONS` (5 + hidden); *block-level* elements are standalone body blocks placed via `POSITIONS` (3: `above_main`/`below_main`/`sidebar`, per-post override, sidebar → two-column). Groupings and the `location`/map type are block-level and share that model (maps via `MAP_POSITIONS`, the same three values); a block-level element must reuse the placement machinery, never a hardcoded slot. See the "Position model" section above and, for the decision checklist, CLAUDE.md/AGENTS.md → "Two placement classes." All enums closed and owned by the validator. *(Naming note: shipped code uses `PCPTPages_Validator`, not the `PRE_Validator` this planning-era doc still shows.)*
 - **No custom DB tables in v1.0 or v1.1.** Use `wp_options` (definitions) and post meta (values + visibility overrides).
 - **Test coverage is required for v1 ship.** Each new field-type behavior, layout variant, and renderer pass ships with unit tests. Coverage target: >80%.

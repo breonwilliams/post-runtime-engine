@@ -408,7 +408,8 @@ class PCPTPages_Admin_Post_Fields {
 						</td>
 					</tr>
 
-					<tr>
+					<?php // Hidden for location: a map is block-level, not inline hero metadata, so it uses "Map placement" (below) instead of a hero slot. ?>
+					<tr data-hidden-when="location">
 						<th scope="row">
 							<label for="pre-field-single-position"><?php esc_html_e( 'Single-post hero position', 'promptless-cpt-pages' ); ?></label>
 						</th>
@@ -801,6 +802,77 @@ class PCPTPages_Admin_Post_Fields {
 				</table>
 			</div>
 
+			<!-- Conditional: location — map options (LOCATION_MAP_DESIGN.md § 5.1) -->
+			<div class="pre-field-cond pre-field-cond-location" data-shown-when="location">
+				<h2><?php esc_html_e( 'Map options', 'promptless-cpt-pages' ); ?></h2>
+				<p class="description" style="margin-bottom:12px;">
+					<?php esc_html_e( 'The address is entered per post, on each post\'s edit screen. The single-post page shows a click-to-load map; cards and archives show the address as text. No API key or coordinates needed. If a post has no address, the map falls back to your Business Identity address (when Promptless WP is active).', 'promptless-cpt-pages' ); ?>
+				</p>
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row">
+								<label for="pre-field-map-position"><?php esc_html_e( 'Map placement', 'promptless-cpt-pages' ); ?></label>
+							</th>
+							<td>
+								<select id="pre-field-map-position" name="map_position">
+									<option value="above_main" <?php selected( $values['map_position'] ?? 'below_main', 'above_main' ); ?>><?php esc_html_e( 'Above content', 'promptless-cpt-pages' ); ?></option>
+									<option value="below_main" <?php selected( $values['map_position'] ?? 'below_main', 'below_main' ); ?>><?php esc_html_e( 'Below content', 'promptless-cpt-pages' ); ?></option>
+									<option value="sidebar" <?php selected( $values['map_position'] ?? 'below_main', 'sidebar' ); ?>><?php esc_html_e( 'Sidebar', 'promptless-cpt-pages' ); ?></option>
+									<option value="hidden" <?php selected( $values['map_position'] ?? 'below_main', 'hidden' ); ?>><?php esc_html_e( 'Don\'t show map on single posts', 'promptless-cpt-pages' ); ?></option>
+								</select>
+								<p class="description"><?php esc_html_e( 'Where the map renders on the single-post page — the same above/below/sidebar placement your groupings use. This is the default; each post can override it from its edit screen.', 'promptless-cpt-pages' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="pre-field-map-zoom"><?php esc_html_e( 'Zoom level', 'promptless-cpt-pages' ); ?></label>
+							</th>
+							<td>
+								<select id="pre-field-map-zoom" name="map_zoom">
+									<?php foreach ( PCPTPages_Validator::MAP_ZOOM_LEVELS as $zoom ) : ?>
+										<option value="<?php echo esc_attr( $zoom ); ?>" <?php selected( $values['map_zoom'] ?? 'neighborhood', $zoom ); ?>>
+											<?php echo esc_html( $this->map_zoom_label( $zoom ) ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<p class="description"><?php esc_html_e( 'How tightly the map frames the address. Neighborhood is a good default for most listings.', 'promptless-cpt-pages' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="pre-field-map-load"><?php esc_html_e( 'Load behavior', 'promptless-cpt-pages' ); ?></label>
+							</th>
+							<td>
+								<select id="pre-field-map-load" name="map_load">
+									<option value="click" <?php selected( $values['map_load'] ?? 'click', 'click' ); ?>>
+										<?php esc_html_e( 'Click to load (privacy-friendly, recommended)', 'promptless-cpt-pages' ); ?>
+									</option>
+									<option value="auto" <?php selected( $values['map_load'] ?? 'click', 'auto' ); ?>>
+										<?php esc_html_e( 'Load automatically', 'promptless-cpt-pages' ); ?>
+									</option>
+								</select>
+								<p class="description"><?php esc_html_e( 'Click-to-load shows a styled preview and only contacts Google when the visitor clicks — lighter and better for privacy.', 'promptless-cpt-pages' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Directions link', 'promptless-cpt-pages' ); ?></th>
+							<td>
+								<label for="pre-field-show-directions">
+									<input
+										type="checkbox"
+										id="pre-field-show-directions"
+										name="show_directions"
+										value="1"
+										<?php checked( ! empty( $values['show_directions'] ) ); ?>>
+									<?php esc_html_e( 'Show a "Get directions" link below the map', 'promptless-cpt-pages' ); ?>
+								</label>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
 			<?php submit_button( $is_edit ? __( 'Update field', 'promptless-cpt-pages' ) : __( 'Create field', 'promptless-cpt-pages' ) ); ?>
 			<a href="<?php echo esc_url( $this->url() ); ?>" class="button"><?php esc_html_e( 'Cancel', 'promptless-cpt-pages' ); ?></a>
 		</form>
@@ -962,6 +1034,14 @@ class PCPTPages_Admin_Post_Fields {
 			'sortable'           => ! empty( $_POST['sortable'] ),
 			'filter_widget'      => isset( $_POST['filter_widget'] ) ? sanitize_key( wp_unslash( $_POST['filter_widget'] ) ) : '',
 			'required'           => ! empty( $_POST['required'] ),
+			// Location / map (LOCATION_MAP_DESIGN.md § 5.1). Enum membership is
+			// validated downstream; defaults mirror the registry so a field
+			// saved from a form where the location block was hidden keeps sane
+			// values. show_directions is a checkbox (absent = off).
+			'map_zoom'           => isset( $_POST['map_zoom'] ) ? sanitize_key( wp_unslash( $_POST['map_zoom'] ) ) : 'neighborhood',
+			'map_load'           => isset( $_POST['map_load'] ) ? sanitize_key( wp_unslash( $_POST['map_load'] ) ) : 'click',
+			'show_directions'    => ! empty( $_POST['show_directions'] ),
+			'map_position'       => isset( $_POST['map_position'] ) ? sanitize_key( wp_unslash( $_POST['map_position'] ) ) : 'below_main',
 		);
 	}
 
@@ -996,6 +1076,11 @@ class PCPTPages_Admin_Post_Fields {
 			'sortable'           => ! empty( $values['sortable'] ),
 			'filter_widget'      => $values['filter_widget'] ?? '',
 			'required'           => (bool) $values['required'],
+			// Location / map additive attributes.
+			'map_zoom'           => $values['map_zoom'] ?? 'neighborhood',
+			'map_load'           => $values['map_load'] ?? 'click',
+			'show_directions'    => ! empty( $values['show_directions'] ),
+			'map_position'       => $values['map_position'] ?? 'below_main',
 			'options'            => array(),
 		);
 
@@ -1022,13 +1107,16 @@ class PCPTPages_Admin_Post_Fields {
 	private function definition_to_form_values( array $definition ) {
 		$values = $this->default_form_values();
 
-		foreach ( array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'unit_label', 'event_timezone', 'semantic_role', 'filter_widget' ) as $key ) {
+		foreach ( array( 'key', 'label', 'description', 'display_type', 'card_position', 'single_position', 'color_intent', 'icon', 'date_format', 'date_format_string', 'currency_code', 'value_suffix', 'unit_label', 'event_timezone', 'semantic_role', 'filter_widget', 'map_zoom', 'map_load', 'map_position' ) as $key ) {
 			if ( isset( $definition[ $key ] ) ) {
 				$values[ $key ] = $definition[ $key ];
 			}
 		}
 
 		$values['required']   = ! empty( $definition['required'] );
+		// show_directions: absent key = legacy/other type; default true so an
+		// existing location field (registry-defaulted) shows the box checked.
+		$values['show_directions'] = ! array_key_exists( 'show_directions', $definition ) || ! empty( $definition['show_directions'] );
 		$values['all_day']    = ! empty( $definition['all_day'] );
 		$values['filterable'] = ! empty( $definition['filterable'] );
 		$values['sortable']   = ! empty( $definition['sortable'] );
@@ -1073,6 +1161,13 @@ class PCPTPages_Admin_Post_Fields {
 			'sortable'           => false,
 			'filter_widget'      => '',
 			'required'           => false,
+			// Location / map additive attributes. Defaults mirror the AISB
+			// Map section (neighborhood zoom, privacy-friendly click load,
+			// directions on) so a fresh location field "just works".
+			'map_zoom'           => 'neighborhood',
+			'map_load'           => 'click',
+			'show_directions'    => true,
+			'map_position'       => 'below_main',
 		);
 	}
 
@@ -1111,8 +1206,24 @@ class PCPTPages_Admin_Post_Fields {
 			'rating'            => __( 'Rating (★★★★☆ 4.8)', 'promptless-cpt-pages' ),
 			'progress'          => __( 'Progress bar (65%)', 'promptless-cpt-pages' ),
 			'multi_badge'       => __( 'Multi-badge (Vegan, GF, Quick)', 'promptless-cpt-pages' ),
+			'location'          => __( 'Location / map (address)', 'promptless-cpt-pages' ),
 		);
 		return isset( $labels[ $type ] ) ? $labels[ $type ] : $type;
+	}
+
+	/**
+	 * Human label for a named map zoom level.
+	 *
+	 * @param string $zoom Zoom key from PCPTPages_Validator::MAP_ZOOM_LEVELS.
+	 * @return string
+	 */
+	private function map_zoom_label( $zoom ) {
+		$labels = array(
+			'street'       => __( 'Street (closest)', 'promptless-cpt-pages' ),
+			'neighborhood' => __( 'Neighborhood', 'promptless-cpt-pages' ),
+			'city'         => __( 'City (widest)', 'promptless-cpt-pages' ),
+		);
+		return isset( $labels[ $zoom ] ) ? $labels[ $zoom ] : $zoom;
 	}
 
 	/**

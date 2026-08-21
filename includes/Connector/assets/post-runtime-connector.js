@@ -478,7 +478,7 @@ const TOOLS = [
   {
     name: "postruntime_define_post_field",
     description:
-      "Define a new post field on a CPT. Up to 12 fields per CPT enforced server-side (HARD_FIELD_COUNT_LIMIT); soft warning at 8. After definition, populate per-post values via postruntime_set_post_field_values. See preflight.field_name_hints.post_field_definition for the accepted-keys list and preflight.post_field_enums for closed enums. Examples by display_type — currency: { key:'price', label:'Price', display_type:'currency', card_position:'headline', single_position:'headline', currency_code:'USD', value_suffix:'+' }. badge: { key:'status', label:'Status', display_type:'badge', card_position:'image_overlay', single_position:'image_overlay', options:{ for_sale:{ label:'For sale', color_intent:'primary' }, sold:{ label:'Sold', color_intent:'neutral' } } }. meta_pair: { key:'beds', label:'Beds', display_type:'meta_pair', card_position:'meta_strip', single_position:'meta_strip', icon:'mdi:bed-outline' }. rating: { key:'reviews', label:'Reviews', display_type:'rating', card_position:'meta_strip', single_position:'meta_strip', max:5 }. progress: { key:'capacity', label:'Capacity', display_type:'progress', card_position:'meta_strip', single_position:'meta_strip' }. date: { key:'event_date', label:'Event date', display_type:'date', card_position:'headline', single_position:'headline', date_format:'custom', date_format_string:'F j · g:i A' }. multi_badge: { key:'topics', label:'Topics', display_type:'multi_badge', card_position:'footer_meta', single_position:'footer_meta', color_intent:'neutral' }. number_with_label: { key:'duration', label:'Duration', display_type:'number_with_label', card_position:'meta_strip', single_position:'meta_strip', unit_label:'min' }. Use card_position:'hidden' or single_position:'hidden' to opt out of one context. EVENTS ARCHIVE SETUP: to make a CPT event-shaped, define two date fields with semantic_role event_start and event_end — e.g. { key:'starts', label:'Starts', display_type:'date', semantic_role:'event_start', all_day:false, card_position:'headline', single_position:'meta_strip', date_format:'custom', date_format_string:'M j, Y · g:i A' } and the same for 'ends' with semantic_role:'event_end'; optionally add a badge event_status (options scheduled/cancelled/postponed), a text event_location, a currency event_offers, and a badge event_attendance_mode (in_person/online/mixed). Then build a Promptless WP PostGrid section over that CPT with content.event_status:'upcoming' (or happening/past) and content.event_sort:'soonest' to render the filtered, sorted archive; single pages auto-emit Schema.org Event JSON-LD.",
+      "Define a new post field on a CPT. Up to 12 fields per CPT enforced server-side (HARD_FIELD_COUNT_LIMIT); soft warning at 8. After definition, populate per-post values via postruntime_set_post_field_values. See preflight.field_name_hints.post_field_definition for the accepted-keys list and preflight.post_field_enums for closed enums. Examples by display_type — currency: { key:'price', label:'Price', display_type:'currency', card_position:'headline', single_position:'headline', currency_code:'USD', value_suffix:'+' }. badge: { key:'status', label:'Status', display_type:'badge', card_position:'image_overlay', single_position:'image_overlay', options:{ for_sale:{ label:'For sale', color_intent:'primary' }, sold:{ label:'Sold', color_intent:'neutral' } } }. meta_pair: { key:'beds', label:'Beds', display_type:'meta_pair', card_position:'meta_strip', single_position:'meta_strip', icon:'mdi:bed-outline' }. rating: { key:'reviews', label:'Reviews', display_type:'rating', card_position:'meta_strip', single_position:'meta_strip', max:5 }. progress: { key:'capacity', label:'Capacity', display_type:'progress', card_position:'meta_strip', single_position:'meta_strip' }. date: { key:'event_date', label:'Event date', display_type:'date', card_position:'headline', single_position:'headline', date_format:'custom', date_format_string:'F j · g:i A' }. multi_badge: { key:'topics', label:'Topics', display_type:'multi_badge', card_position:'footer_meta', single_position:'footer_meta', color_intent:'neutral' }. number_with_label: { key:'duration', label:'Duration', display_type:'number_with_label', card_position:'meta_strip', single_position:'meta_strip', unit_label:'min' }. Use card_position:'hidden' or single_position:'hidden' to opt out of one context. EVENTS ARCHIVE SETUP: to make a CPT event-shaped, define two date fields with semantic_role event_start and event_end — e.g. { key:'starts', label:'Starts', display_type:'date', semantic_role:'event_start', all_day:false, card_position:'headline', single_position:'meta_strip', date_format:'custom', date_format_string:'M j, Y · g:i A' } and the same for 'ends' with semantic_role:'event_end'; optionally add a badge event_status (options scheduled/cancelled/postponed), a text event_location, a currency event_offers, and a badge event_attendance_mode (in_person/online/mixed). Then build a Promptless WP PostGrid section over that CPT with content.event_status:'upcoming' (or happening/past) and content.event_sort:'soonest' to render the filtered, sorted archive; single pages auto-emit Schema.org Event JSON-LD. LOCATION / MAP: location: { key:'office', label:'Office', display_type:'location', card_position:'footer_meta', single_position:'hidden', map_zoom:'neighborhood', map_load:'click', show_directions:true, map_position:'below_main' } — renders a keyless, click-to-load map on the single-post page (NO API key / coordinates / geocoding). Promptless CPT Pages renders the map itself (its own map.css + pre-map.js), so it works with OR without Promptless WP — no dependency. Set the address per post via set_post_field_values (a plain string like '123 Cascade Ave, Missoula, MT 59801'). map_position (above_main|below_main|sidebar|hidden, default below_main) is the BLOCK placement of the map, the SAME vocabulary as groupings — single_position is IGNORED for location (a map is block-level, not an inline hero slot); each post can override placement via set_post_field_visibility { key: { map_position } }. card_position places the address AS TEXT on cards (footer_meta/meta_strip/subtitle or hidden). Empty address falls back to the shared Business Identity address (the aisb_business_settings option); the map inherits the brand palette when Promptless WP is active. Not filterable/sortable. See preflight.critical_rules.location_map_setup.",
     inputSchema: {
       type: "object",
       properties: {
@@ -488,7 +488,7 @@ const TOOLS = [
         description: { type: "string" },
         display_type: {
           type: "string",
-          enum: ["currency", "number_with_label", "badge", "meta_pair", "date", "text", "rating", "progress", "multi_badge"],
+          enum: ["currency", "number_with_label", "badge", "meta_pair", "date", "text", "rating", "progress", "multi_badge", "location"],
         },
         card_position: {
           type: "string",
@@ -523,6 +523,10 @@ const TOOLS = [
         filterable: { type: "boolean", description: "FILTERS: true = visitors can filter the archive by this field. The filter widget is auto-chosen from display_type (range slider for currency/number/progress, stepper for rating, single-select for badge, checkboxes for multi_badge, upcoming/past toggle for event dates, search box for text). meta_pair cannot be filterable." },
         sortable: { type: "boolean", description: "FILTERS: true = offer this field as an archive sort option (e.g. price low-to-high, rating high-to-low). meta_pair cannot be sortable." },
         filter_widget: { type: "string", enum: ["range", "stepper", "pill_select", "checkbox_group", "date_toggle", "date_range", "text_search"], description: "FILTERS (advanced, optional): override the auto-chosen widget. Must be compatible with display_type — number_with_label/rating accept range or stepper; badge accepts pill_select or checkbox_group; date accepts date_toggle or date_range. Omit to use the display_type default." },
+        map_zoom: { type: "string", enum: ["street", "neighborhood", "city"], description: "For location — map zoom (default neighborhood)." },
+        map_load: { type: "string", enum: ["auto", "click"], description: "For location — 'click' (privacy-friendly facade, default) or 'auto' (lazy iframe)." },
+        show_directions: { type: "boolean", description: "For location — show a 'Get directions' link (default true)." },
+        map_position: { type: "string", enum: ["above_main", "below_main", "sidebar", "hidden"], description: "For location — BLOCK placement of the map on the single-post page, using the SAME vocabulary as groupings (default below_main; 'hidden' suppresses the map). single_position is ignored for location (a map is block-level, not an inline hero slot). Each post can override placement via set_post_field_visibility { field_key: { map_position } }." },
       },
       required: ["slug", "key", "label", "display_type", "card_position", "single_position"],
     },
@@ -552,7 +556,7 @@ const TOOLS = [
         description: { type: "string" },
         display_type: {
           type: "string",
-          enum: ["currency", "number_with_label", "badge", "meta_pair", "date", "text", "rating", "progress", "multi_badge"],
+          enum: ["currency", "number_with_label", "badge", "meta_pair", "date", "text", "rating", "progress", "multi_badge", "location"],
         },
         card_position: {
           type: "string",
@@ -583,6 +587,10 @@ const TOOLS = [
         filterable: { type: "boolean", description: "FILTERS: true = visitors can filter the archive by this field (widget auto-chosen from display_type). meta_pair cannot be filterable." },
         sortable: { type: "boolean", description: "FILTERS: true = offer this field as an archive sort option. meta_pair cannot be sortable." },
         filter_widget: { type: "string", enum: ["range", "stepper", "pill_select", "checkbox_group", "date_toggle", "date_range", "text_search"], description: "FILTERS (advanced, optional): override the auto-chosen widget; must be compatible with display_type. Omit to use the default." },
+        map_zoom: { type: "string", enum: ["street", "neighborhood", "city"], description: "For location — map zoom (default neighborhood)." },
+        map_load: { type: "string", enum: ["auto", "click"], description: "For location — 'click' (privacy-friendly facade, default) or 'auto' (lazy iframe)." },
+        show_directions: { type: "boolean", description: "For location — show a 'Get directions' link (default true)." },
+        map_position: { type: "string", enum: ["above_main", "below_main", "sidebar", "hidden"], description: "For location — BLOCK placement of the map on the single-post page (same vocabulary as groupings; default below_main; 'hidden' suppresses it). single_position is ignored for location. Per-post override via set_post_field_visibility { field_key: { map_position } }." },
       },
       required: ["slug", "key", "connector_version"],
     },
@@ -653,13 +661,13 @@ const TOOLS = [
   },
   {
     name: "postruntime_set_post_field_visibility",
-    description: "Write per-post visibility overrides for a single post. Full-replace semantics — send the entire desired visibility map; missing field keys default to unhidden. To clear ALL overrides on a post, send an empty object. Layers on top of the CPT-level position settings: a field defined with card_position:'headline' can be hidden on a specific post's card via { price: { card_hidden: true } } without redefining the field. Positions themselves can't be overridden per post; only visibility.",
+    description: "Write per-post visibility overrides for a single post. Full-replace semantics — send the entire desired visibility map; missing field keys default to unhidden. To clear ALL overrides on a post, send an empty object. Layers on top of the CPT-level position settings: a field defined with card_position:'headline' can be hidden on a specific post's card via { price: { card_hidden: true } } without redefining the field. Positions themselves can't be overridden per post; only visibility. FOR LOCATION FIELDS: this same endpoint ALSO carries the per-post MAP PLACEMENT override — { office: { map_position: 'sidebar' } } (above_main|below_main|sidebar|hidden) moves the map to a different block position, or hides it, on that specific post. This is the field-type parallel to a grouping's per-post position override (the only 'position' that CAN be overridden per post, and only for location fields).",
     inputSchema: {
       type: "object",
       properties: {
         id: { type: "integer", description: "Post ID" },
         visibility: {
-          description: "Object mapping field keys to { card_hidden: bool, single_hidden: bool }. May be sent as a JSON string; the bridge parses it.",
+          description: "Object mapping field keys to { card_hidden: bool, single_hidden: bool } and, for a location field, { map_position: 'above_main'|'below_main'|'sidebar'|'hidden' } to override that post's map placement. May be sent as a JSON string; the bridge parses it.",
         },
       },
       required: ["id", "visibility"],
@@ -1125,6 +1133,10 @@ async function handleTool(name, args) {
         "filterable",
         "sortable",
         "filter_widget",
+        "map_zoom",
+        "map_load",
+        "show_directions",
+        "map_position",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
@@ -1172,6 +1184,10 @@ async function handleTool(name, args) {
         "filterable",
         "sortable",
         "filter_widget",
+        "map_zoom",
+        "map_load",
+        "show_directions",
+        "map_position",
       ].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });

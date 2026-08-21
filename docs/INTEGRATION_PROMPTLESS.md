@@ -30,17 +30,30 @@ If Post Runtime Engine is deactivated:
 
 Listed exhaustively in `docs/AISB_TOKEN_CONTRACT.md`. This is the only coupling.
 
-### Nothing else
+### Almost nothing else
 
 PRE does NOT:
 - Call any PHP class from Promptless WP (no `class_exists('AISB_Plugin')` checks gating functionality)
-- Hook into any `aisb_*` action or filter
-- Read any `aisb_*` option or `_aisb_*` post meta
+- Read any `aisb_*` option or `_aisb_*` post meta **for its core rendering** (the two narrow exceptions — currency and the map — are noted below and are read via the WordPress options API, not via AISB classes)
 - Make REST calls to Promptless's `/promptless/v1/*` endpoints
 - Use Promptless's `SectionRenderer` to render anything
 - Depend on Promptless's editor, AI provider system, or connector
 
 This is intentional and load-bearing. The architectural simplification of "CSS-only coupling" is what lets PRE ship and version independently of Promptless.
+
+### The `location` map is self-contained — NOT an integration point (revised 2026-08-21)
+
+An earlier design (v1.3) had the `location` field consume a Promptless WP filter (`aisb_render_map_embed`) to render its map, and this section documented that as "the one PHP-level extension point PRE consumes." **That was reversed.** Making a core PRE field depend on Promptless WP being installed *and* on a map-capable build broke PRE's independence — the map silently fell back to plain text wherever the companion wasn't present (a coordinated-release trap caught in pressure testing).
+
+**PRE now renders the map itself.** `PCPTPages_Renderer::render_map_embed()` builds the address→embed markup (facade / iframe + directions, no API key or coordinates), styled by PRE's own `assets/css/map.css` and driven by `assets/js/pre-map.js`. There is **no `aisb_*` hook** — the `location` field consumes nothing from Promptless WP at the PHP level. It follows the same self-contained pattern as the gallery lightbox (`assets/js/pre-lightbox.js`).
+
+The only shared touch-point is **data, not code**: the empty-address business-identity fallback reads the `aisb_business_settings` option via the options API — the same option PRE already reads for currency resolution. Reading a documented option is data access, not a PHP-layer dependency (absent → the fallback is skipped and the map uses the per-post address).
+
+So the `location` map obeys the CSS-only-coupling invariant like everything else in PRE: it styles itself with `--aisb-*` tokens (with literal fallbacks) and works fully whether or not Promptless WP is active — the palette simply flows through when it is. Full design + the reversal rationale: `docs/LOCATION_MAP_DESIGN.md`. **No changes to Promptless WP are required for the map.**
+
+### The other exception: currency
+
+For the `currency` display type, PRE reads the `aisb_business_settings` option (via `get_option`) to resolve a default currency code. Same rationale as above — options-API data access, not a class dependency, with a documented fallback chain (field → business identity → `pcptpages_currency` → USD).
 
 ## What Post Runtime Engine writes to Promptless WP
 

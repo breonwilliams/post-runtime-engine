@@ -55,6 +55,20 @@
 					$block.hide();
 				}
 			});
+			// Inverse of data-shown-when: a control HIDDEN for specific display
+			// types (e.g. the hero-slot position dropdown is meaningless for a
+			// block-level location map, which uses "Map placement" instead).
+			$form.find('[data-hidden-when]').each(function () {
+				var $block = $(this);
+				var hidden = ($block.attr('data-hidden-when') || '').split(',').map(function (s) {
+					return s.trim();
+				});
+				if (hidden.indexOf(current) !== -1) {
+					$block.hide();
+				} else {
+					$block.show();
+				}
+			});
 		}
 
 		$select.on('change', apply);

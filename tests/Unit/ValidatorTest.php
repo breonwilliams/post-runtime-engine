@@ -73,6 +73,49 @@ class ValidatorTest extends UnitTestCase {
         );
     }
 
+    public function test_display_types_constant_lists_exactly_ten_types() {
+        $this->assertSame(
+            array(
+                'currency',
+                'number_with_label',
+                'badge',
+                'meta_pair',
+                'date',
+                'text',
+                'rating',
+                'progress',
+                'multi_badge',
+                'location',
+            ),
+            \PCPTPages_Validator::DISPLAY_TYPES,
+            'DISPLAY_TYPES is a closed enum. The original nine were pinned by docs/POST_FIELDS_V1_1_DESIGN.md; `location` was added 2026-08-20 through the same contract-amendment process (docs/LOCATION_MAP_DESIGN.md first, then this enum and guard test). Adding an eleventh requires a design contract in docs/ first.'
+        );
+    }
+
+    public function test_map_zoom_levels_constant_lists_exactly_three_levels() {
+        $this->assertSame(
+            array( 'street', 'neighborhood', 'city' ),
+            \PCPTPages_Validator::MAP_ZOOM_LEVELS,
+            'MAP_ZOOM_LEVELS must mirror the Promptless WP Map section ZOOM_LEVELS keys (street | neighborhood | city). Closed enum per docs/LOCATION_MAP_DESIGN.md § 4.4 — the numeric zoom each maps to lives on the AISB side, so this list must stay in lockstep with MapRenderer::ZOOM_LEVELS.'
+        );
+    }
+
+    public function test_map_load_modes_constant_lists_exactly_two_modes() {
+        $this->assertSame(
+            array( 'auto', 'click' ),
+            \PCPTPages_Validator::MAP_LOAD_MODES,
+            'MAP_LOAD_MODES is a closed enum (auto | click) mirroring the AISB Map section. Do not extend without updating docs/LOCATION_MAP_DESIGN.md first.'
+        );
+    }
+
+    public function test_map_positions_constant_mirrors_grouping_positions_plus_hidden() {
+        $this->assertSame(
+            array( 'above_main', 'below_main', 'sidebar', 'hidden' ),
+            \PCPTPages_Validator::MAP_POSITIONS,
+            'MAP_POSITIONS is the block-level placement vocabulary for location maps: the three grouping POSITIONS (above_main, below_main, sidebar) plus hidden. It intentionally mirrors POSITIONS so a map repositions exactly like a grouping. Keep the first three in lockstep with POSITIONS; docs/LOCATION_MAP_DESIGN.md § 6.'
+        );
+    }
+
     public function test_reserved_cpt_slugs_includes_wp_core_and_woocommerce() {
         // Spot-check a few critical reserved slugs. If WordPress adds new
         // built-in post types or this list expands for a new plugin, this
@@ -325,6 +368,109 @@ class ValidatorTest extends UnitTestCase {
             'default_position' => 'above_main',
         ) );
         $this->assertTrue( $result );
+    }
+
+    // -----------------------------------------------------------------
+    // Location display type (docs/LOCATION_MAP_DESIGN.md)
+    // -----------------------------------------------------------------
+
+    private function valid_location_definition( array $overrides = array() ) {
+        return array_merge( array(
+            'key'             => 'office',
+            'label'           => 'Office',
+            'display_type'    => 'location',
+            'card_position'   => 'footer_meta',
+            'single_position' => 'footer_meta',
+            'map_zoom'        => 'neighborhood',
+            'map_load'        => 'click',
+            'show_directions' => true,
+        ), $overrides );
+    }
+
+    public function test_validate_post_field_definition_accepts_valid_location() {
+        $result = $this->validator->validate_post_field_definition( $this->valid_location_definition() );
+        $this->assertTrue( $result );
+    }
+
+    public function test_validate_post_field_definition_rejects_invalid_map_zoom() {
+        $result = $this->validator->validate_post_field_definition(
+            $this->valid_location_definition( array( 'map_zoom' => 'galaxy' ) )
+        );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_map_zoom', $result->get_error_code() );
+    }
+
+    public function test_validate_post_field_definition_rejects_invalid_map_load() {
+        $result = $this->validator->validate_post_field_definition(
+            $this->valid_location_definition( array( 'map_load' => 'eager' ) )
+        );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_map_load', $result->get_error_code() );
+    }
+
+    public function test_validate_post_field_definition_rejects_non_bool_show_directions() {
+        $result = $this->validator->validate_post_field_definition(
+            $this->valid_location_definition( array( 'show_directions' => 'yes' ) )
+        );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_show_directions', $result->get_error_code() );
+    }
+
+    public function test_validate_post_field_definition_rejects_filterable_location() {
+        // A location field is display-only (address-string maps aren't a
+        // facet in this phase — docs/LOCATION_MAP_DESIGN.md § 3).
+        $result = $this->validator->validate_post_field_definition(
+            $this->valid_location_definition( array( 'filterable' => true ) )
+        );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_display_only_not_filterable', $result->get_error_code() );
+    }
+
+    public function test_validate_post_field_definition_accepts_map_position() {
+        $result = $this->validator->validate_post_field_definition(
+            $this->valid_location_definition( array( 'map_position' => 'sidebar' ) )
+        );
+        $this->assertTrue( $result );
+    }
+
+    public function test_validate_post_field_definition_rejects_invalid_map_position() {
+        $result = $this->validator->validate_post_field_definition(
+            $this->valid_location_definition( array( 'map_position' => 'left_rail' ) )
+        );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_map_position', $result->get_error_code() );
+    }
+
+    public function test_validate_visibility_accepts_per_post_map_position() {
+        $result = $this->validator->validate_post_field_visibility(
+            array( 'office' => array( 'map_position' => 'sidebar' ) )
+        );
+        $this->assertTrue( $result );
+    }
+
+    public function test_validate_visibility_rejects_invalid_per_post_map_position() {
+        $result = $this->validator->validate_post_field_visibility(
+            array( 'office' => array( 'map_position' => 'nowhere' ) )
+        );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_invalid_visibility_map_position', $result->get_error_code() );
+    }
+
+    public function test_validate_post_field_value_accepts_location_address() {
+        $result = $this->validator->validate_post_field_value(
+            array( 'display_type' => 'location' ),
+            '123 Cascade Ave, Missoula, MT 59801'
+        );
+        $this->assertTrue( $result );
+    }
+
+    public function test_validate_post_field_value_rejects_overlong_location_address() {
+        $result = $this->validator->validate_post_field_value(
+            array( 'display_type' => 'location' ),
+            str_repeat( 'a', \PCPTPages_Validator::MAX_TEXT_VALUE_LEN + 1 )
+        );
+        $this->assertInstanceOf( '\\WP_Error', $result );
+        $this->assertSame( 'pcptpages_location_value_too_long', $result->get_error_code() );
     }
 
     // -----------------------------------------------------------------

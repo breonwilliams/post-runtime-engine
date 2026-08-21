@@ -1,0 +1,154 @@
+/**
+ * Promptless CPT Pages — location field map.
+ *
+ * Self-contained styling for the `location` post-field's click-to-load (or
+ * auto) Google Maps embed. PRE owns this map end to end — there is NO
+ * dependency on Promptless WP. Every design token is consumed WITH a literal
+ * fallback (PRE's token contract), so the map renders correctly whether or not
+ * Promptless WP is supplying the `--aisb-*` palette; when it is, the map
+ * inherits the site's brand colours automatically.
+ *
+ * Markup (PCPTPages_Renderer::render_map_embed):
+ *   .pre-map.pre-map--aspect-16-9
+ *     .pre-map__frame  → .pre-map__facade (button)  OR  .pre-map__iframe
+ *     .pre-map__directions
+ *
+ * The frame owns the aspect ratio + radius; the facade and the injected iframe
+ * both fill it absolutely, so the click-to-load swap never shifts layout.
+ */
+
+.pre-map {
+	display: block;
+	width: 100%;
+}
+
+.pre-map__frame {
+	position: relative;
+	width: 100%;
+	overflow: hidden;
+	border-radius: var(--aisb-section-radius-lg, 12px);
+}
+
+/* Aspect ratio (only 16:9 is emitted today; others are here for parity). */
+.pre-map--aspect-16-9 .pre-map__frame {
+	aspect-ratio: 16 / 9;
+}
+
+.pre-map--aspect-4-3 .pre-map__frame {
+	aspect-ratio: 4 / 3;
+}
+
+.pre-map--aspect-1-1 .pre-map__frame {
+	aspect-ratio: 1 / 1;
+}
+
+/* ---- Facade (click-to-load placeholder) ---- */
+
+.pre-map__facade {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--aisb-section-space-sm, 1rem);
+	padding: var(--aisb-section-space-lg, 2rem);
+	background: var(--aisb-color-surface, #f9fafb);
+	border: 1px solid var(--aisb-color-border, #e5e7eb);
+	border-radius: inherit;
+	cursor: pointer;
+	text-align: center;
+	font-family: inherit;
+	appearance: none;
+	-webkit-appearance: none;
+	transition: background 0.2s ease;
+}
+
+.pre-map__facade:hover {
+	background: var(--aisb-hover-light, #f3f4f6);
+}
+
+.pre-map__facade:hover .pre-map__facade-action {
+	text-decoration: underline;
+}
+
+/* Ring inset so the frame's overflow:hidden can't clip it. */
+.pre-map__facade:focus-visible {
+	outline: 2px solid var(--aisb-color-primary, #6366f1);
+	outline-offset: -2px;
+}
+
+.pre-map__facade:focus:not(:focus-visible) {
+	outline: none;
+}
+
+.pre-map__facade-icon {
+	display: inline-flex;
+	color: var(--aisb-smart-light-surface-icon, var(--aisb-color-primary, #6366f1));
+}
+
+.pre-map__facade-icon svg {
+	width: 32px;
+	height: 32px;
+}
+
+.pre-map__facade-address {
+	font-size: var(--aisb-section-text-base, 1rem);
+	line-height: var(--aisb-section-leading-normal, 1.5);
+	color: var(--aisb-smart-light-surface-text, var(--aisb-color-text, #1f2937));
+	max-width: 32em;
+}
+
+.pre-map__facade-action {
+	font-size: var(--aisb-section-text-base, 1rem);
+	color: var(--aisb-smart-light-surface-link, var(--aisb-color-primary, #6366f1));
+}
+
+/* ---- Injected embed iframe (fills the frame the facade occupied) ---- */
+
+.pre-map__iframe {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	border: 0;
+	display: block;
+}
+
+/* ---- Directions link ---- */
+
+.pre-map__directions {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aisb-section-space-xs, 6px);
+	margin-top: var(--aisb-section-space-sm, 1rem);
+	font-family: inherit;
+	font-size: var(--aisb-section-text-base, 1rem);
+	text-decoration: none;
+	color: var(--aisb-smart-light-section-link, var(--aisb-color-primary, #6366f1));
+}
+
+.pre-map__directions:hover {
+	text-decoration: underline;
+}
+
+.pre-map__directions-arrow {
+	transition: transform 0.2s ease;
+}
+
+.pre-map__directions:hover .pre-map__directions-arrow {
+	transform: translateX(3px);
+}
+
+/* RTL: the directions arrow flips. */
+[dir='rtl'] .pre-map__directions-arrow {
+	transform: scaleX(-1);
+}
+
+[dir='rtl'] .pre-map__directions:hover .pre-map__directions-arrow {
+	transform: scaleX(-1) translateX(-3px);
+}

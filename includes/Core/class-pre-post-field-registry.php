@@ -450,6 +450,18 @@ class PCPTPages_Post_Field_Registry {
 			'filterable'         => false,
 			'sortable'           => false,
 			'filter_widget'      => '',
+			// Location / map (docs/LOCATION_MAP_DESIGN.md § 5.1) additive
+			// attributes. Only meaningful for the `location` display type;
+			// harmless no-ops on every other type. Defaults mirror the AISB
+			// Map section: neighborhood zoom, privacy-friendly click load,
+			// directions link on.
+			'map_zoom'           => 'neighborhood',
+			'map_load'           => 'click',
+			'show_directions'    => true,
+			// Block-level placement of the map on the single-post page —
+			// above_main | below_main | sidebar | hidden, the same vocabulary
+			// groupings use. Default below_main; overridable per post.
+			'map_position'       => 'below_main',
 		);
 
 		// sanitize_key on the field key (validator already verified safety;

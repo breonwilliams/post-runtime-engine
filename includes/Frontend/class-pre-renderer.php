@@ -403,7 +403,12 @@ class PCPTPages_Renderer {
 			}
 		}
 
-		$has_sidebar = ! empty( $sidebar );
+		// Location maps are block-level and repositionable exactly like
+		// groupings (above_main / below_main / sidebar), resolved per post.
+		// Collect them pre-rendered so an empty map never forces a sidebar.
+		$location_blocks = $this->collect_location_blocks( $post );
+
+		$has_sidebar = ! empty( $sidebar ) || ! empty( $location_blocks['sidebar'] );
 		$body_class  = $has_sidebar ? 'pre-body pre-body--with-sidebar' : 'pre-body';
 
 		// A full-bleed hero needs overflow coordination on the article itself
@@ -422,6 +427,10 @@ class PCPTPages_Renderer {
 				<div class="pre-body__main">
 					<?php foreach ( $above_main as $g ) : ?>
 						<?php $this->render_grouping( $g, $cpt_default_icon ); ?>
+					<?php endforeach; ?>
+
+					<?php foreach ( $location_blocks['above_main'] as $block_html ) : ?>
+						<?php echo $block_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					<?php endforeach; ?>
 
 					<?php if ( post_type_supports( $post->post_type, 'editor' ) ) : ?>
@@ -469,12 +478,20 @@ class PCPTPages_Renderer {
 					<?php foreach ( $below_main as $g ) : ?>
 						<?php $this->render_grouping( $g, $cpt_default_icon ); ?>
 					<?php endforeach; ?>
+
+					<?php foreach ( $location_blocks['below_main'] as $block_html ) : ?>
+						<?php echo $block_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					<?php endforeach; ?>
 				</div>
 
 				<?php if ( $has_sidebar ) : ?>
 					<aside class="pre-body__sidebar">
 						<?php foreach ( $sidebar as $g ) : ?>
 							<?php $this->render_grouping( $g, $cpt_default_icon ); ?>
+						<?php endforeach; ?>
+
+						<?php foreach ( $location_blocks['sidebar'] as $block_html ) : ?>
+							<?php echo $block_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						<?php endforeach; ?>
 					</aside>
 				<?php endif; ?>
@@ -1200,6 +1217,221 @@ class PCPTPages_Renderer {
 			<?php endif; ?>
 		</li>
 		<?php
+	}
+
+	/**
+	 * Collect the single-post map block(s) for any `location` post fields,
+	 * pre-rendered and bucketed by their effective block-level placement.
+	 *
+	 * A map is block-level, so it is placed like a grouping section —
+	 * above_main / below_main / sidebar — NOT in the inline hero slots scalar
+	 * post fields use (see PCPTPages_Card_Renderer::render_location() for the
+	 * card-context text split). The effective placement resolves per post
+	 * (per-post override → field-definition `map_position` default), exactly
+	 * as a grouping's position resolves; `hidden` suppresses the map.
+	 *
+	 * Blocks are pre-rendered here (once) so the caller can (a) place each in
+	 * the correct region and (b) decide whether a sidebar is needed — an
+	 * empty map (no address, no business fallback) contributes nothing, so a
+	 * sidebar isn't shown for a map that wouldn't render.
+	 *
+	 * @param WP_Post $post Current post.
+	 * @return array{above_main:string[],below_main:string[],sidebar:string[]}
+	 */
+	private function collect_location_blocks( WP_Post $post ) {
+		$buckets = array(
+			'above_main' => array(),
+			'below_main' => array(),
+			'sidebar'    => array(),
+		);
+
+		$plugin = pcptpages();
+		if ( ! $plugin || ! $plugin->post_fields || ! $plugin->post_data ) {
+			return $buckets;
+		}
+
+		$field_defs = $plugin->post_fields->get_all( $post->post_type );
+		if ( empty( $field_defs ) ) {
+			return $buckets;
+		}
+
+		foreach ( $field_defs as $field_key => $def ) {
+			if ( ( $def['display_type'] ?? '' ) !== 'location' ) {
+				continue;
+			}
+
+			// Effective block placement (per-post override → definition
+			// default). `hidden` suppresses the map on this post.
+			$placement = $plugin->post_data->get_effective_map_position( $post->ID, $field_key, $def );
+			if ( $placement === 'hidden' || ! isset( $buckets[ $placement ] ) ) {
+				continue;
+			}
+
+			$html = $this->render_single_location_block( $post, $field_key, $def );
+			if ( $html !== '' ) {
+				$buckets[ $placement ][] = $html;
+			}
+		}
+
+		return $buckets;
+	}
+
+	/** Named zoom levels → Google Maps `z` parameter (mirrors the Map section). */
+	private const MAP_ZOOM_Z = array(
+		'street'       => 17,
+		'neighborhood' => 14,
+		'city'         => 11,
+	);
+
+	/**
+	 * Render one `location` field's map block to an HTML string (or '' when
+	 * no address resolves).
+	 *
+	 * SELF-CONTAINED: PRE builds the address→map embed itself (see
+	 * render_map_embed), styled by its own assets/css/map.css and driven by
+	 * assets/js/pre-map.js. There is NO runtime dependency on Promptless WP —
+	 * the map renders whether or not that plugin is active, exactly like the
+	 * gallery lightbox. (This replaced an earlier design that delegated to
+	 * AISB's `aisb_render_map_embed` filter; that coupling was inconsistent
+	 * with PRE's independence principle and is gone — docs/LOCATION_MAP_DESIGN.md.)
+	 *
+	 * Address resolution: the post's own value, or — when empty — the site's
+	 * business-identity address read directly from the shared
+	 * `aisb_business_settings` option (plain option data, not a PHP call into
+	 * Promptless WP; absent, and so skipped, when that plugin isn't installed).
+	 * No address anywhere → returns '' (nothing renders; never a broken frame).
+	 *
+	 * @param WP_Post $post      Current post.
+	 * @param string  $field_key Field key.
+	 * @param array   $def       Field definition.
+	 * @return string HTML for the map section, or '' when nothing renders.
+	 */
+	private function render_single_location_block( WP_Post $post, $field_key, array $def ) {
+		$plugin = pcptpages();
+		if ( ! $plugin || ! $plugin->post_data ) {
+			return '';
+		}
+
+		$address = trim( (string) $plugin->post_data->get_field_value( $post->ID, $field_key ) );
+		if ( $address === '' ) {
+			$address = self::get_business_identity_address();
+		}
+		$address = trim( sanitize_text_field( $address ) );
+		if ( $address === '' ) {
+			return '';
+		}
+
+		$zoom            = in_array( $def['map_zoom'] ?? '', PCPTPages_Validator::MAP_ZOOM_LEVELS, true ) ? $def['map_zoom'] : 'neighborhood';
+		$load            = in_array( $def['map_load'] ?? '', PCPTPages_Validator::MAP_LOAD_MODES, true ) ? $def['map_load'] : 'click';
+		$show_directions = ! array_key_exists( 'show_directions', $def ) || ! empty( $def['show_directions'] );
+
+		$map_html = $this->render_map_embed( $address, $zoom, $load, $show_directions );
+		if ( $map_html === '' ) {
+			return '';
+		}
+
+		$label = trim( (string) ( $def['label'] ?? '' ) );
+		$out   = sprintf(
+			'<section class="pre-location pre-location--key-%s" aria-label="%s">',
+			esc_attr( sanitize_html_class( $field_key ) ),
+			esc_attr( $label !== '' ? $label : __( 'Location', 'promptless-cpt-pages' ) )
+		);
+		if ( $label !== '' ) {
+			$out .= sprintf( '<h2 class="pre-location__heading">%s</h2>', esc_html( $label ) );
+		}
+		// $map_html is assembled from esc_url/esc_attr/esc_html-escaped parts
+		// in render_map_embed(), so it is safe to concatenate here.
+		$out .= $map_html;
+		$out .= '</section>';
+
+		return $out;
+	}
+
+	/**
+	 * Resolve the site's business-identity address into one geocodable string,
+	 * read directly from the shared `aisb_business_settings` option
+	 * (business_address → street / city / region / postal_code / country).
+	 *
+	 * This is a read of plain option data, NOT a PHP dependency on Promptless
+	 * WP: if that plugin is not installed the option is simply absent and this
+	 * returns ''. Read at render time so business-identity edits flow through.
+	 *
+	 * @return string Joined address, or '' when nothing is configured.
+	 */
+	private static function get_business_identity_address() {
+		$settings = get_option( 'aisb_business_settings', array() );
+		if ( ! is_array( $settings ) ) {
+			return '';
+		}
+		$address_fields = ( isset( $settings['business_address'] ) && is_array( $settings['business_address'] ) )
+			? $settings['business_address']
+			: array();
+		$parts = array();
+		foreach ( array( 'street', 'city', 'region', 'postal_code', 'country' ) as $key ) {
+			$value = trim( (string) ( $address_fields[ $key ] ?? '' ) );
+			if ( $value !== '' ) {
+				$parts[] = $value;
+			}
+		}
+		return implode( ', ', $parts );
+	}
+
+	/**
+	 * Build the click-to-load (or auto-loading) Google Maps embed markup for
+	 * an address — NO API key, NO coordinates, NO geocoding. The map is built
+	 * from the address string server-side.
+	 *
+	 * Self-contained and independent of Promptless WP: the `pre-map__*` markup
+	 * is styled by PRE's own assets/css/map.css and (for click mode) swapped to
+	 * the live iframe by assets/js/pre-map.js. Both consume the `--aisb-*`
+	 * design tokens WITH literal fallbacks, so the map looks native when
+	 * Promptless WP supplies the palette and still renders correctly without it.
+	 *
+	 * @param string $address         Resolved, non-empty address.
+	 * @param string $zoom            street|neighborhood|city.
+	 * @param string $load            auto|click.
+	 * @param bool   $show_directions Whether to append a "Get directions" link.
+	 * @return string HTML, or '' when the address is empty.
+	 */
+	private function render_map_embed( $address, $zoom, $load, $show_directions ) {
+		$address = trim( (string) $address );
+		if ( $address === '' ) {
+			return '';
+		}
+		$z    = self::MAP_ZOOM_Z[ $zoom ] ?? 14;
+		$load = ( 'auto' === $load ) ? 'auto' : 'click';
+
+		$directions_url = 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode( $address );
+
+		if ( 'auto' === $load ) {
+			$embed_url = 'https://www.google.com/maps?q=' . rawurlencode( $address ) . '&z=' . (int) $z . '&output=embed';
+			/* translators: %s is the address shown on the map */
+			$title = sprintf( __( 'Map of %s', 'promptless-cpt-pages' ), $address );
+			$frame = '<div class="pre-map__frame"><iframe class="pre-map__iframe" src="' . esc_url( $embed_url ) . '" title="' . esc_attr( $title ) . '" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>';
+		} else {
+			/* translators: %s is the address shown on the map */
+			$aria = sprintf( __( 'Load interactive map of %s', 'promptless-cpt-pages' ), $address );
+			$pin  = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
+			$frame = '<div class="pre-map__frame"><button type="button" class="pre-map__facade"'
+				. ' data-pre-map-address="' . esc_attr( $address ) . '"'
+				. ' data-pre-map-zoom="' . esc_attr( (string) $z ) . '"'
+				. ' aria-label="' . esc_attr( $aria ) . '">'
+				. '<span class="pre-map__facade-icon" aria-hidden="true">' . $pin . '</span>'
+				. '<span class="pre-map__facade-address">' . esc_html( $address ) . '</span>'
+				. '<span class="pre-map__facade-action">' . esc_html__( 'Load map', 'promptless-cpt-pages' ) . '</span>'
+				. '</button></div>';
+		}
+
+		$directions = '';
+		if ( $show_directions ) {
+			$arrow      = '<svg class="pre-map__directions-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
+			$directions = '<a class="pre-map__directions" href="' . esc_url( $directions_url ) . '" target="_blank" rel="noopener">' . esc_html__( 'Get directions', 'promptless-cpt-pages' ) . $arrow . '</a>';
+		}
+
+		// The frame's height comes from `.pre-map--aspect-16-9 .pre-map__frame
+		// { aspect-ratio: 16/9 }`; without the aspect wrapper the frame
+		// collapses to height:0 and its overflow:hidden clips the facade/iframe.
+		return '<div class="pre-map pre-map--aspect-16-9">' . $frame . $directions . '</div>';
 	}
 
 	/**

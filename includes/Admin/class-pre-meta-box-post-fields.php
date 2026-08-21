@@ -175,6 +175,8 @@ class PCPTPages_Meta_Box_Post_Fields {
 
 		$card_hidden   = ! empty( $visibility['card_hidden'] );
 		$single_hidden = ! empty( $visibility['single_hidden'] );
+		$is_location   = ( $display_type === 'location' );
+		$map_position  = isset( $visibility['map_position'] ) ? (string) $visibility['map_position'] : '';
 
 		?>
 		<div class="pre-field-row" data-display-type="<?php echo esc_attr( $display_type ); ?>" data-field-key="<?php echo esc_attr( $key ); ?>">
@@ -205,17 +207,58 @@ class PCPTPages_Meta_Box_Post_Fields {
 						<?php checked( $card_hidden ); ?>>
 					<?php esc_html_e( 'Hide on cards', 'promptless-cpt-pages' ); ?>
 				</label>
-				<label class="pre-field-row__visibility-toggle">
-					<input
-						type="checkbox"
-						name="pcptpages_field_visibility[<?php echo esc_attr( $key ); ?>][single_hidden]"
-						value="1"
-						<?php checked( $single_hidden ); ?>>
-					<?php esc_html_e( 'Hide in single-page hero', 'promptless-cpt-pages' ); ?>
-				</label>
+				<?php if ( $is_location ) : ?>
+					<?php
+					// Location fields are block-level maps, not inline hero
+					// metadata — so instead of the hero hide/show toggle they
+					// get a per-post PLACEMENT override, exactly like a
+					// grouping's per-post Position dropdown. Empty = use the
+					// field's default placement.
+					?>
+					<label class="pre-field-row__map-position">
+						<span class="pre-field-row__map-position-label"><?php esc_html_e( 'Map placement:', 'promptless-cpt-pages' ); ?></span>
+						<select name="pcptpages_field_visibility[<?php echo esc_attr( $key ); ?>][map_position]">
+							<option value="" <?php selected( $map_position, '' ); ?>>
+								<?php
+								/* translators: %s: the field's default map placement */
+								printf( esc_html__( 'Default (%s)', 'promptless-cpt-pages' ), esc_html( $this->map_position_label( $def['map_position'] ?? 'below_main' ) ) );
+								?>
+							</option>
+							<option value="above_main" <?php selected( $map_position, 'above_main' ); ?>><?php esc_html_e( 'Above content', 'promptless-cpt-pages' ); ?></option>
+							<option value="below_main" <?php selected( $map_position, 'below_main' ); ?>><?php esc_html_e( 'Below content', 'promptless-cpt-pages' ); ?></option>
+							<option value="sidebar" <?php selected( $map_position, 'sidebar' ); ?>><?php esc_html_e( 'Sidebar', 'promptless-cpt-pages' ); ?></option>
+							<option value="hidden" <?php selected( $map_position, 'hidden' ); ?>><?php esc_html_e( 'Don\'t show map', 'promptless-cpt-pages' ); ?></option>
+						</select>
+					</label>
+				<?php else : ?>
+					<label class="pre-field-row__visibility-toggle">
+						<input
+							type="checkbox"
+							name="pcptpages_field_visibility[<?php echo esc_attr( $key ); ?>][single_hidden]"
+							value="1"
+							<?php checked( $single_hidden ); ?>>
+						<?php esc_html_e( 'Hide in single-page hero', 'promptless-cpt-pages' ); ?>
+					</label>
+				<?php endif; ?>
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Human label for a block-level map placement value (MAP_POSITIONS).
+	 *
+	 * @param string $position Placement key.
+	 * @return string
+	 */
+	private function map_position_label( $position ) {
+		$labels = array(
+			'above_main' => __( 'Above content', 'promptless-cpt-pages' ),
+			'below_main' => __( 'Below content', 'promptless-cpt-pages' ),
+			'sidebar'    => __( 'Sidebar', 'promptless-cpt-pages' ),
+			'hidden'     => __( 'Don\'t show map', 'promptless-cpt-pages' ),
+		);
+		return isset( $labels[ $position ] ) ? $labels[ $position ] : $position;
 	}
 
 	/**
@@ -424,6 +467,22 @@ class PCPTPages_Meta_Box_Post_Fields {
 				<?php
 				break;
 
+			case 'location':
+				?>
+				<input
+					type="text"
+					id="<?php echo esc_attr( $base_id ); ?>"
+					name="<?php echo esc_attr( $name_primary ); ?>"
+					value="<?php echo esc_attr( (string) $primary ); ?>"
+					class="regular-text"
+					maxlength="<?php echo (int) PCPTPages_Validator::MAX_TEXT_VALUE_LEN; ?>"
+					placeholder="123 Main St, Missoula, MT 59801">
+				<p class="description">
+					<?php esc_html_e( 'A full street address. The single-post page turns this into a map automatically — no coordinates or API key needed. Leave empty to fall back to your Business Identity address.', 'promptless-cpt-pages' ); ?>
+				</p>
+				<?php
+				break;
+
 			case 'text':
 			default:
 				?>
@@ -606,6 +665,13 @@ class PCPTPages_Meta_Box_Post_Fields {
 			}
 			if ( ! empty( $flags['single_hidden'] ) ) {
 				$entry['single_hidden'] = true;
+			}
+			// Per-post map placement override (location fields). Empty value
+			// = "use the field default", so it's only stored when a real
+			// placement is chosen. The validator + set_field_visibility
+			// enforce membership in MAP_POSITIONS.
+			if ( isset( $flags['map_position'] ) && is_string( $flags['map_position'] ) && $flags['map_position'] !== '' ) {
+				$entry['map_position'] = sanitize_key( $flags['map_position'] );
 			}
 			if ( ! empty( $entry ) ) {
 				$visibility[ sanitize_key( $field_key ) ] = $entry;

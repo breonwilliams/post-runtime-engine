@@ -111,6 +111,121 @@ class PCPTPages_Frontend_Assets {
 				'counter'     => __( 'Image %1$s of %2$s', 'promptless-cpt-pages' ),
 			)
 		);
+
+		// Location map: when this single CPT post will render a map block,
+		// ask Promptless WP to enqueue the Map section's CSS/JS EARLY (here,
+		// on wp_enqueue_scripts) rather than mid-render — a late CSS enqueue
+		// would paint the facade unstyled for a frame. The action is defined
+		// on the AISB side (MapRenderer::enqueue_embed_assets); when AISB is
+		// inactive nothing is hooked and this is a harmless no-op, matching
+		// the CSS-token-only coupling rule. docs/LOCATION_MAP_DESIGN.md § 7.
+		$this->maybe_enqueue_map_assets();
+	}
+
+	/**
+	 * Fire the AISB map-asset enqueue action if the current singular CPT post
+	 * will render at least one location map block.
+	 *
+	 * Gating (never ship assets a page can't use): the post's CPT must define
+	 * a visible, non-hidden `location` field for which an address resolves —
+	 * either a per-post value or the AISB business-identity address. `$needs_js`
+	 * is true only when a rendering field uses `click` load mode (the facade
+	 * needs map.js); an all-`auto` page loads CSS only.
+	 *
+	 * @return void
+	 */
+	private function maybe_enqueue_map_assets() {
+		if ( ! is_singular() ) {
+			return;
+		}
+		$post = get_queried_object();
+		if ( ! ( $post instanceof WP_Post ) ) {
+			return;
+		}
+
+		$plugin = pcptpages();
+		if ( ! $plugin || ! $plugin->post_fields || ! $plugin->post_data ) {
+			return;
+		}
+
+		$field_defs = $plugin->post_fields->get_all( $post->post_type );
+		if ( empty( $field_defs ) ) {
+			return;
+		}
+
+		$will_render = false;
+		$needs_js    = false;
+
+		foreach ( $field_defs as $field_key => $def ) {
+			if ( ( $def['display_type'] ?? '' ) !== 'location' ) {
+				continue;
+			}
+			// Effective block placement (per-post override → definition
+			// default). `hidden` means no map renders on this post, so no
+			// assets are needed for it.
+			if ( $plugin->post_data->get_effective_map_position( $post->ID, $field_key, $def ) === 'hidden' ) {
+				continue;
+			}
+
+			$address = trim( (string) $plugin->post_data->get_field_value( $post->ID, $field_key ) );
+			// No per-post address → the map only renders if AISB's business
+			// identity supplies one. Check the option's presence (a gate, not
+			// the full assembly — AISB owns that); a slight over-enqueue when
+			// business_address holds only a country is harmless.
+			if ( $address === '' && ! $this->has_business_identity_address() ) {
+				continue;
+			}
+
+			$will_render = true;
+			if ( ( $def['map_load'] ?? 'click' ) !== 'auto' ) {
+				$needs_js = true;
+			}
+		}
+
+		if ( $will_render ) {
+			// PRE ships its own map assets — no dependency on Promptless WP.
+			// map.css styles the frame/facade/directions with `--aisb-*` tokens
+			// plus literal fallbacks; pre-map.js swaps the click facade for the
+			// live iframe. Gated: only pages with a rendering location field
+			// load them (house pattern, cf. the gallery lightbox above).
+			wp_enqueue_style(
+				'pcptpages-map',
+				PCPTPages_PLUGIN_URL . 'assets/css/map.css',
+				array(),
+				PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/map.css' )
+			);
+			if ( $needs_js ) {
+				wp_enqueue_script(
+					'pcptpages-map',
+					PCPTPages_PLUGIN_URL . 'assets/js/pre-map.js',
+					array(),
+					PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/js/pre-map.js' ),
+					true
+				);
+			}
+		}
+	}
+
+	/**
+	 * Whether the shared business-identity address has any non-empty component.
+	 * Reads the `aisb_business_settings` option shape (the same option PRE
+	 * already reads for currency) — plain option data, not a PHP dependency on
+	 * Promptless WP. Used only to gate asset enqueue; PRE assembles the address
+	 * itself at render time (PCPTPages_Renderer::get_business_identity_address).
+	 *
+	 * @return bool
+	 */
+	private function has_business_identity_address() {
+		$settings = get_option( 'aisb_business_settings', array() );
+		if ( ! is_array( $settings ) || empty( $settings['business_address'] ) || ! is_array( $settings['business_address'] ) ) {
+			return false;
+		}
+		foreach ( $settings['business_address'] as $part ) {
+			if ( is_string( $part ) && trim( $part ) !== '' ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**

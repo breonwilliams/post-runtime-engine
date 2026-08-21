@@ -333,6 +333,9 @@ class PCPTPages_Card_Renderer {
 			case 'multi_badge':
 				$html = $this->render_multi_badge( $field_def, $value, $position, $context );
 				break;
+			case 'location':
+				$html = $this->render_location( $field_def, $value, $position, $context );
+				break;
 		}
 
 		/**
@@ -635,6 +638,41 @@ class PCPTPages_Card_Renderer {
 			'<span class="%s">%s</span>',
 			esc_attr( $this->classes_for_field( $field_def, $position ) ),
 			$pills
+		);
+	}
+
+	/**
+	 * Render a location (address) field.
+	 *
+	 * Context-split, by design (docs/LOCATION_MAP_DESIGN.md § 3, § 6):
+	 *
+	 *   - card        → the address as plain text, so PostGrid / archive
+	 *                   cards get a lightweight "where" without an iframe per
+	 *                   card (a map per card is heavy and visually noisy).
+	 *   - single_hero → EMPTY. A map is block-level, not inline hero metadata;
+	 *                   the single-post map is rendered as a dedicated block
+	 *                   below the main content by PCPTPages_Renderer
+	 *                   (render_location_blocks()). Emitting the address here
+	 *                   too would double-print it inside the hero.
+	 *
+	 * The field's `single_position` still gates the single-post map (a value
+	 * of `hidden`, or a per-post single visibility override, suppresses the
+	 * block); it just doesn't place inline hero output the way other types do.
+	 */
+	private function render_location( array $field_def, $value, $position, $context ) {
+		if ( $context !== 'card' ) {
+			return '';
+		}
+
+		$address = trim( (string) $value );
+		if ( $address === '' ) {
+			return '';
+		}
+
+		return sprintf(
+			'<span class="%s">%s</span>',
+			esc_attr( $this->classes_for_field( $field_def, $position ) ),
+			esc_html( $address )
 		);
 	}
 

@@ -2,7 +2,7 @@
 Contributors: promptlesswp
 Tags: custom post types, post template, structured content, custom fields, single page
 Requires at least: 5.6
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 7.4
 Stable tag: 0.7.2
 License: GPLv2 or later
@@ -80,6 +80,7 @@ Privacy policy: https://iconify.design/privacy/
 
 = 0.7.2 =
 * Added: a new "Location / map" field type. Enter a street address on a post and its single page shows a click-to-load map — no Google Maps API key, no coordinates, no setup. Cards and archive listings show the address as text. You choose the zoom level (street / neighborhood / city), whether the map loads on click (privacy-friendly, the default) or automatically, and whether to show a "Get directions" link. You also choose where the map sits on the page — above the content, below it, or in the sidebar — the same placement control your grouping sections use, and each post can override it. If a post has no address, the map uses your Business Identity address (when Promptless WP is set up). The map is self-contained — it does NOT require Promptless WP and works on any theme; when Promptless WP is active the map simply picks up your brand colours automatically. Works from the editor by hand or through the AI connector.
+* Updated: tested up to WordPress 7.1.
 
 = 0.7.1 =
 * Fixed: single-post pages (such as a speaker or session profile) now align their content and hero image to the same layout width as the floating navigation and page sections, instead of extending slightly past it on the left and right.
@@ -191,6 +192,9 @@ Privacy policy: https://iconify.design/privacy/
 * Initial release: CPT registry, grouping definitions, admin meta box with variant override, three layout positions, single-position rendering.
 
 == Upgrade Notice ==
+
+= 0.7.2 =
+Adds a self-contained Location / map field type: enter a street address and the single page shows a click-to-load map with no Google Maps API key or setup, placed above, below, or in the sidebar (each post can override it). Works with or without Promptless WP. Additive release; existing fields are unchanged. Recommended for all users.
 
 = 0.7.1 =
 Grouping items linked to another post now show the linked post (and its type) in the editor instead of a blank field, and flag a link whose target no longer exists. Editor-only clarity fix; no content, schema, or front-end changes. Recommended for all users.

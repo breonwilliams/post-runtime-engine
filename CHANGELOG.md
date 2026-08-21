@@ -4,7 +4,7 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
-## [0.7.2] - Unreleased
+## [0.7.2] - 2026-08-21
 
 ### Added
 
@@ -15,6 +15,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   - **Gated asset loading.** When a singular CPT post will render a map, PRE enqueues its own `map.css` (and `pre-map.js` for click mode) early on `wp_enqueue_scripts`, avoiding a mid-render flash of unstyled facade — the same gated-enqueue pattern as the gallery lightbox.
   - Additive and backward compatible: new closed display type, opt-in per CPT, no new storage, no custom tables, no data migration. Existing fields and rendering are unchanged. Guard tests pin the amended `DISPLAY_TYPES`, `MAP_ZOOM_LEVELS`, and `MAP_LOAD_MODES` enums.
   - **No Promptless WP changes required — self-contained by design.** An earlier iteration reused Promptless WP's Map section through an `aisb_render_map_embed` filter; that was reversed so a core PRE field never depends on another plugin (it would have silently shown plain text wherever Promptless WP wasn't the map-capable build — a coordinated-release trap caught in pressure testing). PRE now owns the render. Two details keep the standalone embed correct: the frame is wrapped in `pre-map--aspect-16-9` (the aspect ratio gives it height — without it the frame collapses to `height:0` and its `overflow:hidden` clips the map), and PRE's map stylesheet never re-declares the brand palette, so it cannot repaint the host page's colors.
+
+### Changed
+
+- Compatibility: tested up to WordPress 7.1 (`readme.txt`).
 
 ## [0.7.1] - 2026-08-19
 

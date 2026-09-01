@@ -4,6 +4,16 @@ All notable changes to Post Runtime Engine are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the plugin is pre-1.0, the public surface (CPT shape, grouping shape, REST connector, MCP tools) is treated as semi-stable — additive changes are minor releases; backward-incompatible changes are noted in their own section even at this stage.
 
+## [Unreleased]
+
+### Fixed
+
+- **The connector could not reach an HTTPS local dev site, and the error blamed the wrong thing.** Node does not read the macOS keychain — it ships its own Mozilla CA bundle — so trusting a Local by Flywheel certificate fixes browsers and leaves every connector call failing with `DEPTH_ZERO_SELF_SIGNED_CERT`. Ported from the reference fix in Promptless WP (`ai-section-builder-modern`), where it was diagnosed and verified end to end.
+
+  - **The setup command no longer destroys config you added by hand.** It rebuilt `c.mcpServers["post-runtime-engine"]` from scratch, so env keys (`NODE_EXTRA_CA_CERTS`, `HTTP_PROXY`) and server-level keys (`cwd`, `disabled`) were silently lost on every regenerate. It now merges at BOTH levels, overwriting only `command`, `args` and the three env keys it owns. Correct regardless of the certificate work — a regenerate should never discard user config.
+  - **`NODE_EXTRA_CA_CERTS` is wired automatically for non-public https hosts.** For `.local` / `.test` / `localhost` on https the command PROBES Local's conventional certificate path and sets the variable only if the file exists; the path is never assumed, since wp-env, Herd and Valet keep certificates elsewhere. The key is set but NEVER deleted on a miss, because an existing value may have been set by hand for tooling whose path cannot be probed. Local's per-site certificate is a self-signed leaf (`CA:FALSE`), which suffices — OpenSSL accepts a self-signed certificate in the trust store as its own anchor, so no CA-generation step is needed. When the probe cannot help, the connector page names the variable and what to point it at rather than emitting a command that fails opaquely. `NODE_TLS_REJECT_UNAUTHORIZED=0` and `rejectUnauthorized: false` are deliberately NOT used — both disable verification process-wide, including for production sites.
+  - **TLS trust-anchor failures now name the real cause.** For `DEPTH_ZERO_SELF_SIGNED_CERT`, `SELF_SIGNED_CERT_IN_CHAIN` and `UNABLE_TO_VERIFY_LEAF_SIGNATURE` the relay explains that the URL is almost certainly fine, that Node ignores the keychain, and what to set. `ERR_TLS_CERT_ALTNAME_INVALID` is deliberately excluded — it is a hostname mismatch, which `NODE_EXTRA_CA_CERTS` cannot fix, and for that code the URL genuinely is suspect — as is every other error code, which keeps the original wording. The Local-path sentence is gated on a non-public hostname.
+
 ## [0.7.2] - 2026-08-21
 
 ### Added

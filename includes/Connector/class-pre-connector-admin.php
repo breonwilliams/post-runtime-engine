@@ -263,6 +263,36 @@ class PCPTPages_Connector_Admin {
 				     here with a stored configured_at but no in-memory
 				     password see the placeholder telling them to
 				     Regenerate. Same UX as Promptless. -->
+				<?php
+				// Local HTTPS trust notice. Node does NOT read the macOS keychain --
+				// it ships its own Mozilla CA bundle -- so trusting a dev certificate
+				// in Local or Keychain Access fixes browsers and leaves the connector
+				// failing with DEPTH_ZERO_SELF_SIGNED_CERT. The setup command probes
+				// Local by Flywheel's conventional certificate path and wires
+				// NODE_EXTRA_CA_CERTS automatically, but wp-env, Herd and Valet keep
+				// certificates elsewhere, so the probe can legitimately miss. Say so
+				// here rather than emitting a command that fails opaquely.
+				$pre_home     = wp_parse_url( home_url() );
+				$pre_host     = isset( $pre_home['host'] ) ? $pre_home['host'] : '';
+				$pre_is_https = isset( $pre_home['scheme'] ) && 'https' === $pre_home['scheme'];
+				$pre_is_local = 'localhost' === $pre_host
+					|| (bool) preg_match( '/\.(local|test)$/i', $pre_host );
+				if ( $pre_is_https && $pre_is_local ) :
+					$pre_cert_hint = '$HOME/Library/Application Support/Local/run/router/nginx/certs/'
+						. $pre_host . '.crt';
+					?>
+				<div class="pre-requirements" style="border-left:4px solid #d63638;">
+					<strong><?php esc_html_e( 'Local HTTPS site — certificate trust', 'promptless-cpt-pages' ); ?></strong>
+					<p class="description" style="margin-top:6px;">
+						<?php esc_html_e( 'Node does not read the macOS keychain, so trusting this certificate in Local or Keychain Access fixes browsers only — the connector will still fail with a self-signed certificate error. The command below automatically points NODE_EXTRA_CA_CERTS at Local by Flywheel\'s certificate if it finds one here:', 'promptless-cpt-pages' ); ?>
+					</p>
+					<p><code style="user-select:all;"><?php echo esc_html( $pre_cert_hint ); ?></code></p>
+					<p class="description">
+						<?php esc_html_e( 'If you use wp-env, Herd, Valet or another tool, that file will not exist. Add NODE_EXTRA_CA_CERTS to this server\'s "env" block in claude_desktop_config.json by hand, pointing at your own certificate, then quit and reopen Claude Desktop. Regenerating the connection preserves env keys you added. Never set NODE_TLS_REJECT_UNAUTHORIZED=0 — it disables certificate verification for every site, including production.', 'promptless-cpt-pages' ); ?>
+					</p>
+				</div>
+				<?php endif; ?>
+
 				<div id="pre-setup-command-container" style="display:none;">
 					<div class="pre-connector-code-block">
 						<pre id="pre-setup-command"></pre>

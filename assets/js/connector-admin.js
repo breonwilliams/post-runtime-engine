@@ -28,10 +28,41 @@
         var escapedSiteUrl  = data.siteUrl.replace(/'/g, "'\\''");
         var escapedUsername = username.replace(/'/g, "'\\''");
 
+        // Local HTTPS trust: Node does NOT read the macOS keychain. It ships its
+        // own Mozilla CA bundle, so trusting a dev certificate in Local or
+        // Keychain Access fixes browsers and does nothing for the connector
+        // process — every call fails with DEPTH_ZERO_SELF_SIGNED_CERT. The remedy
+        // is NODE_EXTRA_CA_CERTS pointing at the site's certificate.
+        //
+        // Only attempted for NON-PUBLIC hosts on https: a public host with an
+        // untrusted certificate is a real problem that should surface, not be
+        // worked around, and over plain http there is no handshake to trust so
+        // the variable would be inert noise. Local by Flywheel's per-site
+        // self-signed leaf is its own trust anchor (CA:FALSE), so pointing at the
+        // leaf is enough — no CA-generation step.
+        //
+        // The path is PROBED, never assumed — wp-env, Herd and Valet keep certs
+        // elsewhere. On a miss CERT stays empty and nothing is emitted; the
+        // notice on the connector page tells the user what to set by hand.
+        var certHost = '';
+        try {
+            var u = new URL( data.siteUrl );
+            if ( u.protocol === 'https:' && /(^localhost$|\.local$|\.test$)/i.test( u.hostname ) ) {
+                // Restrict to hostname characters — interpolated into a
+                // double-quoted shell string below.
+                certHost = u.hostname.replace(/[^A-Za-z0-9.-]/g, '');
+            }
+        } catch ( e ) { /* unparseable URL: emit no probe */ }
+
+        var certProbe = certHost
+            ? 'CERT="$HOME/Library/Application Support/Local/run/router/nginx/certs/' + certHost + '.crt" ; [ -f "$CERT" ] || CERT="" ; \\'
+            : 'CERT="" ; \\';
+
         return [
             'mkdir -p ~/post-runtime-mcp && \\',
             "curl -fsSL -A 'WordPress/PostRuntimeEngine' '" + data.connectorScriptUrl + "' -o ~/post-runtime-mcp/post-runtime-connector.js && \\",
             'NODE_PATH=$(ls -d ~/.nvm/versions/node/v*/bin/node 2>/dev/null | sort -V | tail -1) ; [ -z "$NODE_PATH" ] && NODE_PATH=$(which node) ; \\',
+            certProbe,
             'CONFIG="$HOME/Library/Application Support/Claude/claude_desktop_config.json" && \\',
             'mkdir -p "$HOME/Library/Application Support/Claude" && \\',
             '"$NODE_PATH" -e \'' +
@@ -39,16 +70,28 @@
             'var p=process.env.HOME+"/Library/Application Support/Claude/claude_desktop_config.json";' +
             'var c;try{c=JSON.parse(fs.readFileSync(p,"utf8"))}catch(e){c={}}' +
             'c.mcpServers=c.mcpServers||{};' +
-            'c.mcpServers["post-runtime-engine"]={' +
-            'command:process.argv[1],' +
-            'args:[process.env.HOME+"/post-runtime-mcp/post-runtime-connector.js"],' +
-            'env:{' +
+            // MERGE at BOTH levels, never replace. The entry may carry env keys
+            // the user added by hand (NODE_EXTRA_CA_CERTS, HTTP_PROXY) and
+            // server-level keys (cwd, disabled, anything Claude Desktop adds
+            // later); a wholesale assignment silently discarded all of them on
+            // every regenerate. Only command, args and the three owned env keys
+            // are overwritten.
+            'var prev=c.mcpServers["post-runtime-engine"]||{};' +
+            'var env=Object.assign({},prev.env||{},{' +
             'POST_RUNTIME_SITE_URL:"' + escapedSiteUrl + '",' +
             'POST_RUNTIME_USERNAME:"' + escapedUsername + '",' +
             'POST_RUNTIME_APP_PASSWORD:process.argv[2]' +
-            '}};' +
+            '});' +
+            // Set only when the probe found a certificate. NEVER deleted when it
+            // misses: an existing value may have been set by hand for tooling
+            // whose path cannot be probed (wp-env, Herd, Valet).
+            'if(process.argv[3]){env.NODE_EXTRA_CA_CERTS=process.argv[3];}' +
+            'c.mcpServers["post-runtime-engine"]=Object.assign({},prev,{' +
+            'command:process.argv[1],' +
+            'args:[process.env.HOME+"/post-runtime-mcp/post-runtime-connector.js"],' +
+            'env:env});' +
             'fs.writeFileSync(p,JSON.stringify(c,null,2))' +
-            '\' "$NODE_PATH" \'' + escapedPassword + '\' && \\',
+            '\' "$NODE_PATH" \'' + escapedPassword + '\' "$CERT" && \\',
             'echo "" && echo "Setup complete. Quit Claude Desktop (Cmd+Q) and reopen it."'
         ].join('\n');
     }

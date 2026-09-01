@@ -27,7 +27,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  *     - The post is re-saved (post_modified bumps).
  *     - Any grouping definition for the post's CPT is updated (the
- *       updated_option hook bumps pcptpages_groupings_changed_{cpt_slug}).
+ *       updated_option hook bumps pcptpages_gchanged_{cpt_slug} — see
+ *       CHANGED_OPTION_PREFIX for why that name sits outside the
+ *       groupings option prefix).
  *
  *   Active invalidation also fires on save_post / before_delete_post /
  *   set_object_terms — these keep the transient store cleaner but aren't
@@ -53,6 +55,30 @@ if ( ! defined( 'ABSPATH' ) ) {
  * These are documented WordPress query patterns flagged as advisory.
  */
 class PCPTPages_Renderer {
+
+	/**
+	 * Option prefix for the per-CPT cache-invalidation timestamp.
+	 *
+	 * DELIBERATELY NOT under PCPTPages_Grouping_Registry::OPTION_PREFIX
+	 * (`pcptpages_groupings_`). maybe_bump_groupings_changed() is hooked to
+	 * the GENERIC updated_option / added_option / deleted_option actions and
+	 * fires for every option under that prefix. When the marker itself lived
+	 * under the same prefix, writing it re-entered the hook, which derived a
+	 * slug of `changed_{slug}` and wrote a marker one level deeper — and so
+	 * on, recursing until the option_name column's 191-char limit stopped it.
+	 *
+	 * Observed on a dev site 2026-09-01: 45 `pcptpages_groupings_*` rows of
+	 * which 43 were junk (`..._changed_changed_changed_..._session`), three
+	 * at the 191-char ceiling, ALL autoloaded — 6.6KB read on every request,
+	 * and ~20 option writes per grouping save.
+	 *
+	 * Keeping this prefix disjoint from OPTION_PREFIX makes the recursion
+	 * structurally impossible rather than guarded against. Do not "tidy" it
+	 * back under the groupings prefix.
+	 *
+	 * @var string
+	 */
+	const CHANGED_OPTION_PREFIX = 'pcptpages_gchanged_';
 
 	/**
 	 * Transient key prefix for cached renders.
@@ -129,7 +155,7 @@ class PCPTPages_Renderer {
 		if ( ! is_string( $cpt_slug ) || $cpt_slug === '' ) {
 			return;
 		}
-		update_option( 'pcptpages_groupings_changed_' . sanitize_key( $cpt_slug ), time() );
+		update_option( self::CHANGED_OPTION_PREFIX . sanitize_key( $cpt_slug ), time() );
 	}
 
 	/**
@@ -163,7 +189,15 @@ class PCPTPages_Renderer {
 		if ( $cpt_slug === '' ) {
 			return;
 		}
-		update_option( 'pcptpages_groupings_changed_' . $cpt_slug, time() );
+		// Defence in depth. CHANGED_OPTION_PREFIX is disjoint from
+		// OPTION_PREFIX, so the marker write cannot re-enter this hook — but
+		// if anyone ever moves it back underneath, this stops the recursive
+		// write loop described on that constant rather than letting it run to
+		// the 191-char option_name ceiling.
+		if ( strpos( $option, self::CHANGED_OPTION_PREFIX ) === 0 ) {
+			return;
+		}
+		update_option( self::CHANGED_OPTION_PREFIX . sanitize_key( $cpt_slug ), time() );
 	}
 
 	/**
@@ -220,7 +254,7 @@ class PCPTPages_Renderer {
 		}
 
 		$cache_key    = self::CACHE_KEY_PREFIX . (int) $post->ID;
-		$defs_changed = (int) get_option( 'pcptpages_groupings_changed_' . $post->post_type, 0 );
+		$defs_changed = (int) get_option( self::CHANGED_OPTION_PREFIX . $post->post_type, 0 );
 		$cached       = get_transient( $cache_key );
 
 		if ( is_array( $cached )

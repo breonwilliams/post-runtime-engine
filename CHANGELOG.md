@@ -8,6 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Recursive option writes: every grouping save spawned ~20 junk autoloaded options.** `PCPTPages_Renderer::maybe_bump_groupings_changed()` is hooked to the GENERIC `updated_option` / `added_option` / `deleted_option` actions and fires for any option under `PCPTPages_Grouping_Registry::OPTION_PREFIX` (`pcptpages_groupings_`). The cache-invalidation marker it wrote — `pcptpages_groupings_changed_{slug}` — sat under that same prefix, so writing it RE-ENTERED the hook, which derived a slug of `changed_{slug}` and wrote a marker one level deeper, recursing until the `option_name` column's 191-char limit stopped it.
+
+  Found on a dev site 2026-09-01 while inventorying: **45 `pcptpages_groupings_*` rows of which 43 were junk** (`..._changed_changed_changed_..._session`), three sitting at the 191-char ceiling, **all autoloaded** — 6.6KB read on every request, growing with every save.
+
+  Fixed structurally rather than with a guard: the marker moved to `CHANGED_OPTION_PREFIX` (`pcptpages_gchanged_`), deliberately DISJOINT from the groupings prefix, so the hook cannot fire on its own write. A defensive early-return remains at the point of risk in case anyone moves it back. Reproduced and measured with a simulation of WP's option layer: one grouping save went from **24 writes / 23 options / 191-char names** to **2 writes / 2 options / 27-char names**.
+
+  Upgrade note: existing `pcptpages_groupings_changed_*` rows are orphaned by the rename and can be deleted (`DELETE FROM wp_options WHERE option_name LIKE 'pcptpages_groupings_changed%'`). The first read after upgrade sees no marker and re-renders each cached post once — harmless.
+
 - **The connector could not reach an HTTPS local dev site, and the error blamed the wrong thing.** Node does not read the macOS keychain — it ships its own Mozilla CA bundle — so trusting a Local by Flywheel certificate fixes browsers and leaves every connector call failing with `DEPTH_ZERO_SELF_SIGNED_CERT`. Ported from the reference fix in Promptless WP (`ai-section-builder-modern`), where it was diagnosed and verified end to end.
 
   - **The setup command no longer destroys config you added by hand.** It rebuilt `c.mcpServers["post-runtime-engine"]` from scratch, so env keys (`NODE_EXTRA_CA_CERTS`, `HTTP_PROXY`) and server-level keys (`cwd`, `disabled`) were silently lost on every regenerate. It now merges at BOTH levels, overwriting only `command`, `args` and the three env keys it owns. Correct regardless of the certificate work — a regenerate should never discard user config.

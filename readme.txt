@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.7.2
+Stable tag: 0.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,15 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.8.0 =
+* Added: the connector can now list and delete the posts it creates. Previously it could build a set of content and then had no way to review or undo it without going into wp-admin by hand.
+* Added: re-registering a post type you deleted earlier now tells you what came back — existing groupings, fields and posts — instead of looking like a fresh start and then failing confusingly.
+* Fixed: deleting a post type destroyed its grouping definitions even though it reported that your data was preserved. Re-registering brought back content that could no longer be displayed. Nothing is destroyed now unless you explicitly ask to purge.
+* Fixed: "purge data" left most of the data behind — field definitions, saved values and backup rows. It now removes all of it.
+* Fixed: every grouping save created around 20 junk database options that were loaded on every page request, growing with each save. See the upgrade notice for cleaning up existing rows.
+* Fixed: the connector used up its hourly request allowance about twice as fast as it should have.
+* Fixed: the connector could not reach an HTTPS local development site.
+
 = 0.7.2 =
 * Added: a new "Location / map" field type. Enter a street address on a post and its single page shows a click-to-load map — no Google Maps API key, no coordinates, no setup. Cards and archive listings show the address as text. You choose the zoom level (street / neighborhood / city), whether the map loads on click (privacy-friendly, the default) or automatically, and whether to show a "Get directions" link. You also choose where the map sits on the page — above the content, below it, or in the sidebar — the same placement control your grouping sections use, and each post can override it. If a post has no address, the map uses your Business Identity address (when Promptless WP is set up). The map is self-contained — it does NOT require Promptless WP and works on any theme; when Promptless WP is active the map simply picks up your brand colours automatically. Works from the editor by hand or through the AI connector.
 * Updated: tested up to WordPress 7.1.
@@ -97,17 +106,14 @@ Privacy policy: https://iconify.design/privacy/
 * Fixed: badge collision on overlay-hero cards; CSS now cache-busts by file modification time
 * Improved: image-overlay fields flow into the content area on compact Post Grid rows
 
-= 0.6.7 =
-* New: Gallery grouping variant — display a grouping's items as a responsive photo grid (3-up desktop / 2-up mobile) with a fully accessible lightbox (keyboard, touch swipe, reduced-motion support). Ideal for property photo tours, vehicle galleries, and portfolios; captions come from item headings and imageless items simply wait for their photo.
-* New: Gallery tile aspect control per grouping definition — 16:9 (default), 4:3, 1:1, or 4:5 tile crops; the lightbox always shows the full image.
-* Fix: Admin styles now load on all plugin admin screens (missing page hooks in the enqueue guard).
-* Internal: bundled MCP connector synced with the gallery vocabulary; unit suite extended (117 tests).
-
 WordPress truncates this section at 5,000 characters, so it keeps a rolling window of the
 six most recent releases. The complete history lives in CHANGELOG.md in the plugin folder,
 and on the GitHub releases page.
 
 == Upgrade Notice ==
+
+= 0.8.0 =
+Fixes two data-handling bugs: deleting a post type destroyed grouping definitions it claimed to preserve, and "purge data" left most data behind. Also stops a bug that added ~20 junk autoloaded options per grouping save. Existing junk rows are harmless but can be removed — see the changelog.
 
 = 0.7.2 =
 Adds a Location / map field: enter an address and the single page shows a click-to-load map — no Google Maps API key or setup. Place it above, below, or in the sidebar, overridable per post. Works with or without Promptless WP. Additive; existing fields unchanged.

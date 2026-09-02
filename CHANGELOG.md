@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-09-02
+
 ### Added
 
 - **`postruntime_list_posts` / `postruntime_delete_post` — the connector can now find and remove its own content.** The connector could create posts (`create_post`, `update_post`) but neither enumerate nor delete them, so an agent could build a content set and then have no way to review or undo it; cleanup meant a human in wp-admin. `GET /posts` lists posts across managed CPTs (filters: `post_type`, `status`, `search`, pagination); `DELETE /posts/{id}` trashes by default, `force=true` deletes permanently.
@@ -19,6 +21,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   Verified end to end against a live site: list for a registered CPT, trash, orphan via `delete_cpt`, list with `include_orphans`, `409` without the flag, success with it, and `403` when pointed at a WooCommerce product.
 
 - **`register_cpt` now reports what it revived.** Registering a slug that was deleted earlier restores whatever survived, which is the intended data-protection behaviour — but returning a CPT shape that looks brand new hid it, and the first symptom was a baffling 422 (`pcptpages_duplicate_semantic_role`) when defining a field key that already existed. The response now carries a `revived` block listing pre-existing `groupings`, `post_fields` and a `has_existing_posts` flag, with a note pointing at `list_post_fields` / `list_groupings` or `purge_data=true` for a genuinely clean start. Absent when there is nothing to disclose.
+
+### Fixed
+
+- **`delete_cpt` destroyed grouping definitions unconditionally, making the CPT unrecoverable while reporting that data was preserved.** `remove_all_for_cpt()` ran on every delete, ignoring `purge_data` — two lines above a comment stating the opposite principle ("uninstall preserves data by default; same here"). Per-post grouping VALUES (`_pcptpages_groupings`) were kept, but the DEFINITIONS that give those values meaning were destroyed, so re-registering the slug brought back a CPT whose content was intact and unrenderable: nothing left to say which grouping key had which variant, position or source. The definitions were the only copy, so the loss was silent and permanent. Post-field definitions were already preserved, so the two halves of the same feature behaved in opposite ways.
+
+  Found while re-registering a `workshop` CPT during end-to-end testing: the post fields came back, the groupings did not.
+
+  `delete_cpt` now destroys nothing unless `purge_data` is set, which is what makes the documented "re-register to restore" promise true.
+
+- **`purge_data=true` did not purge.** It deleted two grouping meta keys and nothing else, leaving behind post-field definitions (`pcptpages_post_fields_{slug}`), every per-post field value, the field-visibility meta, three `_pcptpages_groupings_backup_*` sidecar rows, and the render-cache marker. Purge now covers all of them. Field values and grouping meta are deleted by meta-key PREFIX scoped to the CPT's own post IDs rather than by enumerating keys, because both carry companion rows whose suffixes are an implementation detail of the display type (`_count`, `_goal`, `__sort`, `_backup_source/_time/_user`) — enumeration silently leaks a row the moment a new suffix is added.
+
+  The render-cache marker is deleted AFTER `unregister()`, deliberately. Deleting it before does not stick: `unregister()` writes the CPT-registry option and that write restores the marker from the stale alloptions cache, row and original timestamp intact. Measured, not reasoned — the earlier ordering left a `pcptpages_gchanged_*` row on disk for every CPT ever removed.
+
+  Verified on a live site: a CPT with one grouping, one post field, one post and a populated rating value went from 7 `_pcptpages_*` meta rows plus 2 definition options plus a marker, to zero of each.
 
 - **Connector rate limiter charged speculative permission checks, halving every route's usable limit.** `enforce_rate_limit()` runs inside the `permission_callback`, and WordPress core hooks `rest_send_allow_header()` to `rest_post_dispatch` — which calls the permission callback of EVERY handler registered on the matched route to build the `Allow:` header. Core treats permission callbacks as pure predicates it may invoke speculatively, so a counter with a side effect in one is charged for calls that never happened.
 
@@ -41,20 +57,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   - **The setup command no longer destroys config you added by hand.** It rebuilt `c.mcpServers["post-runtime-engine"]` from scratch, so env keys (`NODE_EXTRA_CA_CERTS`, `HTTP_PROXY`) and server-level keys (`cwd`, `disabled`) were silently lost on every regenerate. It now merges at BOTH levels, overwriting only `command`, `args` and the three env keys it owns. Correct regardless of the certificate work — a regenerate should never discard user config.
   - **`NODE_EXTRA_CA_CERTS` is wired automatically for non-public https hosts.** For `.local` / `.test` / `localhost` on https the command PROBES Local's conventional certificate path and sets the variable only if the file exists; the path is never assumed, since wp-env, Herd and Valet keep certificates elsewhere. The key is set but NEVER deleted on a miss, because an existing value may have been set by hand for tooling whose path cannot be probed. Local's per-site certificate is a self-signed leaf (`CA:FALSE`), which suffices — OpenSSL accepts a self-signed certificate in the trust store as its own anchor, so no CA-generation step is needed. When the probe cannot help, the connector page names the variable and what to point it at rather than emitting a command that fails opaquely. `NODE_TLS_REJECT_UNAUTHORIZED=0` and `rejectUnauthorized: false` are deliberately NOT used — both disable verification process-wide, including for production sites.
   - **TLS trust-anchor failures now name the real cause.** For `DEPTH_ZERO_SELF_SIGNED_CERT`, `SELF_SIGNED_CERT_IN_CHAIN` and `UNABLE_TO_VERIFY_LEAF_SIGNATURE` the relay explains that the URL is almost certainly fine, that Node ignores the keychain, and what to set. `ERR_TLS_CERT_ALTNAME_INVALID` is deliberately excluded — it is a hostname mismatch, which `NODE_EXTRA_CA_CERTS` cannot fix, and for that code the URL genuinely is suspect — as is every other error code, which keeps the original wording. The Local-path sentence is gated on a non-public hostname.
-
-### Fixed
-
-- **`delete_cpt` destroyed grouping definitions unconditionally, making the CPT unrecoverable while reporting that data was preserved.** `remove_all_for_cpt()` ran on every delete, ignoring `purge_data` — two lines above a comment stating the opposite principle ("uninstall preserves data by default; same here"). Per-post grouping VALUES (`_pcptpages_groupings`) were kept, but the DEFINITIONS that give those values meaning were destroyed, so re-registering the slug brought back a CPT whose content was intact and unrenderable: nothing left to say which grouping key had which variant, position or source. The definitions were the only copy, so the loss was silent and permanent. Post-field definitions were already preserved, so the two halves of the same feature behaved in opposite ways.
-
-  Found while re-registering a `workshop` CPT during end-to-end testing: the post fields came back, the groupings did not.
-
-  `delete_cpt` now destroys nothing unless `purge_data` is set, which is what makes the documented "re-register to restore" promise true.
-
-- **`purge_data=true` did not purge.** It deleted two grouping meta keys and nothing else, leaving behind post-field definitions (`pcptpages_post_fields_{slug}`), every per-post field value, the field-visibility meta, three `_pcptpages_groupings_backup_*` sidecar rows, and the render-cache marker. Purge now covers all of them. Field values and grouping meta are deleted by meta-key PREFIX scoped to the CPT's own post IDs rather than by enumerating keys, because both carry companion rows whose suffixes are an implementation detail of the display type (`_count`, `_goal`, `__sort`, `_backup_source/_time/_user`) — enumeration silently leaks a row the moment a new suffix is added.
-
-  The render-cache marker is deleted AFTER `unregister()`, deliberately. Deleting it before does not stick: `unregister()` writes the CPT-registry option and that write restores the marker from the stale alloptions cache, row and original timestamp intact. Measured, not reasoned — the earlier ordering left a `pcptpages_gchanged_*` row on disk for every CPT ever removed.
-
-  Verified on a live site: a CPT with one grouping, one post field, one post and a populated rating value went from 7 `_pcptpages_*` meta rows plus 2 definition options plus a marker, to zero of each.
 
 ## [0.7.2] - 2026-08-21
 

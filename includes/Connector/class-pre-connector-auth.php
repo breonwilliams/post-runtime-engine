@@ -60,6 +60,7 @@ class PCPTPages_Connector_Auth {
 		'list_icons'                  => 60,
 		'list_variants'               => 60,
 		'list_positions'              => 60,
+		'list_posts'                  => 60,
 		'list_post_fields'            => 60,
 		'get_post_field'              => 60,
 		'get_post_field_values'       => 60,
@@ -86,6 +87,7 @@ class PCPTPages_Connector_Auth {
 
 		// Destructive (5/min).
 		'delete_cpt'         => 5,
+		'delete_post'                 => 5,
 		'delete_grouping'    => 5,
 		'delete_post_field'  => 5,
 	);

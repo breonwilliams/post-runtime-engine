@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **`postruntime_list_posts` / `postruntime_delete_post` — the connector can now find and remove its own content.** The connector could create posts (`create_post`, `update_post`) but neither enumerate nor delete them, so an agent could build a content set and then have no way to review or undo it; cleanup meant a human in wp-admin. `GET /posts` lists posts across managed CPTs (filters: `post_type`, `status`, `search`, pagination); `DELETE /posts/{id}` trashes by default, `force=true` deletes permanently.
+
+  **Orphan recovery.** `delete_cpt` deliberately preserves post data — re-registering the slug restores access — but the surviving posts sit under a post type nothing registers, which makes them invisible in wp-admin (WordPress only builds admin screens for registered types) while still occupying rows and postmeta. `GET /posts?include_orphans=true` is the only way to see them; each is flagged `orphaned: true` and the dead slugs are returned in `orphan_types`. Deleting one requires an explicit `allow_unregistered=true` (otherwise `409` with the remedy in the message).
+
+  **Ownership is proven by a tombstone, not by absence.** The first implementation defined an orphan as "a post type not registered anywhere". That was wrong in a way that mattered: on a dev site it returned Formidable's `frm_form_actions` and `frm_styles`, which happened to be unregistered at that moment — feeding those to `delete_post` with `allow_unregistered` would have deleted another plugin's data. *Not registered* says nothing about *ownership*. Orphan status is now claimed only for slugs recorded in `pcptpages_deleted_cpts` when THIS plugin unregisters them (cleared again on re-registration via `pcptpages_cpt_registered`). Deliberate consequence: posts orphaned before the tombstone existed are not listed, because nothing records they were ever ours — under-reporting is the safe direction. Any other post type is refused outright with `403 pcptpages_foreign_post_type`.
+
+  `delete_post` also runs a per-post `current_user_can( 'delete_post' )` check on top of the route's `manage_options` gate, because `wp_delete_post()` performs no capability check of its own. That check is applied only to registered types: `map_meta_cap()` resolves `delete_post` through `get_post_type_object()`, which is null for an unregistered type and maps to `do_not_allow` — checking it on an orphan would refuse every orphan deletion, the exact case the endpoint exists to serve.
+
+  Verified end to end against a live site: list for a registered CPT, trash, orphan via `delete_cpt`, list with `include_orphans`, `409` without the flag, success with it, and `403` when pointed at a WooCommerce product.
+
 ### Fixed
 
 - **Connector rate limiter charged speculative permission checks, halving every route's usable limit.** `enforce_rate_limit()` runs inside the `permission_callback`, and WordPress core hooks `rest_send_allow_header()` to `rest_post_dispatch` — which calls the permission callback of EVERY handler registered on the matched route to build the `Allow:` header. Core treats permission callbacks as pure predicates it may invoke speculatively, so a counter with a side effect in one is charged for calls that never happened.

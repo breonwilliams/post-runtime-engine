@@ -224,6 +224,12 @@ class PCPTPages_Connector_API {
 	 * build_per_post_callback() for object-level capability checks.
 	 */
 	public function register_routes() {
+		// A slug that is registered again is live content, not leftovers — drop
+		// its tombstone so list_posts stops reporting it as orphaned.
+		if ( ! has_action( 'pcptpages_cpt_registered', array( __CLASS__, 'untombstone_cpt' ) ) ) {
+			add_action( 'pcptpages_cpt_registered', array( __CLASS__, 'untombstone_cpt' ), 10, 1 );
+		}
+
 		$ns   = PCPTPages_REST_NAMESPACE;
 		$base = PCPTPages_REST_BASE;
 
@@ -440,6 +446,19 @@ class PCPTPages_Connector_API {
 			'args'                => $this->post_id_arg(),
 		) );
 
+		register_rest_route( $ns, "/{$base}/posts", array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( $this, 'handle_list_posts' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'list_posts' ),
+		) );
+
+		register_rest_route( $ns, "/{$base}/posts/(?P<id>\d+)", array(
+			'methods'             => WP_REST_Server::DELETABLE,
+			'callback'            => array( $this, 'handle_delete_post' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'delete_post' ),
+			'args'                => $this->post_id_arg(),
+		) );
+
 		register_rest_route( $ns, "/{$base}/posts/(?P<id>\d+)/preview", array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'handle_preview_post' ),
@@ -595,6 +614,11 @@ class PCPTPages_Connector_API {
 			'events_archive_setup'         => 'EVENTS (v1.2). To turn any CPT into an events vertical (branded event pages + filterable upcoming/past archive + Schema.org Event markup), tag post fields with a semantic_role (see post_field_enums.semantic_roles). Steps: (1) define a date field with semantic_role:"event_start" (REQUIRED — makes the CPT event-shaped) and another with "event_end" (recommended; status is END-date anchored so an in-progress multi-day event still counts as upcoming); set all_day:true for all-day/multi-day dates. (2) Optionally add a badge with semantic_role:"event_status" (option keys scheduled/cancelled/postponed/moved_online), a text "event_location", a currency "event_offers", and a badge "event_attendance_mode" (in_person/online/mixed). (3) Populate values per post via set_post_field_values — date values as "YYYY-MM-DD HH:MM" for timed events or "YYYY-MM-DD" for all-day; the plugin auto-writes the sortable companions used by the filter. (4) Build the archive on a Promptless WP page (via the promptless-wordpress connector): add a PostGrid section over the CPT with content.event_status:"upcoming" (or "happening"/"past") and content.event_sort:"soonest" (or "latest"/"none"). Each event single page automatically emits Event JSON-LD. The role↔display_type pairing is enforced (e.g. event_start on a non-date field returns pcptpages_role_display_type_mismatch); each role is unique per CPT.',
 			'filterable_archive_setup'     => 'FILTERS (v1.2). To give any CPT a visitor-facing filterable + sortable archive (price range sliders, category checkboxes, date toggles, text search — all auto-generated from the field schema, no per-filter config), do TWO things. (1) On the PRE side, mark the relevant post fields filterable and/or sortable when you define_post_field / update_post_field: set filterable:true to expose a filter control (the widget is chosen automatically from display_type — currency/number/progress → range slider, rating → stepper, badge → single-select, multi_badge → checkboxes, date → upcoming/past toggle for event-role dates else a date range, text → search box; public taxonomies on the CPT auto-become checkbox facets) and sortable:true to offer the field as a sort option. Optionally set filter_widget to override the auto choice (must be compatible with display_type — see post_field_enums.filter_widgets). meta_pair cannot be filterable/sortable, and a filterable/sortable field key may not end with a reserved suffix (_min,_max,_when,_after,_before,_q) or equal a reserved param (sort,paged). (2) On the Promptless WP side (promptless-wordpress connector), add a PostGrid section over the CPT and set content.enable_filters:true, content.filter_layout:"top_bar" (or "sidebar"), and optionally content.default_sort:"{field}_asc" / "{field}_desc" (the sort applied until a visitor picks one). The filter UI then renders itself from the filterable fields — there is nothing else to configure. The same field schema powers the single-post hero, the cards, and the filter controls. Filtered URLs are server-rendered (work with JS off, SEO-clean: filtered combinations are noindexed and canonicalize to the base archive) and JS-enhanced for in-place updates, chips, and a mobile drawer. This is the generalized form of events_archive_setup — the event date toggle is just one filterable date field. URL PARAM NAMES: filter params are derived from the field key (selects/checkbox groups use the bare key; ranges use {key}_min/{key}_max, search {key}_q, dates {key}_when/{key}_after/{key}_before) — BUT any name that collides with a WordPress public query variable (a registered post type slug like `listing`/`agent`/`neighborhood`, a taxonomy query var, or a core var like name/author/s/order) is automatically prefixed with `f_` (e.g. `?f_neighborhood=downtown`), because WP core would otherwise claim the parameter and redirect the archive away before the filter runs. When CONSTRUCTING filtered URLs by hand, don\'t guess: the rendered filter form\'s input names (or GET /editor/post-type-filters/{slug} → descriptors[].params) are the authoritative param names.',
 			'location_map_setup'           => 'LOCATION / MAP (v1.3). To put a "where is this?" map on a CPT\'s single-post page (a listing\'s property, an office, a venue): (1) define_post_field with display_type:"location" — one address string per post. Optional map options: map_zoom (street|neighborhood|city, default neighborhood — see post_field_enums.map_zoom_levels), map_load ("click" default = privacy-friendly facade that only calls Google on click, or "auto" = lazy iframe — see post_field_enums.map_load_modes), show_directions (bool, default true — adds a "Get directions" link). PLACEMENT: map_position (above_main|below_main|sidebar|hidden, default below_main — see post_field_enums.map_positions) sets WHERE the map renders as a block on the single-post page, using the SAME above/below/sidebar vocabulary as groupings — a map is block-level, so it is placed like a grouping section, NOT in an inline hero slot (single_position is ignored for location). "hidden" suppresses the map. Each POST can override the placement (or hide it) with set_post_field_visibility: { "office": { "map_position": "sidebar" } } — the field-type parallel to a grouping\'s per-post position override. card_position places the address AS TEXT on cards/archives (footer_meta / meta_strip / subtitle), or "hidden". (2) Set the address per post via set_post_field_values (just the address string, e.g. "123 Cascade Ave, Missoula, MT 59801"). NO API key, NO latitude/longitude, NO geocoding — the map is built from the address string server-side by Promptless CPT Pages itself (its own map.css + pre-map.js), with NO dependency on Promptless WP. If a post has no address, the map falls back to the shared Business Identity address (the aisb_business_settings option, read directly) at render — so a single-office site "just works" without per-post entry. The map is self-contained: it does NOT require Promptless WP and renders on any theme — it inherits the brand palette when Promptless WP is active and uses its own token fallbacks otherwise (CSS-token-only coupling; PRE never hard-depends on Promptless WP PHP, exactly like the gallery lightbox). NOT filterable/sortable (an address is not a facet in this phase; a multi-marker "map view" archive is a separate future contract because it would need an API key). One address per location field — a second office is a second field.',
+			'content_lifecycle_and_orphans' => 'Posts are ENUMERABLE and REMOVABLE: list_posts finds what this connector created, delete_post removes it (trash by default, force=true for permanent). Use them instead of asking a human to clean up in wp-admin.
+
+ORPHANS. delete_cpt deliberately PRESERVES post data — re-registering the same slug restores access to every post. The cost is that those posts survive under a post type nothing registers any more, which makes them invisible in wp-admin (WordPress only builds admin screens for REGISTERED types) while still occupying rows and meta. list_posts with include_orphans=true is the only way to see them; the response lists the dead slugs in `orphan_types` and flags each post with `orphaned:true`. Deleting one requires allow_unregistered=true — without it you get 409 with the remedy in the message.
+
+WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post whose type belongs to WordPress core or another plugin — post, page, product, attachment, another plugin\'s CPTs. Orphan status is proven by a TOMBSTONE this plugin writes when it unregisters a CPT, NOT by the naive test of "not registered anywhere", which would also match another plugin\'s temporarily-unregistered types and let allow_unregistered destroy their data. Consequence worth knowing: posts orphaned BEFORE the tombstone existed are not listed, because nothing records that they were ever ours — those need manual cleanup.',
 		);
 	}
 
@@ -990,6 +1014,12 @@ class PCPTPages_Connector_API {
 				delete_post_meta( $post_id, '_pcptpages_groupings_backup' );
 			}
 		}
+
+		// Record the slug so posts left behind stay attributable to this
+		// plugin. Without it, list_posts / delete_post cannot distinguish our
+		// leftovers from any other plugin's unregistered types — see
+		// find_orphan_types().
+		self::tombstone_cpt( $slug );
 
 		$plugin->cpts->unregister( $slug );
 
@@ -1644,6 +1674,272 @@ class PCPTPages_Connector_API {
 				'sanitize_callback' => 'sanitize_key',
 			),
 		);
+	}
+
+	/**
+	 * GET /posts — list posts belonging to CPTs this plugin manages.
+	 *
+	 * Fills the gap that made post cleanup impossible through the connector:
+	 * create_post and update_post existed, but nothing could ENUMERATE or
+	 * REMOVE what they made. A session could build content and then had no
+	 * way to find it again.
+	 *
+	 * `include_orphans` surfaces the harder case. delete_cpt deliberately
+	 * PRESERVES posts (data-protection policy — re-registering the slug
+	 * restores access), so deleting a CPT leaves its posts in wp_posts under
+	 * a post_type nothing registers any more. Those posts are invisible in
+	 * wp-admin, because WordPress only builds admin screens for registered
+	 * types, and were previously unreachable by any tool here. On a real dev
+	 * site this had accumulated 15 posts across 5 dead types that only a
+	 * database query could find.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	/**
+	 * Clear a tombstone when the slug is registered again — at that point the
+	 * posts are live content, not leftovers.
+	 *
+	 * @param string $slug CPT slug.
+	 * @return void
+	 */
+	public static function untombstone_cpt( $slug ) {
+		$slug       = sanitize_key( (string) $slug );
+		$tombstoned = get_option( self::DELETED_CPTS_OPTION, array() );
+		if ( is_array( $tombstoned ) && isset( $tombstoned[ $slug ] ) ) {
+			unset( $tombstoned[ $slug ] );
+			update_option( self::DELETED_CPTS_OPTION, $tombstoned, false );
+		}
+	}
+
+	public function handle_list_posts( WP_REST_Request $request ) {
+		$plugin = pcptpages();
+		if ( ! $plugin->cpts ) {
+			return $this->error_response( 'pcptpages_internal_error', __( 'CPT registry not initialized.', 'promptless-cpt-pages' ), 500 );
+		}
+
+		$registered      = array_keys( $plugin->cpts->get_all() );
+		$post_type       = sanitize_key( (string) $request->get_param( 'post_type' ) );
+		$include_orphans = (bool) $request->get_param( 'include_orphans' );
+		$status          = $request->get_param( 'status' );
+		$status          = $status ? sanitize_key( $status ) : 'any';
+		$per_page        = min( 100, max( 1, (int) ( $request->get_param( 'per_page' ) ?: 20 ) ) );
+		$page            = max( 1, (int) ( $request->get_param( 'page' ) ?: 1 ) );
+		$search          = (string) $request->get_param( 'search' );
+
+		if ( $post_type !== '' ) {
+			$is_orphan = ! in_array( $post_type, $registered, true );
+			if ( $is_orphan && ! $include_orphans ) {
+				return $this->error_response(
+					'pcptpages_unregistered_post_type',
+					__( 'post_type is not a CPT registered through Promptless CPT Pages. Pass include_orphans=true to list posts left behind by a deleted CPT.', 'promptless-cpt-pages' ),
+					400
+				);
+			}
+			if ( $is_orphan && ! self::is_orphan_type( $post_type ) ) {
+				return $this->error_response(
+					'pcptpages_foreign_post_type',
+					__( 'post_type is registered by WordPress or another plugin. This connector only lists its own content.', 'promptless-cpt-pages' ),
+					403
+				);
+			}
+			$types = array( $post_type );
+		} else {
+			$types = $registered;
+			if ( $include_orphans ) {
+				$types = array_merge( $types, self::find_orphan_types() );
+			}
+			if ( ! $types ) {
+				return rest_ensure_response( array( 'posts' => array(), 'total' => 0, 'page' => $page, 'per_page' => $per_page, 'orphan_types' => array() ) );
+			}
+		}
+
+		$query = new WP_Query( array(
+			'post_type'      => $types,
+			'post_status'    => $status,
+			'posts_per_page' => $per_page,
+			'paged'          => $page,
+			's'              => $search,
+			'orderby'        => 'ID',
+			'order'          => 'ASC',
+			'no_found_rows'  => false,
+		) );
+
+		$posts = array();
+		foreach ( $query->posts as $p ) {
+			$posts[] = array(
+				'id'         => (int) $p->ID,
+				'title'      => get_the_title( $p ),
+				'post_type'  => $p->post_type,
+				'status'     => $p->post_status,
+				'date'       => $p->post_date,
+				'permalink'  => get_permalink( $p ),
+				'orphaned'   => ! in_array( $p->post_type, $registered, true ),
+			);
+		}
+
+		return rest_ensure_response( array(
+			'posts'        => $posts,
+			'total'        => (int) $query->found_posts,
+			'page'         => $page,
+			'per_page'     => $per_page,
+			'orphan_types' => $include_orphans ? array_values( self::find_orphan_types() ) : array(),
+		) );
+	}
+
+	/**
+	 * DELETE /posts/{id} — remove a post this plugin manages.
+	 *
+	 * Authorisation is deliberately narrow. A post is deletable when its type
+	 * is a CURRENTLY REGISTERED PRE CPT, or when the type is registered
+	 * NOWHERE in WordPress (an orphan left by delete_cpt) AND the caller
+	 * passes allow_unregistered. A type registered by WordPress core or any
+	 * other plugin — post, page, product, attachment — is always refused:
+	 * this connector deletes its own content and nobody else's.
+	 *
+	 * Trashes by default, mirroring the rest of the stack's data-protection
+	 * posture; pass force=true for permanent removal.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function handle_delete_post( WP_REST_Request $request ) {
+		$plugin = pcptpages();
+		if ( ! $plugin->cpts ) {
+			return $this->error_response( 'pcptpages_internal_error', __( 'CPT registry not initialized.', 'promptless-cpt-pages' ), 500 );
+		}
+
+		$id                = absint( $this->get_url_param( $request, 'id' ) );
+		$force             = (bool) $request->get_param( 'force' );
+		$allow_unregistered = (bool) $request->get_param( 'allow_unregistered' );
+
+		$post = $id ? get_post( $id ) : null;
+		if ( ! $post ) {
+			return $this->error_response( 'pcptpages_post_not_found', __( 'Post not found.', 'promptless-cpt-pages' ), 404 );
+		}
+
+		$registered = array_keys( $plugin->cpts->get_all() );
+		$type       = $post->post_type;
+
+		if ( ! in_array( $type, $registered, true ) ) {
+			if ( ! self::is_orphan_type( $type ) ) {
+				return $this->error_response(
+					'pcptpages_foreign_post_type',
+					__( 'This post belongs to a post type registered by WordPress or another plugin. The connector only deletes content for its own CPTs.', 'promptless-cpt-pages' ),
+					403
+				);
+			}
+			if ( ! $allow_unregistered ) {
+				return $this->error_response(
+					'pcptpages_unregistered_post_type',
+					__( 'This post belongs to a CPT that has been deleted. Pass allow_unregistered=true to remove content left behind by a deleted CPT.', 'promptless-cpt-pages' ),
+					409
+				);
+			}
+		}
+
+		// Per-post check, on top of the route's manage_options gate.
+		// wp_delete_post() performs NO capability check of its own, so
+		// without this the only barrier is the route capability.
+		//
+		// Applied ONLY to registered types, and that exception is load-
+		// bearing rather than a convenience: map_meta_cap() resolves
+		// 'delete_post' through get_post_type_object(), which returns null
+		// for a type nothing registers — and a null type object maps to
+		// do_not_allow. Checking an orphan here would therefore refuse
+		// EVERY orphan deletion, which is the case this endpoint exists
+		// to serve. Orphans stay gated by manage_options + the explicit
+		// allow_unregistered flag + the tombstone ownership proof above.
+		if ( in_array( $type, $registered, true ) && ! current_user_can( 'delete_post', $id ) ) {
+			return $this->error_response(
+				'pcptpages_cannot_delete_post',
+				__( 'You do not have permission to delete this post.', 'promptless-cpt-pages' ),
+				403
+			);
+		}
+
+		$result = wp_delete_post( $id, $force );
+		if ( ! $result ) {
+			return $this->error_response( 'pcptpages_delete_failed', __( 'WordPress refused to delete the post.', 'promptless-cpt-pages' ), 500 );
+		}
+
+		return rest_ensure_response( array(
+			'deleted'   => true,
+			'id'        => $id,
+			'post_type' => $type,
+			'permanent' => $force,
+			'orphaned'  => ! in_array( $type, $registered, true ),
+		) );
+	}
+
+	/**
+	 * Option holding slugs this plugin has unregistered (the tombstone).
+	 *
+	 * @var string
+	 */
+	const DELETED_CPTS_OPTION = 'pcptpages_deleted_cpts';
+
+	/**
+	 * Post types this plugin ONCE registered and has since unregistered, and
+	 * which nothing else has claimed since.
+	 *
+	 * A tombstone is required rather than the obvious test of "no longer
+	 * registered anywhere". That test was the first implementation here and
+	 * it was WRONG in a way that mattered: on a real dev site it returned
+	 * `frm_form_actions` and `frm_styles` — Formidable's post types, which
+	 * happened to be unregistered at that moment. Feeding those to
+	 * delete_post with allow_unregistered would have deleted another
+	 * plugin's data. "Not registered" says nothing about ownership.
+	 *
+	 * So orphan status is only ever claimed for slugs this plugin recorded
+	 * when it unregistered them. The consequence is deliberate: posts
+	 * orphaned BEFORE this tombstone existed are not listed, because there
+	 * is no evidence they were ever ours. Under-reporting is the safe
+	 * direction — the alternative deletes someone else's content.
+	 *
+	 * @return string[]
+	 */
+	private static function find_orphan_types() {
+		$tombstoned = get_option( self::DELETED_CPTS_OPTION, array() );
+		if ( ! is_array( $tombstoned ) ) {
+			return array();
+		}
+		return array_values( array_filter( array_keys( $tombstoned ), array( __CLASS__, 'is_orphan_type' ) ) );
+	}
+
+	/**
+	 * True when this plugin previously registered the type, has since
+	 * unregistered it, and nothing else has claimed the slug in the meantime.
+	 *
+	 * @param string $type Post type slug.
+	 * @return bool
+	 */
+	private static function is_orphan_type( $type ) {
+		if ( ! is_string( $type ) || $type === '' || post_type_exists( $type ) ) {
+			return false;
+		}
+		$tombstoned = get_option( self::DELETED_CPTS_OPTION, array() );
+		return is_array( $tombstoned ) && array_key_exists( $type, $tombstoned );
+	}
+
+	/**
+	 * Record a slug in the tombstone when a CPT is unregistered, so its
+	 * leftover posts stay attributable to this plugin.
+	 *
+	 * @param string $slug CPT slug.
+	 * @return void
+	 */
+	public static function tombstone_cpt( $slug ) {
+		$slug = sanitize_key( (string) $slug );
+		if ( $slug === '' ) {
+			return;
+		}
+		$tombstoned = get_option( self::DELETED_CPTS_OPTION, array() );
+		if ( ! is_array( $tombstoned ) ) {
+			$tombstoned = array();
+		}
+		$tombstoned[ $slug ] = array( 'deleted_at' => current_time( 'mysql' ) );
+		update_option( self::DELETED_CPTS_OPTION, $tombstoned, false );
 	}
 
 	private function post_id_arg() {

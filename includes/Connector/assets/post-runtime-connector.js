@@ -216,6 +216,40 @@ const TOOLS = [
     },
   },
   {
+    name: "postruntime_list_posts",
+    description:
+      "List posts belonging to CPTs this plugin manages. Fills the gap that made cleanup impossible: create_post and update_post existed, but nothing could ENUMERATE or REMOVE what they created, so a session could build content and then never find it again.\n\n" +
+      "Omit post_type to list across every registered CPT. Pass include_orphans=true to also surface posts left behind by a DELETED CPT — delete_cpt deliberately preserves post data (re-registering the slug restores access), so those posts remain in the database under a post type nothing registers any more, invisible in wp-admin because WordPress only builds admin screens for registered types. Each post carries an `orphaned` flag, and the response's `orphan_types` lists the dead slugs.\n\n" +
+      "Orphan detection uses a TOMBSTONE recorded when this plugin unregisters a CPT — not the naive test of 'no longer registered anywhere', which would sweep in other plugins' unregistered types. Consequence: posts orphaned before that tombstone existed are not listed, because there is no evidence they were ever ours.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        post_type: { type: "string", description: "Limit to one CPT slug. Omit to list across all registered CPTs." },
+        include_orphans: { type: "boolean", description: "Also list posts whose CPT has been deleted. Default false." },
+        status: { type: "string", description: "Post status filter (publish, draft, trash, any). Default any." },
+        search: { type: "string", description: "Keyword search over title/content." },
+        page: { type: "number", description: "1-based page. Default 1." },
+        per_page: { type: "number", description: "Max 100. Default 20." },
+      },
+    },
+  },
+  {
+    name: "postruntime_delete_post",
+    description:
+      "Delete a post belonging to a CPT this plugin manages. TRASHES by default (recoverable in WP Admin); pass force=true for permanent removal.\n\n" +
+      "AUTHORISATION IS DELIBERATELY NARROW. A post is deletable when its type is a currently-registered CPT of this plugin, or when the type was unregistered BY THIS PLUGIN (recorded in the tombstone) and you pass allow_unregistered=true. A post type registered by WordPress core or any other plugin — post, page, product, attachment — is ALWAYS refused with 403 pcptpages_foreign_post_type. This connector deletes its own content and nobody else's.\n\n" +
+      "Deleting an orphan without allow_unregistered returns 409 with the remedy in the message. Use postruntime_list_posts with include_orphans=true to find them first.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "number", description: "WordPress post ID (from postruntime_list_posts)." },
+        force: { type: "boolean", description: "true = permanent delete, false/omitted = trash." },
+        allow_unregistered: { type: "boolean", description: "Required to delete a post whose CPT has been deleted." },
+      },
+      required: ["id"],
+    },
+  },
+  {
     name: "postruntime_delete_cpt",
     description:
       "Unregister a CPT and remove its grouping definitions. Per the data-protection policy, post data is preserved by default — re-registering the same slug restores access. Pass purge_data=true ONLY if you're certain you want to permanently delete every post's grouping meta for this CPT.",
@@ -988,6 +1022,32 @@ async function handleTool(name, args) {
         "PUT",
         `/cpts/${encodeURIComponent(args.slug)}`,
         payload
+      );
+    }
+
+    case "postruntime_list_posts": {
+      // CONTRACT: every property declared in this tool's inputSchema MUST be
+      // forwarded. A declared-but-unforwarded param is silently dropped and
+      // the caller gets a green result with their filter ignored.
+      const q = new URLSearchParams();
+      if (args.post_type !== undefined) q.set("post_type", args.post_type);
+      if (args.include_orphans) q.set("include_orphans", "1");
+      if (args.status !== undefined) q.set("status", args.status);
+      if (args.search !== undefined) q.set("search", args.search);
+      if (args.page !== undefined) q.set("page", String(args.page));
+      if (args.per_page !== undefined) q.set("per_page", String(args.per_page));
+      const qs = q.toString();
+      return await makeRequest("GET", `/posts${qs ? `?${qs}` : ""}`);
+    }
+
+    case "postruntime_delete_post": {
+      const q = new URLSearchParams();
+      if (args.force) q.set("force", "1");
+      if (args.allow_unregistered) q.set("allow_unregistered", "1");
+      const qs = q.toString();
+      return await makeRequest(
+        "DELETE",
+        `/posts/${encodeURIComponent(args.id)}${qs ? `?${qs}` : ""}`
       );
     }
 

@@ -50,6 +50,7 @@ Each endpoint requires a capability. The connector's auth handler verifies the a
 | CPT definitions | `manage_options` | `manage_options` |
 | Grouping definitions | `manage_options` | `manage_options` |
 | Post groupings | `read` (subject to post visibility) | `edit_post` (per-post) |
+| Posts (list / delete) | `manage_options` | `manage_options` + per-post `delete_post` |
 | Preview render | `read` (subject to post visibility) | n/a |
 | Introspection (`/icons`, `/variants`, `/positions`, `/preflight`) | authenticated | n/a |
 
@@ -547,6 +548,77 @@ For groupings updates, use `PUT /posts/{id}/groupings` (described above). For `p
 
 ---
 
+#### List posts
+
+`GET /posts`
+
+Enumerates posts in CPTs this connector manages. Before this existed the connector
+could `create_post` but never find what it had created — an agent could build a
+content set and then have no way to review or undo it.
+
+**Query params:** `post_type` (one CPT slug; omit for all registered CPTs),
+`include_orphans` (bool, default false), `status` (default `any`), `search`,
+`page` (default 1), `per_page` (default 20, max 100).
+
+**Success:** `200 OK`
+
+```json
+{
+  "posts": [
+    { "id": 1445, "title": "Leftover Post", "post_type": "listing",
+      "status": "publish", "date": "2026-09-01 22:10:04",
+      "permalink": "https://example.com/listings/leftover-post/",
+      "orphaned": false }
+  ],
+  "total": 1, "page": 1, "per_page": 20, "orphan_types": []
+}
+```
+
+#### Delete a post
+
+`DELETE /posts/{id}`
+
+**Query params:** `force` (bool — `true` deletes permanently, omitted/false moves
+to trash), `allow_unregistered` (bool — required to delete an orphan).
+
+**Success:** `200 OK` with `{ deleted, id, post_type, permanent, orphaned }`.
+A JSON envelope rather than a bare `204`, matching `DELETE /cpts/{slug}`.
+
+**Failure:**
+- `pcptpages_post_not_found` — `404`
+- `pcptpages_foreign_post_type` — `403`, the post type belongs to core or another plugin
+- `pcptpages_unregistered_post_type` — `409`, orphan without `allow_unregistered`
+- `pcptpages_cannot_delete_post` — `403`, per-post `delete_post` capability denied
+
+> **Note on error-code prefixes.** The codes above are the ones the plugin
+> actually emits. Most other codes in this document are written with a `pre_`
+> prefix that the shipped code does not use — a documentation drift that predates
+> this section and is tracked separately. Trust the plugin, not the prefix.
+
+#### Orphaned posts
+
+`delete_cpt` deliberately **preserves post data**: re-registering the same slug
+restores every post. The cost is that those posts persist under a post type
+nothing registers, which makes them invisible in wp-admin — WordPress only builds
+admin screens for registered types — while still occupying rows and postmeta.
+
+`GET /posts?include_orphans=true` is the only way to see them. Each is flagged
+`orphaned: true` and the dead slugs are listed in `orphan_types`.
+
+Orphan status is proven by a **tombstone** written when this plugin unregisters a
+CPT — not by the naive test "no longer registered anywhere". That test was the
+first implementation and it was wrong in a way that mattered: on a real dev site
+it returned Formidable's `frm_form_actions` and `frm_styles`, which happened to
+be unregistered at that moment. Passing those to `delete_post` with
+`allow_unregistered` would have destroyed another plugin's data. *Not registered*
+says nothing about *ownership*.
+
+The deliberate consequence: posts orphaned **before** the tombstone existed are
+not listed, because nothing records that they were ever ours. Under-reporting is
+the safe direction.
+
+---
+
 ### 5.6 Preview
 
 `GET /posts/{id}/preview`
@@ -845,6 +917,8 @@ The MCP layer is a thin wrapper around the REST endpoints. Each tool calls one R
 | `postruntime_get_post_groupings` | `GET /posts/{id}/groupings` | Read a post's groupings |
 | `postruntime_set_post_groupings` | `PUT /posts/{id}/groupings` | Replace a post's groupings |
 | `postruntime_create_post` | `POST /posts` | Create a post (optionally with groupings) |
+| `postruntime_list_posts` | `GET /posts` | List posts in managed CPTs (incl. orphans) |
+| `postruntime_delete_post` | `DELETE /posts/{id}` | Delete a post (trash, or permanent) |
 | `postruntime_preview_post` | `GET /posts/{id}/preview` | Render a post and return HTML |
 | `postruntime_list_icons` | `GET /icons` | Icon catalog |
 | `postruntime_list_variants` | `GET /variants` | Variant catalog |

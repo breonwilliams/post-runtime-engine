@@ -20,6 +20,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **`delete_cpt` destroyed grouping definitions unconditionally, making the CPT unrecoverable while reporting that data was preserved.** `remove_all_for_cpt()` ran on every delete, ignoring `purge_data` — two lines above a comment stating the opposite principle ("uninstall preserves data by default; same here"). Per-post grouping VALUES (`_pcptpages_groupings`) were kept, but the DEFINITIONS that give those values meaning were destroyed, so re-registering the slug brought back a CPT whose content was intact and unrenderable: nothing left to say which grouping key had which variant, position or source. The definitions were the only copy, so the loss was silent and permanent. Post-field definitions were already preserved, so the two halves of the same feature behaved in opposite ways.
+
+  Found while re-registering a `workshop` CPT during end-to-end testing: the post fields came back, the groupings did not.
+
+  `delete_cpt` now destroys nothing unless `purge_data` is set, which is what makes the documented "re-register to restore" promise true.
+
+- **`purge_data=true` did not purge.** It deleted two grouping meta keys and nothing else, leaving behind post-field definitions (`pcptpages_post_fields_{slug}`), every per-post field value, the field-visibility meta, three `_pcptpages_groupings_backup_*` sidecar rows, and the render-cache marker. Purge now covers all of them. Field values and grouping meta are deleted by meta-key PREFIX scoped to the CPT's own post IDs rather than by enumerating keys, because both carry companion rows whose suffixes are an implementation detail of the display type (`_count`, `_goal`, `__sort`, `_backup_source/_time/_user`) — enumeration silently leaks a row the moment a new suffix is added.
+
+  The render-cache marker is deleted AFTER `unregister()`, deliberately. Deleting it before does not stick: `unregister()` writes the CPT-registry option and that write restores the marker from the stale alloptions cache, row and original timestamp intact. Measured, not reasoned — the earlier ordering left a `pcptpages_gchanged_*` row on disk for every CPT ever removed.
+
+  Verified on a live site: a CPT with one grouping, one post field, one post and a populated rating value went from 7 `_pcptpages_*` meta rows plus 2 definition options plus a marker, to zero of each.
+
+### Added
+
+- **`register_cpt` now reports what it revived.** Registering a slug that was deleted earlier restores whatever survived, which is the intended data-protection behaviour — but returning a CPT shape that looks brand new hid it, and the first symptom was a baffling 422 (`pcptpages_duplicate_semantic_role`) when defining a field key that already existed. The response now carries a `revived` block listing pre-existing `groupings`, `post_fields` and a `has_existing_posts` flag, with a note pointing at `list_post_fields` / `list_groupings` or `purge_data=true` for a genuinely clean start. Absent when there is nothing to disclose.
+
 - **Connector rate limiter charged speculative permission checks, halving every route's usable limit.** `enforce_rate_limit()` runs inside the `permission_callback`, and WordPress core hooks `rest_send_allow_header()` to `rest_post_dispatch` — which calls the permission callback of EVERY handler registered on the matched route to build the `Allow:` header. Core treats permission callbacks as pure predicates it may invoke speculatively, so a counter with a side effect in one is charged for calls that never happened.
 
   Measured: a single `GET /cpts` recorded `list_cpts` = 2 **and** charged `register_cpt` = 1 — the POST handler on the same route, which the request never touched. So every route's usable limit was halved, and sibling buckets on shared routes drained without ever being called.

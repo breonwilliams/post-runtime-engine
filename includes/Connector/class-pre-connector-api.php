@@ -910,8 +910,43 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 			return $this->error_from_wp_error( $result );
 		}
 
-		$def = $plugin->cpts->get( $slug );
-		return new WP_REST_Response( $this->shape_cpt( $slug, $def ), 201 );
+		$def      = $plugin->cpts->get( $slug );
+		$response = $this->shape_cpt( $slug, $def );
+
+		// Registering a slug that was deleted earlier REVIVES whatever
+		// definitions and posts survived the delete. That is the intended
+		// data-protection behaviour, but silently returning a CPT shape
+		// that looks brand new hides it: the caller believes it has an
+		// empty CPT, then gets a baffling 422 the first time it defines a
+		// field key or semantic role that is already taken. Say so instead.
+		$revived = array();
+		if ( $plugin->groupings ) {
+			$keys = array_keys( $plugin->groupings->get_all( $slug ) );
+			if ( ! empty( $keys ) ) {
+				$revived['groupings'] = array_values( $keys );
+			}
+		}
+		if ( $plugin->post_fields ) {
+			$keys = array_keys( $plugin->post_fields->get_all( $slug ) );
+			if ( ! empty( $keys ) ) {
+				$revived['post_fields'] = array_values( $keys );
+			}
+		}
+		$existing = get_posts( array(
+			'post_type'      => $slug,
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'post_status'    => 'any',
+		) );
+		if ( ! empty( $existing ) ) {
+			$revived['has_existing_posts'] = true;
+		}
+		if ( ! empty( $revived ) ) {
+			$revived['note']     = __( 'This slug was registered before and its data survived the earlier delete. The definitions and posts listed here already exist — read them with list_post_fields / list_groupings before defining new ones, or delete the CPT with purge_data=true to start genuinely clean.', 'promptless-cpt-pages' );
+			$response['revived'] = $revived;
+		}
+
+		return new WP_REST_Response( $response, 201 );
 	}
 
 	public function handle_get_cpt( WP_REST_Request $request ) {
@@ -995,14 +1030,30 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 			return $this->error_response( 'pcptpages_cpt_not_found', __( 'CPT not found.', 'promptless-cpt-pages' ), 404 );
 		}
 
-		// Always remove grouping definitions for the CPT.
-		if ( $plugin->groupings ) {
-			$plugin->groupings->remove_all_for_cpt( $slug );
-		}
-
-		// Purge per-post data only on explicit opt-in (data-protection
-		// principle — uninstall preserves data by default; same here).
+		// Destroy nothing unless purge_data is set. The data-protection
+		// principle is that delete_cpt is REVERSIBLE: re-registering the
+		// slug restores the posts and everything that renders them.
+		//
+		// Grouping definitions used to be removed here unconditionally,
+		// which broke that promise in the worst way — silently. Per-post
+		// grouping VALUES (_pcptpages_groupings) were preserved, but the
+		// DEFINITIONS giving those values meaning were destroyed, so a
+		// re-registered CPT came back with its content intact and
+		// unrenderable: nothing left to say which grouping key was which
+		// variant, position or source. Data preserved in name only, and
+		// unrecoverable because the definitions were the only copy.
+		// Post-field definitions were already preserved, so the two
+		// halves of the same feature behaved in opposite ways.
 		if ( $purge_data ) {
+			// Definitions.
+			if ( $plugin->groupings ) {
+				$plugin->groupings->remove_all_for_cpt( $slug );
+			}
+			if ( $plugin->post_fields ) {
+				$plugin->post_fields->remove_all_for_cpt( $slug );
+			}
+
+			// Per-post data.
 			$posts = get_posts( array(
 				'post_type'      => $slug,
 				'posts_per_page' => -1,
@@ -1010,9 +1061,31 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 				'post_status'    => 'any',
 			) );
 			foreach ( $posts as $post_id ) {
-				delete_post_meta( $post_id, '_pcptpages_groupings' );
-				delete_post_meta( $post_id, '_pcptpages_groupings_backup' );
+				delete_post_meta( $post_id, PCPTPages_Post_Data::FIELD_VISIBILITY_META_KEY );
 			}
+
+			// Field VALUES are deleted by meta-key prefix rather than by
+			// enumerating the field keys, because each value can carry
+			// companion rows whose suffixes are an implementation detail
+			// of the display type (_count for rating, _goal for progress,
+			// __sort for dates). Enumerating them here would silently
+			// leak rows the moment a new companion suffix is added. The
+			// LIKE is scoped to this CPT's own post IDs, so it cannot
+			// reach another post type's meta.
+			if ( ! empty( $posts ) ) {
+				global $wpdb;
+				$ids_sql = implode( ',', array_map( 'absint', $posts ) );
+				foreach ( array( '_pcptpages_groupings', PCPTPages_Post_Data::FIELD_VALUE_META_PREFIX ) as $meta_prefix ) {
+					$wpdb->query(
+						$wpdb->prepare(
+							// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $ids_sql is absint-mapped above.
+							"DELETE FROM {$wpdb->postmeta} WHERE post_id IN ({$ids_sql}) AND meta_key LIKE %s",
+							$wpdb->esc_like( $meta_prefix ) . '%'
+						)
+					);
+				}
+			}
+
 		}
 
 		// Record the slug so posts left behind stay attributable to this
@@ -1022,6 +1095,17 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 		self::tombstone_cpt( $slug );
 
 		$plugin->cpts->unregister( $slug );
+
+		// AFTER unregister(), deliberately. The render-cache marker is
+		// meaningless once the CPT is gone, but deleting it earlier does
+		// not stick: unregister() writes the CPT-registry option, and that
+		// write restores the marker from the stale alloptions cache — the
+		// row reappears with its original timestamp. Measured, not guessed:
+		// deleting before unregister() left pcptpages_gchanged_* rows on
+		// disk for every CPT ever removed.
+		if ( $purge_data ) {
+			delete_option( PCPTPages_Renderer::CHANGED_OPTION_PREFIX . $slug );
+		}
 
 		// Return a 200 JSON envelope rather than a bare 204 No Content.
 		// 204 cannot legally carry a body, and connector clients that

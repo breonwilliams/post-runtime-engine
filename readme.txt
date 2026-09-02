@@ -83,7 +83,7 @@ Privacy policy: https://iconify.design/privacy/
 * Added: re-registering a post type you deleted earlier now tells you what came back — existing groupings, fields and posts — instead of looking like a fresh start and then failing confusingly.
 * Fixed: deleting a post type destroyed its grouping definitions even though it reported that your data was preserved. Re-registering brought back content that could no longer be displayed. Nothing is destroyed now unless you explicitly ask to purge.
 * Fixed: "purge data" left most of the data behind — field definitions, saved values and backup rows. It now removes all of it.
-* Fixed: every grouping save created around 20 junk database options that were loaded on every page request, growing with each save. See the upgrade notice for cleaning up existing rows.
+* Fixed: every grouping save created around 20 junk database options that were loaded on every page request, growing with each save. Rows already on your site are removed automatically the first time you visit wp-admin after updating.
 * Fixed: the connector used up its hourly request allowance about twice as fast as it should have.
 * Fixed: the connector could not reach an HTTPS local development site.
 
@@ -113,7 +113,7 @@ and on the GitHub releases page.
 == Upgrade Notice ==
 
 = 0.8.0 =
-Fixes two data-handling bugs: deleting a post type destroyed grouping definitions it claimed to preserve, and "purge data" left most data behind. Also stops a bug that added ~20 junk autoloaded options per grouping save. Existing junk rows are harmless but can be removed — see the changelog.
+Fixes two data-handling bugs: deleting a post type destroyed grouping definitions it claimed to preserve, and "purge data" left most data behind. Also stops a bug that added ~20 junk autoloaded options per grouping save, and clears rows already on your site automatically on first admin visit.
 
 = 0.7.2 =
 Adds a Location / map field: enter an address and the single page shows a click-to-load map — no Google Maps API key or setup. Place it above, below, or in the sidebar, overridable per post. Works with or without Promptless WP. Additive; existing fields unchanged.

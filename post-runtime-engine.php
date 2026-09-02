@@ -55,7 +55,11 @@ define( 'PCPTPages_VERSION', '0.8.0' );
 //           variant is opt-in per definition/override). Marker so future
 //           upgrades can assume stored default_variant / variant_override
 //           values may legally be "gallery".
-define( 'PCPTPages_DATA_VERSION', '0.6.0' );
+//   0.7.0 — cleanup migration for the recursive `pcptpages_groupings_changed_*`
+//           option rows. This is the first data-version bump that actually
+//           REMOVES stored rows rather than marking a shape change, so it is
+//           not a no-op marker: see migrate_remove_recursive_grouping_markers().
+define( 'PCPTPages_DATA_VERSION', '0.7.0' );
 
 // Plugin paths and URLs.
 define( 'PCPTPages_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -560,6 +564,17 @@ final class Promptless_CPT_Pages {
 			PCPTPages_Capabilities::grant_default_capabilities();
 		}
 
+		// 0.7.0 — Delete the orphaned `pcptpages_groupings_changed_*` rows left
+		// behind by the recursive-write defect fixed in plugin 0.8.0. Every
+		// grouping save used to spawn roughly 20 of these, ALL AUTOLOADED, so
+		// affected installs are reading several KB of junk on every request
+		// and will keep doing so forever — the fix stops new rows but cannot
+		// reach the ones already on disk. Idempotent: a second run finds
+		// nothing to delete.
+		if ( version_compare( $stored_version, '0.7.0', '<' ) ) {
+			$this->migrate_remove_recursive_grouping_markers();
+		}
+
 		// Persist the new version so subsequent requests skip the upgrade
 		// branch entirely.
 		update_option( 'pcptpages_data_version', PCPTPages_DATA_VERSION );
@@ -571,6 +586,80 @@ final class Promptless_CPT_Pages {
 		 * @param string $new_version    Version we just upgraded to.
 		 */
 		do_action( 'pcptpages_data_version_upgraded', $stored_version, PCPTPages_DATA_VERSION );
+	}
+
+	/**
+	 * Remove the orphaned `pcptpages_groupings_changed_*` option rows.
+	 *
+	 * Until plugin 0.8.0 the renderer's cache-invalidation marker was named
+	 * `pcptpages_groupings_changed_{slug}`, which sat UNDERNEATH
+	 * PCPTPages_Grouping_Registry::OPTION_PREFIX. Writing it therefore
+	 * re-entered the `updated_option` hook that produced it, which derived a
+	 * slug of `changed_{slug}` and wrote a marker one level deeper, recursing
+	 * until the option_name column's 191-character limit stopped it. The
+	 * marker has since moved to a disjoint prefix, so no new rows appear —
+	 * but existing installs keep theirs, autoloaded, on every request.
+	 *
+	 * Deletion is matched on the VALUE, not the name. The name alone cannot
+	 * distinguish junk from real data: a CPT whose slug legitimately begins
+	 * with `changed` — say `changed_events` — stores its groupings at
+	 * `pcptpages_groupings_changed_events`, which is exactly the pattern the
+	 * junk takes. What separates them is what they hold. A real groupings
+	 * option holds an ARRAY of grouping definitions; the junk markers held a
+	 * bare `time()` integer. So an array is always kept, and only a plain
+	 * digit string is removed. The failure direction is deliberate: an
+	 * unrecognised value is left alone, because leaving one junk row costs a
+	 * few bytes per request while deleting one real row destroys a CPT's
+	 * grouping definitions with no copy anywhere else.
+	 *
+	 * Rows go through delete_option() rather than a bulk DELETE. A direct
+	 * query would leave the alloptions cache holding every row we just
+	 * removed, and this plugin has already been bitten by exactly that: the
+	 * 0.8.0 purge fix had to move a delete_option() call after unregister()
+	 * because an intervening option write restored the row from stale cache.
+	 *
+	 * @return int Number of rows removed.
+	 */
+	private function migrate_remove_recursive_grouping_markers() {
+		global $wpdb;
+
+		$prefix = PCPTPages_Grouping_Registry::OPTION_PREFIX . 'changed';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One-time migration; option names are not queryable through the options API.
+		$names = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
+				$wpdb->esc_like( $prefix ) . '%'
+			)
+		);
+
+		if ( empty( $names ) ) {
+			return 0;
+		}
+
+		$removed = 0;
+
+		foreach ( $names as $name ) {
+			// The discriminator lives on the renderer, next to the constants
+			// that explain the recursion, and is unit-tested there.
+			if ( ! PCPTPages_Renderer::is_legacy_recursive_marker_value( get_option( $name ) ) ) {
+				continue;
+			}
+
+			if ( delete_option( $name ) ) {
+				++$removed;
+			}
+		}
+
+		/**
+		 * Fires after the recursive grouping-marker cleanup runs.
+		 *
+		 * @param int $removed   Rows deleted.
+		 * @param int $inspected Rows matching the name pattern.
+		 */
+		do_action( 'pcptpages_recursive_markers_cleaned', $removed, count( $names ) );
+
+		return $removed;
 	}
 
 	/**

@@ -169,6 +169,34 @@ class PCPTPages_Renderer {
 	}
 
 	/**
+	 * Does this option value look like a legacy recursive cache marker?
+	 *
+	 * Used by the 0.7.0 data-version cleanup migration. The option NAME cannot
+	 * answer this: a CPT whose slug legitimately begins with `changed` stores
+	 * its groupings at `pcptpages_groupings_changed_{rest}`, which is exactly
+	 * the shape the junk rows took. The VALUE separates them — real grouping
+	 * definitions are an array, the old markers were a bare `time()` integer.
+	 *
+	 * Deliberately conservative: anything unrecognised returns false and is
+	 * kept. Leaving a junk row costs a few bytes on each request; deleting a
+	 * real one destroys grouping definitions that exist nowhere else.
+	 *
+	 * @param mixed $value Stored option value.
+	 * @return bool True when the value is a bare timestamp we are safe to drop.
+	 */
+	public static function is_legacy_recursive_marker_value( $value ) {
+		if ( is_array( $value ) || is_object( $value ) ) {
+			return false;
+		}
+
+		if ( ! is_scalar( $value ) || is_bool( $value ) ) {
+			return false;
+		}
+
+		return ctype_digit( (string) $value );
+	}
+
+	/**
 	 * Bump the per-CPT `groupings_changed` timestamp when a
 	 * `pcptpages_groupings_{cpt_slug}` option is updated. Read at render time;
 	 * mismatched values force a re-render.

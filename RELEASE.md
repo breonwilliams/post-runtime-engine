@@ -53,6 +53,12 @@ Every release must update the version number in **every** location below. Mismat
 - [ ] `CHANGELOG.md` has a populated `[Unreleased]` section (move it under the new version heading during release)
 - [ ] All version-stamp locations updated to the new version
 - [ ] `readme.txt` `Stable tag` matches the plugin header version exactly (Plugin Check fails if not)
+- [ ] `readme.txt` `== Changelog ==` and `== Upgrade Notice ==` each keep only the SIX most
+      recent releases, and no single upgrade notice exceeds 300 characters. WordPress
+      truncates the changelog section at 5,000 characters and flags over-long notices, so
+      anything past the window is silently discarded on the .org listing rather than
+      rejected — it fails quietly. This drifted to 24 entries / 18,135 characters before
+      being trimmed in 0.8.0; `CHANGELOG.md` remains the unbounded full history.
 - [ ] **Plugin Check returns clean** against the staged build (`build/promptless-cpt-pages/`) — no errors
 - [ ] No PHP errors in `debug.log` on a smoke-test install
 - [ ] Spot-check at least one registered CPT renders correctly on the frontend

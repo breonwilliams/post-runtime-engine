@@ -272,6 +272,35 @@ class PCPTPages_Connector_Auth {
 	 * @return true|WP_Error
 	 */
 	public static function enforce_rate_limit( $route_key, $user_id ) {
+		/*
+		 * Do not participate in WordPress core's Allow-header pass.
+		 *
+		 * WP core hooks rest_send_allow_header() to `rest_post_dispatch`. To
+		 * build the `Allow:` response header it calls the permission_callback
+		 * of EVERY handler registered on the matched route — not just the one
+		 * that served the request — to work out which methods this user may
+		 * use. Core treats permission callbacks as pure predicates it can
+		 * invoke speculatively, so a counter with a side effect inside one
+		 * gets charged for calls that never happened.
+		 *
+		 * Measured on this plugin (2026-09-01): a single GET /cpts recorded
+		 * `list_cpts` = 2 and also charged `register_cpt` = 1 — the POST
+		 * handler registered on the same route, which the request never
+		 * touched. Net effect: every route's usable limit was halved, and
+		 * sibling buckets on shared routes drained without being called.
+		 *
+		 * `doing_filter( 'rest_post_dispatch' )` is true only during that
+		 * speculative pass and false during the real dispatch, so it is an
+		 * exact discriminator rather than a heuristic. Returning true is the
+		 * right answer there: that pass asks "which methods may this user
+		 * call", which should not spend quota.
+		 *
+		 * Same fix as form-runtime-engine, which shares this auth pattern.
+		 */
+		if ( function_exists( 'doing_filter' ) && doing_filter( 'rest_post_dispatch' ) ) {
+			return true;
+		}
+
 		$limit = self::RATE_LIMITS[ $route_key ] ?? self::DEFAULT_RATE_LIMIT;
 
 		/**

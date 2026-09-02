@@ -8,6 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Connector rate limiter charged speculative permission checks, halving every route's usable limit.** `enforce_rate_limit()` runs inside the `permission_callback`, and WordPress core hooks `rest_send_allow_header()` to `rest_post_dispatch` — which calls the permission callback of EVERY handler registered on the matched route to build the `Allow:` header. Core treats permission callbacks as pure predicates it may invoke speculatively, so a counter with a side effect in one is charged for calls that never happened.
+
+  Measured: a single `GET /cpts` recorded `list_cpts` = 2 **and** charged `register_cpt` = 1 — the POST handler on the same route, which the request never touched. So every route's usable limit was halved, and sibling buckets on shared routes drained without ever being called.
+
+  Fixed by returning early from `enforce_rate_limit()` when `doing_filter( 'rest_post_dispatch' )` is true — an exact discriminator, true only during core's Allow-header pass and false during the real dispatch. Verified: one `GET /cpts` now records `list_cpts` = 1 with no `register_cpt` collateral.
+
+  Same defect and same fix as `form-runtime-engine`, which shares this auth pattern. Note `ai-section-builder-modern` is NOT affected: it calls its rate limiter from the request handlers rather than the permission callback, which is the correct placement for a side-effecting counter.
+
 - **Recursive option writes: every grouping save spawned ~20 junk autoloaded options.** `PCPTPages_Renderer::maybe_bump_groupings_changed()` is hooked to the GENERIC `updated_option` / `added_option` / `deleted_option` actions and fires for any option under `PCPTPages_Grouping_Registry::OPTION_PREFIX` (`pcptpages_groupings_`). The cache-invalidation marker it wrote — `pcptpages_groupings_changed_{slug}` — sat under that same prefix, so writing it RE-ENTERED the hook, which derived a slug of `changed_{slug}` and wrote a marker one level deeper, recursing until the `option_name` column's 191-char limit stopped it.
 
   Found on a dev site 2026-09-01 while inventorying: **45 `pcptpages_groupings_*` rows of which 43 were junk** (`..._changed_changed_changed_..._session`), three sitting at the 191-char ceiling, **all autoloaded** — 6.6KB read on every request, growing with every save.

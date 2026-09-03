@@ -113,7 +113,7 @@ and on the GitHub releases page.
 == Upgrade Notice ==
 
 = 0.8.0 =
-Fixes two data-handling bugs: deleting a post type destroyed grouping definitions it claimed to preserve, and "purge data" left most data behind. Also stops a bug that added ~20 junk autoloaded options per grouping save, and clears rows already on your site automatically on first admin visit.
+Fixes two data-handling bugs: deleting a post type destroyed grouping definitions it claimed to preserve, and "purge data" left most behind. Also stops a bug that created ~20 junk autoloaded options per grouping save, and clears existing ones automatically.
 
 = 0.7.2 =
 Adds a Location / map field: enter an address and the single page shows a click-to-load map — no Google Maps API key or setup. Place it above, below, or in the sidebar, overridable per post. Works with or without Promptless WP. Additive; existing fields unchanged.

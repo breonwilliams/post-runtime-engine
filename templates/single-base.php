@@ -37,6 +37,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 get_header();
 
+// tabindex="-1" is REQUIRED, not decorative. <main> is the skip link's target,
+// and a plain <main> cannot receive programmatic focus: activating "Skip to
+// content" scrolls the page but leaves focus at the top, so the very next Tab
+// returns the keyboard user to the header and the link skips nothing. The
+// Promptless theme carries the same attribute on all nine of its templates;
+// this wrapper mirrors that markup, so the two have to move together.
+//
 // Mirror the theme's <main> wrapper so the Promptless customizer's
 // "Content theme" setting (light/dark) flows through to our render.
 // This matches single.php / page.php / archive.php in the Promptless
@@ -51,7 +58,7 @@ if ( function_exists( 'promptless_get_content_classes' ) ) {
 	$pcptpages_main_classes .= ' ' . promptless_get_content_classes();
 }
 ?>
-<main id="main-content" class="<?php echo esc_attr( $pcptpages_main_classes ); ?>">
+<main id="main-content" tabindex="-1" class="<?php echo esc_attr( $pcptpages_main_classes ); ?>">
 <?php
 
 while ( have_posts() ) :

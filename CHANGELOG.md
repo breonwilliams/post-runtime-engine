@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- **The "Skip to content" link did nothing on CPT pages.** `single-base.php`
+  mirrors the theme's `<main id="main-content">` wrapper, and a plain `<main>`
+  cannot receive programmatic focus: activating the skip link scrolled the page
+  but left focus at the top, so the next Tab returned the keyboard user to the
+  header. The link skipped nothing on exactly the pages that dominate a large
+  site. Adding `tabindex="-1"` makes the target focusable. The Promptless theme
+  carries the same attribute on all nine of its own templates; this wrapper is
+  a deliberate copy of that markup, so the two now move together — and the
+  comment says so.
+
 ## [0.8.0] — 2026-09-02
 
 ### Added

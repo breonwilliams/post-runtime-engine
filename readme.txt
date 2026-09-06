@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.8.0
+Stable tag: 0.8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,9 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.8.1 =
+* Fixed: "Skip to content" did nothing on custom post type single pages. The template mirrors the theme's `<main>` but had not been updated with it, so activating the link scrolled the page without moving keyboard focus — the next Tab went back to the top of the navigation (WCAG 2.4.1).
+
 = 0.8.0 =
 * Added: the connector can now list and delete the posts it creates. Previously it could build a set of content and then had no way to review or undo it without going into wp-admin by hand.
 * Added: re-registering a post type you deleted earlier now tells you what came back — existing groupings, fields and posts — instead of looking like a fresh start and then failing confusingly.
@@ -101,16 +104,10 @@ Privacy policy: https://iconify.design/privacy/
 = 0.6.9 =
 * Improved: the "Copy Command" button on the Connector setup screen now sits below the command block instead of overlaying it, fixing a tap-target overlap and a color-contrast issue.
 
-= 0.6.8 =
-* Improved: gallery lightbox caption and counter now share one design language with Promptless WP galleries
-* Fixed: badge collision on overlay-hero cards; CSS now cache-busts by file modification time
-* Improved: image-overlay fields flow into the content area on compact Post Grid rows
-
-WordPress truncates this section at 5,000 characters, so it keeps a rolling window of the
-six most recent releases. The complete history lives in CHANGELOG.md in the plugin folder,
-and on the GitHub releases page.
-
 == Upgrade Notice ==
+
+= 0.8.1 =
+Accessibility fix: the "Skip to content" link now moves keyboard focus on custom post type single pages instead of only scrolling. No content or settings change.
 
 = 0.8.0 =
 Fixes two data-handling bugs: deleting a post type destroyed grouping definitions it claimed to preserve, and "purge data" left most behind. Also stops a bug that created ~20 junk autoloaded options per grouping save, and clears existing ones automatically.
@@ -126,10 +123,3 @@ Gallery lightbox mobile navigation now matches Promptless WP: on phones and tabl
 
 = 0.6.7 =
 Adds the Gallery grouping variant: responsive photo grids with an accessible lightbox and per-definition tile aspect (16:9/4:3/1:1/4:5) — ideal for property photo tours, vehicle galleries, and portfolios. Additive release; existing groupings are unchanged. Recommended for all users.
-
-= 0.6.6 =
-Fixes grouping thumbnails rendering as thin slivers in sidebar and horizontal layouts. Adds a per-CPT archive image crop (square, 4:3, 4:5, 16:9). New CPTs now hide the post date and author byline on archive cards by default; existing CPTs are unchanged.
-
-= 0.6.5 =
-Cross-CPT relationships: meta_match groupings can auto-pull posts from another post type (an agent page listing its properties). Also fixes archive filters named after post types redirecting away, unstyled embedded forms on cached pages, and <picture> wrapping breaking image layout.
-

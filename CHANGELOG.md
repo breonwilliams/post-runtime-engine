@@ -18,6 +18,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   a deliberate copy of that markup, so the two now move together — and the
   comment says so.
 
+## [0.8.1] - 2026-09-06
+
+### Fixed
+
+- **"Skip to content" did nothing on CPT single pages.** This template mirrors
+  the theme's `<main>` and had not been updated alongside it, so it lacked
+  `tabindex="-1"`. A `<main>` is not focusable by default: the browser moved
+  the viewport to the fragment and left focus where it was, so the next Tab
+  returned the user to the top of the navigation. The link scrolled and skipped
+  nothing — which axe cannot see, because the link and its target both exist.
+
+  Found by Promptless WP's live accessibility runner once CPT singles and
+  archives were added to its page list. Verified by ACTIVATING the link and
+  checking where focus landed, not by asserting the attribute is present.
+
+### Added
+
+- **`tests/Unit/AccessibilityTest.php`** — asserts `<main tabindex="-1">` in the
+  templates that render a skip-link target. PHP comments are stripped with
+  `token_get_all()` first, because the file's own docblock mentions `<main>`
+  seven times and a naive match would pass on the prose.
+
 ## [0.8.0] — 2026-09-02
 
 ### Added

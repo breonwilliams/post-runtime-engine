@@ -1053,39 +1053,10 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 				$plugin->post_fields->remove_all_for_cpt( $slug );
 			}
 
-			// Per-post data.
-			$posts = get_posts( array(
-				'post_type'      => $slug,
-				'posts_per_page' => -1,
-				'fields'         => 'ids',
-				'post_status'    => 'any',
-			) );
-			foreach ( $posts as $post_id ) {
-				delete_post_meta( $post_id, PCPTPages_Post_Data::FIELD_VISIBILITY_META_KEY );
-			}
-
-			// Field VALUES are deleted by meta-key prefix rather than by
-			// enumerating the field keys, because each value can carry
-			// companion rows whose suffixes are an implementation detail
-			// of the display type (_count for rating, _goal for progress,
-			// __sort for dates). Enumerating them here would silently
-			// leak rows the moment a new companion suffix is added. The
-			// LIKE is scoped to this CPT's own post IDs, so it cannot
-			// reach another post type's meta.
-			if ( ! empty( $posts ) ) {
-				global $wpdb;
-				$ids_sql = implode( ',', array_map( 'absint', $posts ) );
-				foreach ( array( '_pcptpages_groupings', PCPTPages_Post_Data::FIELD_VALUE_META_PREFIX ) as $meta_prefix ) {
-					$wpdb->query(
-						$wpdb->prepare(
-							// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $ids_sql is absint-mapped above.
-							"DELETE FROM {$wpdb->postmeta} WHERE post_id IN ({$ids_sql}) AND meta_key LIKE %s",
-							$wpdb->esc_like( $meta_prefix ) . '%'
-						)
-					);
-				}
-			}
-
+			// Per-post data, in batches (see purge_post_data). A record type
+			// can hold tens of thousands of posts; loading every ID at once
+			// and deleting per post held one request open for the whole set.
+			$purge_stats = $this->purge_post_data( $slug );
 		}
 
 		// Record the slug so posts left behind stay attributable to this
@@ -1112,12 +1083,93 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 		// expect JSON on every response (the MCP bridge) misread an
 		// empty body as a parse failure. Match the sibling handlers,
 		// which all return rest_ensure_response( array(...) ).
-		return rest_ensure_response(
-			array(
-				'deleted' => true,
-				'slug'    => $slug,
-				'purged'  => $purge_data,
-			)
+		$response = array(
+			'deleted' => true,
+			'slug'    => $slug,
+			'purged'  => $purge_data,
+		);
+		if ( $purge_data ) {
+			$response['purged_posts']     = $purge_stats['posts'];
+			$response['purged_meta_rows'] = $purge_stats['rows'];
+		}
+		return rest_ensure_response( $response );
+	}
+
+	/**
+	 * Remove this plugin's per-post data for every post of a record type.
+	 *
+	 * Walks the post IDs in ascending batches of PURGE_BATCH_SIZE and issues
+	 * ONE delete per batch covering the visibility key, grouping values and
+	 * every field-value row (including companion rows such as `__sort`,
+	 * `_count`, `_goal` — matched by prefix so a new suffix cannot leak).
+	 * Bounded memory, N/500 statements instead of N+2, and no single
+	 * statement carries more than one batch of IDs.
+	 *
+	 * Measured before this change (roadmap §3.6 scale proof, 10,000 records
+	 * on Local): the previous shape loaded all 10,000 IDs, ran 10,000
+	 * per-post deletes and then two DELETEs with a 10,000-item IN list —
+	 * 3.4 s inside a single request, which scales linearly. On a host with a
+	 * 30 s PHP limit that is roughly a 90,000-record ceiling before the
+	 * request dies mid-purge with the definitions already removed.
+	 *
+	 * Every status is covered (trash included): the previous get_posts()
+	 * call used `post_status => any`, which skips trashed posts, so a purge
+	 * could leave field rows behind on posts the site owner had binned.
+	 *
+	 * The rows are deleted with SQL rather than delete_post_meta(), so the
+	 * object cache is told explicitly — otherwise a persistent cache keeps
+	 * serving the purged values until its entry expires.
+	 *
+	 * @param string $slug Record type slug.
+	 * @return array { posts: int, rows: int } What was purged.
+	 */
+	private function purge_post_data( $slug ) {
+		global $wpdb;
+
+		$posts    = 0;
+		$rows     = 0;
+		$last_id  = 0;
+		$patterns = array(
+			$wpdb->esc_like( PCPTPages_Post_Data::META_KEY ) . '%',
+			$wpdb->esc_like( PCPTPages_Post_Data::FIELD_VALUE_META_PREFIX ) . '%',
+		);
+
+		do {
+			$ids = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT ID FROM {$wpdb->posts} WHERE post_type = %s AND ID > %d ORDER BY ID ASC LIMIT %d",
+					$slug,
+					$last_id,
+					self::PURGE_BATCH_SIZE
+				)
+			);
+			if ( empty( $ids ) ) {
+				break;
+			}
+			$ids     = array_map( 'absint', $ids );
+			$last_id = max( $ids );
+			$ids_sql = implode( ',', $ids );
+
+			$deleted = $wpdb->query(
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $ids_sql is absint-mapped above.
+					"DELETE FROM {$wpdb->postmeta} WHERE post_id IN ({$ids_sql}) AND ( meta_key = %s OR meta_key LIKE %s OR meta_key LIKE %s )",
+					PCPTPages_Post_Data::FIELD_VISIBILITY_META_KEY,
+					$patterns[0],
+					$patterns[1]
+				)
+			);
+			$rows  += (int) $deleted;
+			$posts += count( $ids );
+
+			foreach ( $ids as $post_id ) {
+				wp_cache_delete( $post_id, 'post_meta' );
+			}
+		} while ( count( $ids ) === self::PURGE_BATCH_SIZE );
+
+		return array(
+			'posts' => $posts,
+			'rows'  => $rows,
 		);
 	}
 
@@ -1962,6 +2014,15 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 	 * @var string
 	 */
 	const DELETED_CPTS_OPTION = 'pcptpages_deleted_cpts';
+
+	/**
+	 * Posts per batch when purging a record type's per-post data.
+	 *
+	 * 500 keeps each DELETE's IN list well under any packet limit and each
+	 * batch's cache invalidation short, while a 10,000-record type still
+	 * needs only 20 round trips.
+	 */
+	const PURGE_BATCH_SIZE = 500;
 
 	/**
 	 * Post types this plugin ONCE registered and has since unregistered, and

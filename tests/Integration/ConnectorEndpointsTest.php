@@ -170,7 +170,7 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
             'post_type'   => 'pre_test_listing',
             'post_status' => 'publish',
         ) );
-        update_post_meta( $post_id, '_pre_groupings', array( array( 'grouping_key' => 'features' ) ) );
+        update_post_meta( $post_id, \PCPTPages_Post_Data::META_KEY, array( array( 'grouping_key' => 'features' ) ) );
 
         // Delete CPT WITHOUT purge_data flag.
         $response = $this->dispatch_rest_request(
@@ -184,7 +184,7 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
         // Per-post meta must still exist — the data is preserved so a
         // future re-registration picks up where it left off.
         $this->assertNotEmpty(
-            get_post_meta( $post_id, '_pre_groupings', true ),
+            get_post_meta( $post_id, \PCPTPages_Post_Data::META_KEY, true ),
             'Per-post meta must NOT be deleted unless purge_data=true was explicitly passed. Data protection principle: destruction is opt-in.'
         );
     }
@@ -199,7 +199,7 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
             'post_type'   => 'pre_test_listing',
             'post_status' => 'publish',
         ) );
-        update_post_meta( $post_id, '_pre_groupings', array( array( 'grouping_key' => 'features' ) ) );
+        update_post_meta( $post_id, \PCPTPages_Post_Data::META_KEY, array( array( 'grouping_key' => 'features' ) ) );
 
         // Build a request with purge_data as a query param.
         $request = new \WP_REST_Request( 'DELETE', self::BASE . '/cpts/pre_test_listing' );
@@ -208,12 +208,49 @@ class ConnectorEndpointsTest extends IntegrationTestCase {
 
         $this->assertSame( 200, $response->get_status() );
         $this->assertTrue( (bool) $response->get_data()['purged'] );
+        // The batched purge reports what it removed, so a caller can tell a
+        // purge that touched nothing from one that ran.
+        $this->assertSame( 1, $response->get_data()['purged_posts'] );
+        $this->assertGreaterThanOrEqual( 1, $response->get_data()['purged_meta_rows'] );
 
         // Per-post meta should now be gone — explicit opt-in honored.
         $this->assertEmpty(
-            get_post_meta( $post_id, '_pre_groupings', true ),
+            get_post_meta( $post_id, \PCPTPages_Post_Data::META_KEY, true ),
             'When purge_data=true is explicit, per-post meta must be cleaned up so the CPT can be cleanly removed.'
         );
+    }
+
+    public function test_delete_cpt_purge_covers_trashed_posts_and_more_than_one_batch() {
+        $this->enable_connector_as_admin();
+
+        $this->register_test_cpt( 'pre_test_listing' );
+        $this->plugin->cpts->register_all_with_wp();
+
+        // One more post than a batch, one of them trashed: the old purge used
+        // get_posts( post_status => any ), which silently skips trash.
+        $count = \PCPTPages_Connector_API::PURGE_BATCH_SIZE + 1;
+        $ids   = array();
+        for ( $i = 0; $i < $count; $i++ ) {
+            $ids[] = $this->factory->post->create( array(
+                'post_type'   => 'pre_test_listing',
+                'post_status' => 0 === $i ? 'trash' : 'publish',
+            ) );
+        }
+        foreach ( $ids as $id ) {
+            update_post_meta( $id, \PCPTPages_Post_Data::FIELD_VALUE_META_PREFIX . 'price', '10' );
+            update_post_meta( $id, \PCPTPages_Post_Data::FIELD_VISIBILITY_META_KEY, array( 'price' => true ) );
+        }
+
+        $request = new \WP_REST_Request( 'DELETE', self::BASE . '/cpts/pre_test_listing' );
+        $request->set_param( 'purge_data', true );
+        $response = rest_get_server()->dispatch( $request );
+
+        $this->assertSame( 200, $response->get_status() );
+        $this->assertSame( $count, $response->get_data()['purged_posts'] );
+        $this->assertSame( $count * 2, $response->get_data()['purged_meta_rows'] );
+        foreach ( $ids as $id ) {
+            $this->assertSame( '', get_post_meta( $id, \PCPTPages_Post_Data::FIELD_VALUE_META_PREFIX . 'price', true ) );
+        }
     }
 
     // -----------------------------------------------------------------

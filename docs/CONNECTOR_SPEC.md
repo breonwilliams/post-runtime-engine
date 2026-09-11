@@ -313,9 +313,9 @@ Requires `connector_version` in body or `If-Match` header. Slug cannot be change
 
 #### Delete a CPT
 
-`DELETE /cpts/{slug}` → `200 OK` on success, body `{ "deleted": true, "slug": "...", "purged": <bool> }`.
+`DELETE /cpts/{slug}` → `200 OK` on success, body `{ "deleted": true, "slug": "...", "purged": <bool> }`. When `purged` is true the body also carries `"purged_posts": <int>` and `"purged_meta_rows": <int>`.
 
-The deletion unregisters the CPT from `register_post_type()` on the next request and removes its grouping definitions. **Post data is preserved by default** (matches the data-protection pattern) — the user can restore it by re-registering the CPT with the same slug. To purge post data too, send `?purge_data=1`. Returns `404` if the CPT doesn't exist.
+The deletion unregisters the CPT from `register_post_type()` on the next request. **Post data and definitions are preserved by default** (matches the data-protection pattern) — the user can restore everything by re-registering the CPT with the same slug. To purge, send `?purge_data=1`: that removes the grouping and post-field definitions and, for every post of the type in any status (trash included), the grouping values, field values (with their companion rows) and field visibility. The purge runs in batches of 500 posts, so a type with tens of thousands of records purges in bounded memory and a bounded number of statements (measured: 10,000 records, 80,000 meta rows, 1.4 s). The posts themselves are never deleted. Returns `404` if the CPT doesn't exist.
 
 ---
 

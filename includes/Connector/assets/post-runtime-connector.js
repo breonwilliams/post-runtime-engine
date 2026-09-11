@@ -252,7 +252,7 @@ const TOOLS = [
   {
     name: "postruntime_delete_cpt",
     description:
-      "Unregister a CPT and remove its grouping definitions. Per the data-protection policy, post data is preserved by default — re-registering the same slug restores access. Pass purge_data=true ONLY if you're certain you want to permanently delete every post's grouping meta for this CPT.",
+      "Unregister a CPT. Per the data-protection policy, post data AND the grouping/field definitions are preserved by default — re-registering the same slug restores everything. Pass purge_data=true ONLY if you're certain you want to permanently delete the definitions plus every post's grouping values, field values and field visibility for this CPT (all statuses, trash included; the posts themselves stay). The purge is batched, so it is safe on a type with tens of thousands of records; the response reports purged_posts and purged_meta_rows.",
     inputSchema: {
       type: "object",
       properties: {

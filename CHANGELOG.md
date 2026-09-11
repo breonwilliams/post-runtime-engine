@@ -8,6 +8,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Purging a record type's data ran as one unbounded request.** `delete_cpt`
+  with `purge_data=true` loaded every post ID of the type at once, ran one
+  `delete_post_meta()` per post, then two `DELETE`s carrying the whole ID list.
+  Measured on Local (Promptless WP roadmap §3.6 scale proof): 3.4 s for 10,000
+  records, growing linearly — on a host with a 30 s PHP limit the request dies
+  somewhere near 90,000 records with the field definitions already gone and the
+  values half-removed. The purge now walks the IDs in batches of 500 with one
+  `DELETE` per batch (same 10,000 records: 1.4 s, memory flat), covers trashed posts too (the old `post_status => any`
+  skipped them, leaving rows behind on binned records), and tells the object
+  cache about each post it touched, which the direct SQL path never did. The
+  response reports `purged_posts` and `purged_meta_rows`.
 - **The "Skip to content" link did nothing on CPT pages.** `single-base.php`
   mirrors the theme's `<main id="main-content">` wrapper, and a plain `<main>`
   cannot receive programmatic focus: activating the skip link scrolled the page

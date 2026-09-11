@@ -619,6 +619,38 @@ the safe direction.
 
 ---
 
+#### Upsert a post by external identity (ingest)
+
+`POST /posts/upsert`
+
+The ingest primitive. A record that mirrors something in another system (a recreation program, an agenda item, a row in a spreadsheet) is identified by `(post_type, source, external_id)`, and the same call sent twice creates once. Post Runtime keeps four meta values on the record: `_pcptpages_external_source`, `_pcptpages_external_id`, `_pcptpages_external_hash` (of the mapped payload as last written) and `_pcptpages_external_synced_at`. When the hash matches, nothing is written except `synced_at` — no revision, no `post_modified` churn — and `action` is `unchanged`.
+
+**Request body:**
+
+```json
+{
+  "post_type": "program",
+  "source": "recdesk",
+  "external_id": "4471",
+  "title": "Youth Soccer — Fall",
+  "excerpt": "Ages 6–10. Saturdays.",
+  "fields": { "event_start": "2026-09-12T09:00:00-05:00", "event_location": "Wilson Park" },
+  "taxonomies": { "category": ["Youth", "Soccer"] }
+}
+```
+
+`post_type`, `source`, `external_id` and `title` are required (`post_title` / `post_content` / `post_excerpt` / `post_status` are accepted as aliases). **Only the keys present are written**: a field the caller does not name keeps its current value, so an editor's local additions survive a sync. `status` defaults to `publish` on create and is kept on update unless sent. An unknown field key fails the whole call (422 `pcptpages_unknown_field_key`) and, on create, the post is rolled back.
+
+**Success:** `201 Created` (action `created`) or `200 OK` (action `updated` | `unchanged`)
+
+```json
+{ "post_id": 1512, "action": "updated", "permalink": "…", "edit_url": "…", "source": "recdesk", "external_id": "4471", "warnings": [] }
+```
+
+`GET /posts` shows `external: {source, external_id, hash, synced_at}` on records that carry an identity (`null` otherwise). Purging a CPT removes the identity with the rest of its data. FlowMint's `pre_upsert_records` step calls this same code path per record for scheduled syncs.
+
+---
+
 ### 5.6 Preview
 
 `GET /posts/{id}/preview`
@@ -917,6 +949,7 @@ The MCP layer is a thin wrapper around the REST endpoints. Each tool calls one R
 | `postruntime_get_post_groupings` | `GET /posts/{id}/groupings` | Read a post's groupings |
 | `postruntime_set_post_groupings` | `PUT /posts/{id}/groupings` | Replace a post's groupings |
 | `postruntime_create_post` | `POST /posts` | Create a post (optionally with groupings) |
+| `postruntime_upsert_post` | `POST /posts/upsert` | Create or update the record mirroring an external system's record (ingest) |
 | `postruntime_list_posts` | `GET /posts` | List posts in managed CPTs (incl. orphans) |
 | `postruntime_delete_post` | `DELETE /posts/{id}` | Delete a post (trash, or permanent) |
 | `postruntime_preview_post` | `GET /posts/{id}/preview` | Render a post and return HTML |

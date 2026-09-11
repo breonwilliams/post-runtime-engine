@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **External identity and upsert — the ingest primitive.** A record that
+  mirrors something in another system is now identified by
+  `(post_type, source, external_id)`: `PCPTPages_Post_Data::upsert_external()`,
+  `POST /posts/upsert` and the `postruntime_upsert_post` tool create once and
+  update after, skip the write entirely when the mapped payload is unchanged
+  (no revision, no modified-date churn), and write only the keys sent so local
+  edits to other fields survive a sync. `list_posts` shows the identity;
+  purging a CPT removes it with the rest. Built for FlowMint's
+  `pre_upsert_records` step (Promptless WP roadmap §3.8) so a scheduled sync
+  from a system of record never duplicates.
+
 ### Fixed
 
 - **Purging a record type's data ran as one unbounded request.** `delete_cpt`

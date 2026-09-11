@@ -216,6 +216,27 @@ const TOOLS = [
     },
   },
   {
+    name: "postruntime_upsert_post",
+    description:
+      "Create OR update the record that mirrors a record in an external system, keyed by (post_type, source, external_id). This is the ingest primitive: use it whenever the data comes from somewhere else (a recreation system, an agenda manager, a spreadsheet export) and may be sent again — re-sending never duplicates, and a record whose mapped payload has not changed is left untouched (action 'unchanged', no revision, no modified date churn). `source` is a short key for the system ('recdesk', 'civicclerk'); `external_id` is that system's own identifier for the record. Only the keys you send are written: a field you do not name keeps its current value, so local edits to other fields survive a sync. `status` defaults to publish on create and is kept on update unless sent. `fields` maps post-field keys to values (dates accept ISO 8601); `taxonomies` maps a taxonomy to term names (created if missing). Returns {post_id, action: created|updated|unchanged, permalink, warnings}. For a scheduled sync of many records use the FlowMint step pre_upsert_records, which calls the same path per record.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        post_type: { type: "string", description: "Must be a CPT registered through PRE" },
+        source: { type: "string", description: "Short key naming the external system, e.g. 'recdesk'. Lowercase letters, digits, underscores." },
+        external_id: { type: "string", description: "The external system's identifier for this record. Numbers are accepted and stored as strings." },
+        title: { type: "string" },
+        content: { type: "string", description: "Optional HTML body." },
+        excerpt: { type: "string" },
+        status: { type: "string", description: "Optional. publish (default on create) | draft | pending | private." },
+        fields: { type: "object", description: "Optional. Post-field values keyed by field key, e.g. {\"event_start\": \"2026-10-04T18:00:00-05:00\", \"event_location\": \"Council chambers\"}." },
+        taxonomies: { type: "object", description: "Optional. Map of taxonomy slug → list of term names/slugs/IDs. Replaces that taxonomy's terms; omitted taxonomies untouched." },
+        featured_image_id: { type: "integer" },
+      },
+      required: ["post_type", "source", "external_id", "title"],
+    },
+  },
+  {
     name: "postruntime_list_posts",
     description:
       "List posts belonging to CPTs this plugin manages. Fills the gap that made cleanup impossible: create_post and update_post existed, but nothing could ENUMERATE or REMOVE what they created, so a session could build content and then never find it again.\n\n" +
@@ -1023,6 +1044,16 @@ async function handleTool(name, args) {
         `/cpts/${encodeURIComponent(args.slug)}`,
         payload
       );
+    }
+
+    case "postruntime_upsert_post": {
+      const payload = {};
+      ["post_type", "source", "external_id", "title", "content", "excerpt", "status", "fields", "taxonomies", "featured_image_id"].forEach((k) => {
+        if (args[k] !== undefined) payload[k] = args[k];
+      });
+      if ("fields" in payload) payload.fields = maybeParseJsonObjectString(payload.fields);
+      if ("taxonomies" in payload) payload.taxonomies = maybeParseJsonObjectString(payload.taxonomies);
+      return await makeRequest("POST", "/posts/upsert", payload);
     }
 
     case "postruntime_list_posts": {

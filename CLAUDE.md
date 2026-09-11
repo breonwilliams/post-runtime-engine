@@ -14,12 +14,12 @@
 > | Post meta | `_pcptpages_*` (`_pcptpages_groupings`, `_pcptpages_field_{key}`, `_pcptpages_field_visibility`) |
 > | Capability | `pcptpages_manage_cpts` (site config); per-post writes use `edit_post` |
 > | REST namespace | `post-runtime/v1/connector/` (unchanged) |
-> | MCP tool prefix | `postruntime_*` (29 tools in `includes/Connector/assets/post-runtime-connector.js`) |
+> | MCP tool prefix | `postruntime_*` (32 tools in `includes/Connector/assets/post-runtime-connector.js`) |
 > | Release ZIP | `build/promptless-cpt-pages.zip` (root folder `promptless-cpt-pages/`) |
 >
 > The **plugin root** (`post-runtime-engine/includes/…`) is the live source tree. `build/` contains only build output — never edit there.
 
-**Status (as of 2026-07-11, version 0.6.5):** Phases 1–6 (v1.0 scope) shipped, **plus v1.1 post fields and the v1.2 events/filters layer — all implemented, not planned**. Feature surface: data layer, admin UI for CPT + grouping + post-field management, frontend rendering with all four layout variants and **four** source modes (manual, child_posts, taxonomy_match, meta_match — the 4th added at data-version 0.3.0), template router for registered CPT singles, connector REST API (18 route registrations / 24+ method-level endpoints), and a 29-tool MCP surface for Cowork. Programmatic access via `pcptpages()->cpts`, `->groupings`, `->post_fields`, `->post_data`. v1.0 ship readiness still pending unit-test coverage (target >80%, currently smoke-level — see `POST_RUNTIME_AUDIT.md`).
+**Status (as of 2026-07-11, version 0.6.5):** Phases 1–6 (v1.0 scope) shipped, **plus v1.1 post fields and the v1.2 events/filters layer — all implemented, not planned**. Feature surface: data layer, admin UI for CPT + grouping + post-field management, frontend rendering with all four layout variants and **four** source modes (manual, child_posts, taxonomy_match, meta_match — the 4th added at data-version 0.3.0), template router for registered CPT singles, connector REST API (18 route registrations / 24+ method-level endpoints), and a 32-tool MCP surface for Cowork. Programmatic access via `pcptpages()->cpts`, `->groupings`, `->post_fields`, `->post_data`. v1.0 ship readiness still pending unit-test coverage (target >80%, currently smoke-level — see `POST_RUNTIME_AUDIT.md`).
 
 **v1.1 post fields (SHIPPED):** second field type — scalar **post fields** with a closed enum of 9 display types (currency, number_with_label, badge, meta_pair, date, text, rating, progress, multi_badge) and 5 positions symmetric across single-post hero and card contexts (image_overlay, headline, subtitle, meta_strip, footer_meta, plus `hidden`). Implemented in `PCPTPages_Post_Field_Registry`, `PCPTPages_Card_Renderer`, `PCPTPages_Meta_Box_Post_Fields`, with full REST/MCP CRUD + reorder + per-post values/visibility. Design contract: **[`docs/POST_FIELDS_V1_1_DESIGN.md`](docs/POST_FIELDS_V1_1_DESIGN.md)**. (Those 5 `FIELD_POSITIONS` are the *inline* placement slots; a display type can instead be *block-level* and use the grouping placement model — see "Two placement classes" under the maintenance constraints. `location` is the first block-level display type.)
 
@@ -152,7 +152,7 @@ These were settled in conversation with the founder before any code is written. 
 - **Filter prefix:** `pcptpages_*` (e.g., `pcptpages_cpt_register_args`, `pcptpages_render_cache_enabled`)
 - **Option prefix:** `pcptpages_*`
 - **Post meta prefix:** `_pcptpages_*`
-- **MCP tool prefix:** `postruntime_*` (resolved; 29 tools mapping to the connector REST routes)
+- **MCP tool prefix:** `postruntime_*` (resolved; 32 tools mapping to the connector REST routes)
 - **Capability:** `pcptpages_manage_cpts` for site configuration; per-post value writes gate on `edit_post`
 
 The folder name `post-runtime-engine` was retained for repo continuity even though the shipped brand is Promptless CPT Pages. Do not "fix" the folder/file names to match the class prefix — the mismatch is deliberate and renaming would break update paths.

@@ -43,6 +43,26 @@ class PCPTPages_Post_Data {
 	const META_KEY_BACKUP_SOURCE = '_pcptpages_groupings_backup_source';
 
 	// ---------------------------------------------------------------------
+	// External identity (ingest from a system of record)
+	// ---------------------------------------------------------------------
+
+	/**
+	 * Where a record came from and which upstream record it mirrors. A
+	 * record with these keys was created or last written by an ingest
+	 * (FlowMint's pre_upsert_records step, the connector's upsert route, an
+	 * import); (post_type, source, external_id) is the identity a re-run
+	 * looks up, so re-running never duplicates. The hash is of the mapped
+	 * payload as last written, so an unchanged record is skipped without a
+	 * write — no post_modified churn, no revision. All four share the
+	 * prefix so the CPT purge removes them by LIKE.
+	 */
+	const EXTERNAL_META_PREFIX = '_pcptpages_external_';
+	const EXTERNAL_SOURCE_META = '_pcptpages_external_source';
+	const EXTERNAL_ID_META     = '_pcptpages_external_id';
+	const EXTERNAL_HASH_META   = '_pcptpages_external_hash';
+	const EXTERNAL_SYNCED_META = '_pcptpages_external_synced_at';
+
+	// ---------------------------------------------------------------------
 	// v1.1 post-field meta keys
 	// ---------------------------------------------------------------------
 
@@ -1131,5 +1151,301 @@ class PCPTPages_Post_Data {
 		}
 
 		return true;
+	}
+	// =====================================================================
+	// External identity + upsert
+	// =====================================================================
+
+	/**
+	 * Find the post that mirrors an upstream record, or 0.
+	 *
+	 * @param string $post_type   Registered CPT slug.
+	 * @param string $source      Source key (e.g. "recdesk", "civicclerk").
+	 * @param string $external_id Upstream identifier, as a string.
+	 * @return int Post ID, or 0.
+	 */
+	public function find_external( $post_type, $source, $external_id ) {
+		$post_type   = sanitize_key( $post_type );
+		$source      = self::normalize_source( $source );
+		$external_id = self::normalize_external_id( $external_id );
+		if ( $post_type === '' || $source === '' || $external_id === '' ) {
+			return 0;
+		}
+		$ids = get_posts( array(
+			'post_type'        => $post_type,
+			'post_status'      => 'any',
+			'posts_per_page'   => 1,
+			'fields'           => 'ids',
+			'orderby'          => 'ID',
+			'order'            => 'ASC',
+			'suppress_filters' => true,
+			'meta_query'       => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- identity lookup, two keys, bounded by post_type.
+				array( 'key' => self::EXTERNAL_SOURCE_META, 'value' => $source ),
+				array( 'key' => self::EXTERNAL_ID_META, 'value' => $external_id ),
+			),
+		) );
+		return $ids ? (int) $ids[0] : 0;
+	}
+
+	/**
+	 * A post's external identity, or null when it has none.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array|null { source, external_id, hash, synced_at }
+	 */
+	public function get_external( $post_id ) {
+		$source = (string) get_post_meta( $post_id, self::EXTERNAL_SOURCE_META, true );
+		if ( $source === '' ) {
+			return null;
+		}
+		return array(
+			'source'      => $source,
+			'external_id' => (string) get_post_meta( $post_id, self::EXTERNAL_ID_META, true ),
+			'hash'        => (string) get_post_meta( $post_id, self::EXTERNAL_HASH_META, true ),
+			'synced_at'   => (string) get_post_meta( $post_id, self::EXTERNAL_SYNCED_META, true ),
+		);
+	}
+
+	/**
+	 * Every post of a type that mirrors a source, with when it was last
+	 * seen. Used to find records the upstream no longer returns.
+	 *
+	 * @param string $post_type Registered CPT slug.
+	 * @param string $source    Source key.
+	 * @return array<int, string> post_id => synced_at (MySQL, GMT)
+	 */
+	public function list_external( $post_type, $source ) {
+		$post_type = sanitize_key( $post_type );
+		$source    = self::normalize_source( $source );
+		if ( $post_type === '' || $source === '' ) {
+			return array();
+		}
+		$ids = get_posts( array(
+			'post_type'        => $post_type,
+			'post_status'      => 'any',
+			'posts_per_page'   => -1,
+			'fields'           => 'ids',
+			'suppress_filters' => true,
+			'meta_key'         => self::EXTERNAL_SOURCE_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+			'meta_value'       => $source, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+		) );
+		$out = array();
+		foreach ( $ids as $id ) {
+			$out[ (int) $id ] = (string) get_post_meta( (int) $id, self::EXTERNAL_SYNCED_META, true );
+		}
+		return $out;
+	}
+
+	/**
+	 * Create or update the post that mirrors an upstream record.
+	 *
+	 * The record is the mapped payload:
+	 *   title (required), content, excerpt, status (default publish on
+	 *   create; on update the current status is kept unless given),
+	 *   fields {key => value}, taxonomies {tax => [terms]},
+	 *   featured_image_id.
+	 * Only the keys present are written; a field the mapping does not name
+	 * is left exactly as it is, so local edits to other fields survive a
+	 * sync. When the payload hash matches what was last written the post
+	 * is not touched at all (action "unchanged") — only synced_at moves.
+	 *
+	 * @param string $post_type   Registered CPT slug.
+	 * @param string $source      Source key.
+	 * @param string $external_id Upstream identifier.
+	 * @param array  $record      Mapped payload (see above).
+	 * @param string $origin      Write source for the audit hooks.
+	 * @return array|WP_Error { post_id, action: created|updated|unchanged, permalink, warnings[] }
+	 */
+	public function upsert_external( $post_type, $source, $external_id, array $record, $origin = 'programmatic' ) {
+		$post_type   = sanitize_key( $post_type );
+		$source      = self::normalize_source( $source );
+		$external_id = self::normalize_external_id( $external_id );
+
+		if ( ! $this->cpts->exists( $post_type ) ) {
+			return new WP_Error( 'pcptpages_unregistered_post_type', sprintf( __( 'Post type %s is not registered through Post Runtime.', 'promptless-cpt-pages' ), $post_type ) );
+		}
+		if ( $source === '' ) {
+			return new WP_Error( 'pcptpages_missing_source', __( 'source is required: a short key naming the system the record comes from.', 'promptless-cpt-pages' ) );
+		}
+		if ( $external_id === '' ) {
+			return new WP_Error( 'pcptpages_missing_external_id', __( 'external_id is required: the upstream identifier of the record.', 'promptless-cpt-pages' ) );
+		}
+		$title = isset( $record['title'] ) ? trim( wp_strip_all_tags( (string) $record['title'] ) ) : '';
+		if ( $title === '' ) {
+			return new WP_Error( 'pcptpages_missing_post_title', __( 'title is required.', 'promptless-cpt-pages' ) );
+		}
+
+		$hash     = self::payload_hash( $record );
+		$now      = current_time( 'mysql', true );
+		$existing = $this->find_external( $post_type, $source, $external_id );
+		$warnings = array();
+
+		if ( $existing && (string) get_post_meta( $existing, self::EXTERNAL_HASH_META, true ) === $hash ) {
+			update_post_meta( $existing, self::EXTERNAL_SYNCED_META, $now );
+			return array( 'post_id' => $existing, 'action' => 'unchanged', 'permalink' => get_permalink( $existing ), 'warnings' => array() );
+		}
+
+		$post_args = array(
+			'post_type'  => $post_type,
+			'post_title' => $title,
+		);
+		if ( array_key_exists( 'content', $record ) ) {
+			$post_args['post_content'] = wp_kses_post( (string) $record['content'] );
+		}
+		if ( array_key_exists( 'excerpt', $record ) ) {
+			$post_args['post_excerpt'] = wp_kses_post( (string) $record['excerpt'] );
+		}
+		if ( ! empty( $record['status'] ) ) {
+			$post_args['post_status'] = sanitize_key( (string) $record['status'] );
+		} elseif ( ! $existing ) {
+			$post_args['post_status'] = 'publish';
+		}
+
+		if ( $existing ) {
+			$post_args['ID'] = $existing;
+			$result          = wp_update_post( $post_args, true );
+		} else {
+			$result = wp_insert_post( $post_args, true );
+		}
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		$post_id = (int) $result;
+		$action  = $existing ? 'updated' : 'created';
+
+		if ( isset( $record['featured_image_id'] ) ) {
+			$thumb = (int) $record['featured_image_id'];
+			if ( $thumb > 0 && ! set_post_thumbnail( $post_id, $thumb ) ) {
+				$warnings[] = sprintf( 'featured_image_id %d could not be set.', $thumb );
+			}
+		}
+		if ( isset( $record['taxonomies'] ) && is_array( $record['taxonomies'] ) ) {
+			$warnings = array_merge( $warnings, $this->apply_taxonomies( $post_id, $post_type, $record['taxonomies'] ) );
+		}
+		if ( isset( $record['fields'] ) && is_array( $record['fields'] ) && ! empty( $record['fields'] ) ) {
+			$written = $this->set_field_values( $post_id, $record['fields'], $origin );
+			if ( is_wp_error( $written ) ) {
+				if ( ! $existing ) {
+					// Atomic create, as the connector's create_post is: no half-made records.
+					wp_delete_post( $post_id, true );
+				}
+				return $written;
+			}
+		}
+
+		update_post_meta( $post_id, self::EXTERNAL_SOURCE_META, $source );
+		update_post_meta( $post_id, self::EXTERNAL_ID_META, $external_id );
+		update_post_meta( $post_id, self::EXTERNAL_HASH_META, $hash );
+		update_post_meta( $post_id, self::EXTERNAL_SYNCED_META, $now );
+
+		/**
+		 * Fires after a record mirroring an upstream system was created or updated.
+		 *
+		 * @param int    $post_id     Post ID.
+		 * @param string $action      "created" or "updated".
+		 * @param string $source      Source key.
+		 * @param string $external_id Upstream identifier.
+		 * @param string $origin      Write source.
+		 */
+		do_action( 'pcptpages_external_record_upserted', $post_id, $action, $source, $external_id, $origin );
+
+		return array( 'post_id' => $post_id, 'action' => $action, 'permalink' => get_permalink( $post_id ), 'warnings' => $warnings );
+	}
+
+	/**
+	 * Assign terms by name (created when missing) or ID, per taxonomy.
+	 * Unregistered taxonomies are skipped with a warning, never fatal.
+	 *
+	 * @param int    $post_id    Post ID.
+	 * @param string $post_type  CPT slug.
+	 * @param array  $taxonomies { tax_slug => string[]|string }
+	 * @return string[] Warnings.
+	 */
+	public function apply_taxonomies( $post_id, $post_type, array $taxonomies ) {
+		$warnings   = array();
+		$registered = get_object_taxonomies( $post_type );
+		foreach ( $taxonomies as $tax_slug => $terms ) {
+			$tax_slug = sanitize_key( (string) $tax_slug );
+			if ( $tax_slug === '' ) {
+				continue;
+			}
+			if ( ! taxonomy_exists( $tax_slug ) || ! in_array( $tax_slug, $registered, true ) ) {
+				$warnings[] = sprintf( 'taxonomy "%s" is not registered for post type "%s"; skipped.', $tax_slug, $post_type );
+				continue;
+			}
+			if ( is_string( $terms ) ) {
+				$terms = array_map( 'trim', explode( ',', $terms ) );
+			}
+			if ( ! is_array( $terms ) ) {
+				$warnings[] = sprintf( 'terms for taxonomy "%s" must be an array or comma-separated string; skipped.', $tax_slug );
+				continue;
+			}
+			$term_ids = array();
+			foreach ( $terms as $term ) {
+				if ( ! is_scalar( $term ) ) {
+					continue;
+				}
+				$term = trim( (string) $term );
+				if ( $term === '' ) {
+					continue;
+				}
+				if ( ctype_digit( $term ) ) {
+					$maybe = get_term( (int) $term, $tax_slug );
+					if ( $maybe && ! is_wp_error( $maybe ) ) {
+						$term_ids[] = (int) $maybe->term_id;
+						continue;
+					}
+				}
+				$found = term_exists( $term, $tax_slug );
+				if ( $found ) {
+					$term_ids[] = (int) ( is_array( $found ) ? $found['term_id'] : $found );
+					continue;
+				}
+				$created = wp_insert_term( $term, $tax_slug );
+				if ( is_wp_error( $created ) ) {
+					$warnings[] = sprintf( 'term "%s" in taxonomy "%s" could not be created: %s', $term, $tax_slug, $created->get_error_message() );
+					continue;
+				}
+				$term_ids[] = (int) $created['term_id'];
+			}
+			$set = wp_set_object_terms( $post_id, $term_ids, $tax_slug, false );
+			if ( is_wp_error( $set ) ) {
+				$warnings[] = sprintf( 'terms for taxonomy "%s" could not be set: %s', $tax_slug, $set->get_error_message() );
+			}
+		}
+		return $warnings;
+	}
+
+	/**
+	 * Stable hash of a mapped payload: keys sorted at every level so the
+	 * same data in a different order is the same record.
+	 */
+	public static function payload_hash( array $record ) {
+		return md5( wp_json_encode( self::ksort_deep( $record ) ) );
+	}
+
+	private static function ksort_deep( $value ) {
+		if ( ! is_array( $value ) ) {
+			return $value;
+		}
+		$is_list = array_keys( $value ) === range( 0, count( $value ) - 1 );
+		foreach ( $value as $k => $v ) {
+			$value[ $k ] = self::ksort_deep( $v );
+		}
+		if ( ! $is_list ) {
+			ksort( $value );
+		}
+		return $value;
+	}
+
+	public static function normalize_source( $source ) {
+		return sanitize_key( (string) $source );
+	}
+
+	public static function normalize_external_id( $external_id ) {
+		if ( is_int( $external_id ) || is_float( $external_id ) ) {
+			$external_id = (string) $external_id;
+		}
+		return is_string( $external_id ) ? substr( trim( $external_id ), 0, 191 ) : '';
 	}
 }

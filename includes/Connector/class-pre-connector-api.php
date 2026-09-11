@@ -452,6 +452,14 @@ class PCPTPages_Connector_API {
 			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'list_posts' ),
 		) );
 
+		// Upsert by external identity: the ingest path. Same capability as
+		// create_post (it creates) — see handle_upsert_post.
+		register_rest_route( $ns, "/{$base}/posts/upsert", array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => array( $this, 'handle_upsert_post' ),
+			'permission_callback' => PCPTPages_Connector_Auth::build_callback( 'create_post' ),
+		) );
+
 		register_rest_route( $ns, "/{$base}/posts/(?P<id>\d+)", array(
 			'methods'             => WP_REST_Server::DELETABLE,
 			'callback'            => array( $this, 'handle_delete_post' ),
@@ -1132,6 +1140,7 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 		$patterns = array(
 			$wpdb->esc_like( PCPTPages_Post_Data::META_KEY ) . '%',
 			$wpdb->esc_like( PCPTPages_Post_Data::FIELD_VALUE_META_PREFIX ) . '%',
+			$wpdb->esc_like( PCPTPages_Post_Data::EXTERNAL_META_PREFIX ) . '%',
 		);
 
 		do {
@@ -1153,10 +1162,11 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 			$deleted = $wpdb->query(
 				$wpdb->prepare(
 					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $ids_sql is absint-mapped above.
-					"DELETE FROM {$wpdb->postmeta} WHERE post_id IN ({$ids_sql}) AND ( meta_key = %s OR meta_key LIKE %s OR meta_key LIKE %s )",
+					"DELETE FROM {$wpdb->postmeta} WHERE post_id IN ({$ids_sql}) AND ( meta_key = %s OR meta_key LIKE %s OR meta_key LIKE %s OR meta_key LIKE %s )",
 					PCPTPages_Post_Data::FIELD_VISIBILITY_META_KEY,
 					$patterns[0],
-					$patterns[1]
+					$patterns[1],
+					$patterns[2]
 				)
 			);
 			$rows  += (int) $deleted;
@@ -1833,6 +1843,66 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 	 * @return WP_REST_Response|WP_Error
 	 */
 	/**
+	 * POST /posts/upsert — create or update the post that mirrors an
+	 * upstream record, keyed by (post_type, source, external_id).
+	 *
+	 * This is the ingest primitive. A scheduled FlowMint workflow, a one-off
+	 * import by an agent, and a CSV loader all call it, so re-running any of
+	 * them never duplicates a record and an unchanged record is never
+	 * rewritten. Body: post_type, source, external_id, title (required);
+	 * content, excerpt, status, fields {key: value}, taxonomies
+	 * {tax: [terms]}, featured_image_id (optional; only keys present are
+	 * written). Returns 201 on create, 200 on update or unchanged, with
+	 * `action` saying which.
+	 */
+	public function handle_upsert_post( WP_REST_Request $request ) {
+		$plugin = pcptpages();
+		$body   = $request->get_json_params();
+		if ( ! is_array( $body ) ) {
+			$body = array();
+		}
+		$record = array();
+		foreach ( array( 'title', 'content', 'excerpt', 'status', 'fields', 'taxonomies', 'featured_image_id' ) as $key ) {
+			if ( array_key_exists( $key, $body ) ) {
+				$record[ $key ] = $body[ $key ];
+			}
+		}
+		// Accept the create_post spellings too, so a caller can switch a
+		// create into an upsert by adding source + external_id.
+		if ( ! isset( $record['title'] ) && isset( $body['post_title'] ) ) {
+			$record['title'] = $body['post_title'];
+		}
+		foreach ( array( 'post_content' => 'content', 'post_excerpt' => 'excerpt', 'post_status' => 'status' ) as $from => $to ) {
+			if ( ! isset( $record[ $to ] ) && isset( $body[ $from ] ) ) {
+				$record[ $to ] = $body[ $from ];
+			}
+		}
+
+		$result = $plugin->post_data->upsert_external(
+			isset( $body['post_type'] ) ? (string) $body['post_type'] : '',
+			isset( $body['source'] ) ? (string) $body['source'] : '',
+			isset( $body['external_id'] ) ? $body['external_id'] : '',
+			$record,
+			'connector'
+		);
+		if ( is_wp_error( $result ) ) {
+			return $this->error_response( $result->get_error_code(), $result->get_error_message(), 422 );
+		}
+
+		$response = rest_ensure_response( array(
+			'post_id'     => $result['post_id'],
+			'action'      => $result['action'],
+			'permalink'   => $result['permalink'],
+			'edit_url'    => get_edit_post_link( $result['post_id'], 'raw' ),
+			'source'      => PCPTPages_Post_Data::normalize_source( (string) ( $body['source'] ?? '' ) ),
+			'external_id' => PCPTPages_Post_Data::normalize_external_id( $body['external_id'] ?? '' ),
+			'warnings'    => $result['warnings'],
+		) );
+		$response->set_status( $result['action'] === 'created' ? 201 : 200 );
+		return $response;
+	}
+
+	/**
 	 * Clear a tombstone when the slug is registered again — at that point the
 	 * posts are live content, not leftovers.
 	 *
@@ -1911,6 +1981,7 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 				'date'       => $p->post_date,
 				'permalink'  => get_permalink( $p ),
 				'orphaned'   => ! in_array( $p->post_type, $registered, true ),
+				'external'   => $plugin->post_data ? $plugin->post_data->get_external( (int) $p->ID ) : null,
 			);
 		}
 

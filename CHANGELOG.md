@@ -21,6 +21,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- **Permanently deleting a record of a deleted type left its category and
+  tag rows behind.** `wp_delete_post()` only removes term relationships for
+  the taxonomies registered on the post's type, and an orphan's type is
+  registered nowhere. The connector's `delete_post` now strips relationships
+  across every taxonomy before a permanent delete of an orphan. Found by the
+  2026-09-11 pressure test, which counted 30,151 orphaned relationship rows
+  from earlier record-type deletions on the Local site.
+
 - **Purging a record type's data ran as one unbounded request.** `delete_cpt`
   with `purge_data=true` loaded every post ID of the type at once, ran one
   `delete_post_meta()` per post, then two `DELETE`s carrying the whole ID list.

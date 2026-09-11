@@ -96,8 +96,10 @@ global $wpdb;
 $left = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key LIKE %s AND post_id IN (SELECT ID FROM {$wpdb->posts} WHERE post_type = %s)", '_pcptpages_external_%', $cpt));
 check($res->get_status() === 200 && $left === 0, 'purge removes external identity meta', "left {$left}");
 
-// Cleanup.
-foreach ($wpdb->get_col($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE post_type = %s", $cpt)) as $pid) wp_delete_post((int) $pid, true);
+// Cleanup. The type was unregistered by the purge check above, so strip term
+// relationships explicitly: wp_delete_post() cannot see the taxonomies of an
+// unregistered type and would leave the rows behind.
+foreach ($wpdb->get_col($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE post_type = %s", $cpt)) as $pid) { wp_delete_object_term_relationships((int) $pid, ['category']); wp_delete_post((int) $pid, true); }
 foreach (get_terms(['taxonomy' => 'category', 'hide_empty' => false, 'search' => 'Upsert Youth']) as $t) wp_delete_term($t->term_id, 'category');
 $tomb = get_option(PCPTPages_Connector_API::DELETED_CPTS_OPTION, []);
 if (is_array($tomb) && isset($tomb[$cpt])) { unset($tomb[$cpt]); update_option(PCPTPages_Connector_API::DELETED_CPTS_OPTION, $tomb, false); }

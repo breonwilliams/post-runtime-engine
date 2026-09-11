@@ -2065,6 +2065,17 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 			);
 		}
 
+		// wp_delete_post() removes a post's term relationships for the
+		// taxonomies registered on its TYPE — and an orphan's type is
+		// registered nowhere, so it removes none. Every category and tag the
+		// record carried stays behind as a relationship row pointing at a
+		// post that no longer exists (found by the 2026-09-11 pressure test:
+		// 30,151 such rows from earlier record-type deletions). Strip them
+		// across every taxonomy first when the delete is permanent.
+		if ( $force && ! in_array( $type, $registered, true ) ) {
+			wp_delete_object_term_relationships( $id, array_keys( get_taxonomies() ) );
+		}
+
 		$result = wp_delete_post( $id, $force );
 		if ( ! $result ) {
 			return $this->error_response( 'pcptpages_delete_failed', __( 'WordPress refused to delete the post.', 'promptless-cpt-pages' ), 500 );

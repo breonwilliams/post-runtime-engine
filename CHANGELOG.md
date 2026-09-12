@@ -19,6 +19,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `pre_upsert_records` step (Promptless WP roadmap §3.8) so a scheduled sync
   from a system of record never duplicates.
 
+- **Right-to-left locales load right-to-left stylesheets.** Every shipped
+  stylesheet now has an rtlcss-generated sibling (`assets/css/X-rtl.css`,
+  committed, written by `bin/build-rtl.sh` — the tool WordPress core uses)
+  and every enqueue registers it with `wp_style_add_data( …, 'rtl',
+  'replace' )`, so an Arabic or Hebrew site gets mirrored cards, heroes,
+  maps and admin screens instead of 31 `left`/`right` declarations pointing
+  the wrong way. `tests/Unit/RtlStylesheetsTest.php` fails when a stylesheet
+  changes without its sibling being regenerated, ships without one, or is
+  enqueued without the registration. Verified on Local with the Arabic
+  language pack.
+
 ### Fixed
 
 - **Permanently deleting a record of a deleted type left its category and

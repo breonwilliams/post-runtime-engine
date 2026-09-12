@@ -435,6 +435,8 @@ class PCPTPages_Card_Filter_Hooks {
 					// primary enqueue in PCPTPages_Frontend_Assets.
 					PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/cards.css' )
 				);
+				// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.
+				wp_style_add_data( 'pcptpages-cards', 'rtl', 'replace' );
 			}
 			wp_enqueue_style( 'pcptpages-cards' );
 			// Force immediate emission. wp_head has already passed.

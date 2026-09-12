@@ -244,9 +244,60 @@ Acceptance gate: `grep -r 'PCPTPages_\|pcptpages_' <promptless-wp>/src <promptle
 ## 13. Open items deferred (tracked, not built)
 
 - RSVP/Forms + capacity + FlowMint reminders (later events slice).
-- iCal export.
+- ~~iCal export.~~ **Built 2026-09-12 — §14.**
 - Viewer-local time rendering (storage already supports via `__utc`).
 - General schema-driven facet filter system (`SCHEMA_DRIVEN_FILTERS.md`) — the next project.
+
+## 14. Calendar feed — BUILT 2026-09-12
+
+**Why now.** Of the seven municipal and park-district RFPs assessed on
+2026-09-12, four ask for calendars, one asks for "add to my calendar" (ICS)
+by name, and two ask for a way to be notified of meetings and events. A
+subscribable calendar is the smallest honest answer to all three, and every
+event-shaped type already carries the data (§5.2 roles).
+
+**What it is.** `PCPTPages_Event_Calendar` (`includes/Frontend/`):
+
+- **`ics` registered as a core feed** (`add_feed('ics')`), so it joins
+  rss2/atom in core's URL generation and rewrite regex. No table, no
+  settings, no rewrite rules of our own. One rewrite flush, once, on
+  `wp_loaded` after the feed is registered (`pcptpages_ics_feed_rules`
+  option), because PRE only flushes when the CPT set changes.
+- **A record's feed:** its permalink plus `?feed=ics` — one VEVENT,
+  served as `text/calendar` with an `attachment` disposition. Core's
+  `/feed/ics/` comment-feed form is NOT used: PRE registers types with
+  `rewrite.feeds = false` (no comments), so that rule does not exist.
+- **A type's feed:** `get_post_type_archive_feed_link($type, 'ics')`
+  (`/{type}/feed/ics/`): published records whose start is within the last
+  30 days or in the future, soonest first, capped at 500, filterable via
+  `pcptpages_calendar_feed_query_args`. Calendar apps subscribe to it once.
+- **On the record page:** "Add to calendar" and "Google Calendar" links
+  under the hero meta, through a new `pcptpages_single_hero_after_meta`
+  action the renderer fires in both hero variants; and a
+  `<link rel="alternate" type="text/calendar">` in `wp_head` on event
+  singles and archives.
+- **Connector:** every CPT shape carries `calendar_feed_url` (the type
+  feed, or null when the type is not event-shaped or has no archive), so
+  an agent can put "Subscribe to meetings" in a menu.
+
+**The data is the schema emitter's.** `event_for_post()` resolves the same
+roles `PCPTPages_Event_Schema` reads and formats dates through its
+`format_schema_date()`, so the calendar and the JSON-LD cannot disagree
+about when an event is.
+
+**RFC 5545 details pinned by `tests/Unit/EventCalendarTest.php`:** CRLF
+line endings; 75-octet folding that never splits a multibyte character
+(`mb_strcut`); TEXT escaping of `\ ; , \n`; all-day events as
+`VALUE=DATE` with an EXCLUSIVE end (a one-day event on the 12th is DTEND
+the 13th); timed events converted to UTC; `STATUS` from `event_status`
+(cancelled → CANCELLED, postponed/rescheduled → TENTATIVE); a record with
+no usable start is skipped, never emitted half-formed.
+`tests/smoke-events-calendar.php` (Local) fetches every URL form over HTTP
+and checks the page links and the connector field.
+
+**Known limit.** The renderer caches a record's HTML for an hour; on an
+existing site the links appear within that hour of the update. Recurring
+events are not modelled (no RRULE) — each record is one VEVENT.
 
 ---
 

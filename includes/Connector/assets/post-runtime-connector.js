@@ -176,7 +176,7 @@ const TOOLS = [
   {
     name: "postruntime_get_cpt",
     description:
-      "Read one CPT's full definition. Returns the same shape as list_cpts entries. Capture the connector_version from the response if you intend to update it later — update_cpt requires it for concurrency safety.",
+      "Read one CPT's full definition. Returns the same shape as list_cpts entries. Event-shaped types (an event_start role) carry calendar_feed_url: a subscribable iCalendar feed of the type's upcoming records — link it as 'Subscribe to meetings/events' in a menu; each record also has an Add to calendar link on its page. Capture the connector_version from the response if you intend to update it later — update_cpt requires it for concurrency safety.",
     inputSchema: {
       type: "object",
       properties: { slug: { type: "string" } },

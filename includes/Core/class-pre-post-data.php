@@ -1178,7 +1178,6 @@ class PCPTPages_Post_Data {
 			'fields'           => 'ids',
 			'orderby'          => 'ID',
 			'order'            => 'ASC',
-			'suppress_filters' => true,
 			'meta_query'       => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- identity lookup, two keys, bounded by post_type.
 				array( 'key' => self::EXTERNAL_SOURCE_META, 'value' => $source ),
 				array( 'key' => self::EXTERNAL_ID_META, 'value' => $external_id ),
@@ -1225,7 +1224,6 @@ class PCPTPages_Post_Data {
 			'post_status'      => 'any',
 			'posts_per_page'   => -1,
 			'fields'           => 'ids',
-			'suppress_filters' => true,
 			'meta_key'         => self::EXTERNAL_SOURCE_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 			'meta_value'       => $source, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 		) );
@@ -1262,6 +1260,7 @@ class PCPTPages_Post_Data {
 		$external_id = self::normalize_external_id( $external_id );
 
 		if ( ! $this->cpts->exists( $post_type ) ) {
+			/* translators: %s: post type slug */
 			return new WP_Error( 'pcptpages_unregistered_post_type', sprintf( __( 'Post type %s is not registered through Post Runtime.', 'promptless-cpt-pages' ), $post_type ) );
 		}
 		if ( $source === '' ) {

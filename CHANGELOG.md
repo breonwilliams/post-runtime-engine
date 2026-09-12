@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-09-12
+
+### Fixed
+
+- **Plugin Check reported three errors against the 0.9.0 package**, all in
+  the external-identity code added this week: two explicit
+  `suppress_filters => true` on `get_posts()` calls (the VIP performance
+  sniff prohibits stating it; `get_posts()` already defaults to it, so the
+  queries are unchanged) and a `__()` with a placeholder and no
+  translators comment. Zero errors on the built package now; the release
+  process runs Plugin Check on the artifact before publishing.
+
 ## [0.9.0] - 2026-09-12
 
 ### Added

@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.9.0
+Stable tag: 0.9.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,9 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.9.1 =
+* Fixed: three Plugin Check errors in the 0.9.0 package (two prohibited `suppress_filters` declarations, one missing translators comment). No behaviour change.
+
 = 0.9.0 =
 * Added: a calendar for event-shaped record types. Each record page has "Add to calendar" (a standard .ics download) and "Google Calendar" links, and each type has a subscribable feed of its upcoming records that Apple Calendar, Google Calendar and Outlook keep up to date. Built on WordPress core's feed mechanism; the connector reports the feed address.
 * Added: records that mirror another system are identified by source and external id. Creating one twice updates it instead of duplicating it, unchanged records are recognised, and the connector has an upsert route and tool — the primitive behind scheduled ingests from vendor systems.
@@ -105,11 +108,12 @@ Privacy policy: https://iconify.design/privacy/
 * Fixed: single-post pages (such as a speaker or session profile) now align their content and hero image to the same layout width as the floating navigation and page sections, instead of extending slightly past it on the left and right.
 * Fixed: in the post editor, a grouping item linked to another post now clearly shows which post it is linked to (and the post type), instead of leaving the link field looking empty. A link whose target has been deleted is flagged. Makes existing connections visible and verifiable at a glance. Editor-only; no content or data changes.
 
-= 0.7.0 =
-* Fixed: on phones and tablets, the gallery lightbox prev/next controls now sit in a bottom nav bar with the image counter between them (matching Promptless WP), instead of side arrows overlapping the photo. The counter shows the compact "2 / 4" for consistency, with the full "Image 2 of 4" kept for screen readers.
 
 
 == Upgrade Notice ==
+
+= 0.9.1 =
+Plugin Check clean-up of the 0.9.0 package; no behaviour change. Safe for all users.
 
 = 0.9.0 =
 Adds "Add to calendar" links and a subscribable calendar feed for event-shaped record types, external-identity upsert for ingesting records from other systems, and right-to-left stylesheets. Fixes orphaned category rows on delete and a purge that skipped trashed records. No settings change.
@@ -129,5 +133,3 @@ Grouping items linked to another post now show the linked post (and its type) in
 = 0.7.0 =
 Gallery lightbox mobile navigation now matches Promptless WP: on phones and tablets the prev/next controls sit in a bottom nav bar with the image counter between them, instead of side arrows overlapping wide photos. Recommended for all users.
 
-= 0.6.7 =
-Adds the Gallery grouping variant: responsive photo grids with an accessible lightbox and per-definition tile aspect (16:9/4:3/1:1/4:5) — ideal for property photo tours, vehicle galleries, and portfolios. Additive release; existing groupings are unchanged. Recommended for all users.

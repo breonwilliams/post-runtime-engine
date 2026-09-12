@@ -106,6 +106,8 @@ class PCPTPages_Meta_Box {
 			array(),
 			PCPTPages_VERSION
 		);
+		// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.
+		wp_style_add_data( 'pcptpages-admin', 'rtl', 'replace' );
 
 		wp_enqueue_script(
 			'pcptpages-meta-box',

@@ -51,6 +51,8 @@ class PCPTPages_Frontend_Assets {
 			array(),
 			PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/frontend.css' )
 		);
+		// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.
+		wp_style_add_data( 'pcptpages-frontend', 'rtl', 'replace' );
 
 		// v1.1: post-field rendering styles. Loaded on every registered
 		// CPT single (parallel to frontend.css) — the card renderer emits
@@ -64,6 +66,8 @@ class PCPTPages_Frontend_Assets {
 			array( 'pcptpages-frontend' ),
 			PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/cards.css' )
 		);
+		// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.
+		wp_style_add_data( 'pcptpages-cards', 'rtl', 'replace' );
 
 		// Iconify web-component bundle. Bundled locally at
 		// assets/js/iconify-icon.min.js (v2.1.0 of the iconify-icon
@@ -194,6 +198,8 @@ class PCPTPages_Frontend_Assets {
 				array(),
 				PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/map.css' )
 			);
+			// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.
+			wp_style_add_data( 'pcptpages-map', 'rtl', 'replace' );
 			if ( $needs_js ) {
 				wp_enqueue_script(
 					'pcptpages-map',

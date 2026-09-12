@@ -187,6 +187,8 @@ class PCPTPages_Admin {
 			array(),
 			PCPTPages_VERSION
 		);
+		// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.
+		wp_style_add_data( 'pcptpages-admin', 'rtl', 'replace' );
 
 		$current_page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 

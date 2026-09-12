@@ -88,6 +88,8 @@ class PCPTPages_Editor_Preview_API {
 				array(),
 				PCPTPages_VERSION
 			);
+			// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.
+			wp_style_add_data( 'pcptpages-cards', 'rtl', 'replace' );
 		}
 		wp_enqueue_style( 'pcptpages-cards' );
 

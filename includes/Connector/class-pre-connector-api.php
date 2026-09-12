@@ -2573,8 +2573,27 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 	private function shape_cpt( $slug, array $def ) {
 		return array_merge(
 			array( 'slug' => $slug ),
-			$def
+			$def,
+			array(
+				// The subscribable calendar feed for an event-shaped type
+				// (a type that maps an event_start role and has an archive),
+				// null otherwise. Agents put it behind a "Subscribe to
+				// meetings" link; see PCPTPages_Event_Calendar.
+				'calendar_feed_url' => $this->calendar_feed_url( $slug ),
+			)
 		);
+	}
+
+	/**
+	 * @param string $slug CPT slug.
+	 * @return string|null
+	 */
+	private function calendar_feed_url( $slug ) {
+		if ( ! class_exists( 'PCPTPages_Event_Calendar' ) ) {
+			return null;
+		}
+		$url = PCPTPages_Event_Calendar::type_feed_url( $slug );
+		return $url !== '' ? $url : null;
 	}
 
 	/**

@@ -714,6 +714,17 @@ class PCPTPages_Renderer {
 					echo $card_renderer->render_position_html( $post->ID, 'meta_strip', 'single_hero' );
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					echo $card_renderer->render_position_html( $post->ID, 'footer_meta', 'single_hero' );
+
+					/**
+					 * Fires inside the single hero's text column, after the
+					 * meta strip and footer meta. The calendar links
+					 * (PCPTPages_Event_Calendar) print here on event types.
+					 *
+					 * @since 0.8.2
+					 *
+					 * @param WP_Post $post The record being rendered.
+					 */
+					do_action( 'pcptpages_single_hero_after_meta', $post );
 					?>
 				</div>
 			</div>
@@ -813,6 +824,17 @@ class PCPTPages_Renderer {
 					echo $card_renderer->render_position_html( $post->ID, 'meta_strip', 'single_hero' );
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					echo $card_renderer->render_position_html( $post->ID, 'footer_meta', 'single_hero' );
+
+					/**
+					 * Fires inside the single hero's text column, after the
+					 * meta strip and footer meta. The calendar links
+					 * (PCPTPages_Event_Calendar) print here on event types.
+					 *
+					 * @since 0.8.2
+					 *
+					 * @param WP_Post $post The record being rendered.
+					 */
+					do_action( 'pcptpages_single_hero_after_meta', $post );
 					?>
 				</div>
 			</div>

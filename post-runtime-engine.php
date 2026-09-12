@@ -276,6 +276,11 @@ final class Promptless_CPT_Pages {
 		// dependency; defers to Promptless on _aisb_enabled pages.
 		( new PCPTPages_Event_Schema() )->init();
 
+		// Calendar feed for event-shaped types: "Add to calendar" on a
+		// record, a subscribable feed per type, on core's add_feed('ics').
+		// Same roles the schema emitter reads; no Promptless dependency.
+		( new PCPTPages_Event_Calendar() )->init();
+
 		// SEO meta tags on CPT singles: <meta name="description"> plus a
 		// compact OG/Twitter set derived from the excerpt/content, title,
 		// and featured image. PRE owns the head for the pages it renders;

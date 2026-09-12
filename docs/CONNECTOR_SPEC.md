@@ -256,9 +256,16 @@ CPT shape (matches `PRE_Validator::validate_cpt`):
   "default_icon": "home",
   "connector_version": 3,
   "created_at": "2026-05-08T12:00:00Z",
-  "updated_at": "2026-05-08T14:30:00Z"
+  "updated_at": "2026-05-08T14:30:00Z",
+  "calendar_feed_url": null
 }
 ```
+
+`calendar_feed_url` (read-only, 2026-09-12): the subscribable iCalendar feed
+of the type's upcoming records (`/{type}/feed/ics/`) when the type maps an
+`event_start` role and has an archive; `null` otherwise. Each record of such
+a type also serves its own `.ics` at its permalink plus `?feed=ics`, and its
+page carries "Add to calendar" links. See `EVENTS_VERTICAL_DESIGN.md` §14.
 
 Hero fields control the single-page layout above the post body. All three default to safe values (`stacked` / `left` / `square`) when omitted at registration:
 

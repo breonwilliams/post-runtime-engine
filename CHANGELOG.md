@@ -8,6 +8,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **Calendar feed for event-shaped types.** Every record of a type that
+  maps an `event_start` role now has an "Add to calendar" link (a standard
+  `.ics` download) and a Google Calendar link under its hero meta, and every
+  such type has a subscribable feed at `/{type}/feed/ics/` — its upcoming
+  records (plus the last 30 days), soonest first — that Apple Calendar,
+  Google Calendar and Outlook keep up to date. Built on core's `add_feed()`:
+  no table, no settings, no rewrite rules of our own. The dates, location
+  and status come from the same semantic roles the Schema.org Event emitter
+  reads, so the two cannot disagree. A `<link rel="alternate"
+  type="text/calendar">` is printed on event singles and archives, and the
+  connector's CPT shape carries `calendar_feed_url`. New action
+  `pcptpages_single_hero_after_meta` and filter
+  `pcptpages_calendar_feed_query_args`. Pinned by
+  `tests/Unit/EventCalendarTest.php` (RFC 5545: CRLF, 75-octet folding
+  that never splits a multibyte character, escaping, exclusive all-day
+  ends, UTC) and `tests/smoke-events-calendar.php` over HTTP.
+  Design: `docs/EVENTS_VERTICAL_DESIGN.md` §14.
+
 - **External identity and upsert — the ingest primitive.** A record that
   mirrors something in another system is now identified by
   `(post_type, source, external_id)`: `PCPTPages_Post_Data::upsert_external()`,

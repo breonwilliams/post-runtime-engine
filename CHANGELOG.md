@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-12
+
 ### Added
 
 - **Calendar feed for event-shaped types.** Every record of a type that

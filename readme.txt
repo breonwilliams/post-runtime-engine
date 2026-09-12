@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.8.1
+Stable tag: 0.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,13 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.9.0 =
+* Added: a calendar for event-shaped record types. Each record page has "Add to calendar" (a standard .ics download) and "Google Calendar" links, and each type has a subscribable feed of its upcoming records that Apple Calendar, Google Calendar and Outlook keep up to date. Built on WordPress core's feed mechanism; the connector reports the feed address.
+* Added: records that mirror another system are identified by source and external id. Creating one twice updates it instead of duplicating it, unchanged records are recognised, and the connector has an upsert route and tool — the primitive behind scheduled ingests from vendor systems.
+* Added: right-to-left languages load right-to-left stylesheets, so an Arabic or Hebrew site gets mirrored cards, heroes, maps and admin screens.
+* Fixed: permanently deleting a record of a deleted type left its category and tag rows behind; the earlier "purge data" ran as one unbounded request and skipped trashed records — it is batched now and covers them.
+* Fixed: "Skip to content" moves keyboard focus on record pages.
+
 = 0.8.1 =
 * Fixed: "Skip to content" did nothing on custom post type single pages. The template mirrors the theme's `<main>` but had not been updated with it, so activating the link scrolled the page without moving keyboard focus — the next Tab went back to the top of the navigation (WCAG 2.4.1).
 
@@ -101,10 +108,11 @@ Privacy policy: https://iconify.design/privacy/
 = 0.7.0 =
 * Fixed: on phones and tablets, the gallery lightbox prev/next controls now sit in a bottom nav bar with the image counter between them (matching Promptless WP), instead of side arrows overlapping the photo. The counter shows the compact "2 / 4" for consistency, with the full "Image 2 of 4" kept for screen readers.
 
-= 0.6.9 =
-* Improved: the "Copy Command" button on the Connector setup screen now sits below the command block instead of overlaying it, fixing a tap-target overlap and a color-contrast issue.
 
 == Upgrade Notice ==
+
+= 0.9.0 =
+Adds "Add to calendar" links and a subscribable calendar feed for event-shaped record types, external-identity upsert for ingesting records from other systems, and right-to-left stylesheets. Fixes orphaned category rows on delete and a purge that skipped trashed records. No settings change.
 
 = 0.8.1 =
 Accessibility fix: the "Skip to content" link now moves keyboard focus on custom post type single pages instead of only scrolling. No content or settings change.

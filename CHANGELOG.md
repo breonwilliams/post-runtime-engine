@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- **Post-type archives load the cards stylesheet only.** `frontend.css`
+  (72 KB) styles a single's hero, groupings, body and gallery; an archive
+  renders the theme's cards decorated with post fields, which `cards.css`
+  styles. Both were enqueued on archives, and CSS coverage on the demo
+  archive measured 0% of `frontend.css` used. Archives now enqueue
+  `pcptpages-cards` alone (it defines every `--pre-*` variable it reads, as
+  the late-inject path already relied on); singles are unchanged.
+  `tests/Unit/FrontendAssetsGatingTest.php` pins the gate and the
+  self-sufficiency of `cards.css`. Verified pixel-identical on the demo
+  archive and three singles at mobile and desktop widths.
+
 ## [0.9.1] - 2026-09-12
 
 ### Fixed

@@ -1441,6 +1441,10 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 				}
 			}
 		}
+		// … or from a URL: sideloaded once per URL, never fatal.
+		if ( ! empty( $body['featured_image_url'] ) && empty( $body['featured_image_id'] ) ) {
+			$warnings = array_merge( $warnings, $plugin->post_data->apply_featured_image_url( $post_id, (string) $body['featured_image_url'], $title ) );
+		}
 
 		// Groupings — atomic with the post: roll back on failure.
 		if ( isset( $body['groupings'] ) && is_array( $body['groupings'] ) ) {
@@ -1472,7 +1476,7 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 	/**
 	 * PUT /posts/{id} — partial update of a post created through the
 	 * connector. Accepts any subset of post_title, post_content,
-	 * post_excerpt, post_status, featured_image_id, groupings.
+	 * post_excerpt, post_status, featured_image_id, featured_image_url, groupings.
 	 *
 	 * Partial-update semantics: omitted fields are not changed. Sending
 	 * an empty string clears a field. Sending a `groupings` array fully
@@ -1594,6 +1598,9 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 			} else {
 				delete_post_thumbnail( $post_id );
 			}
+		}
+		if ( ! empty( $body['featured_image_url'] ) && empty( $body['featured_image_id'] ) ) {
+			$warnings = array_merge( $warnings, pcptpages()->post_data->apply_featured_image_url( $post_id, (string) $body['featured_image_url'], get_the_title( $post_id ) ) );
 		}
 
 		// Groupings — full replace, same semantics as set_post_groupings.
@@ -1851,8 +1858,8 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 	 * them never duplicates a record and an unchanged record is never
 	 * rewritten. Body: post_type, source, external_id, title (required);
 	 * content, excerpt, status, fields {key: value}, taxonomies
-	 * {tax: [terms]}, featured_image_id (optional; only keys present are
-	 * written). Returns 201 on create, 200 on update or unchanged, with
+	 * {tax: [terms]}, featured_image_id, featured_image_url (optional; only
+	 * keys present are written). Returns 201 on create, 200 on update or unchanged, with
 	 * `action` saying which.
 	 */
 	public function handle_upsert_post( WP_REST_Request $request ) {
@@ -1862,7 +1869,7 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 			$body = array();
 		}
 		$record = array();
-		foreach ( array( 'title', 'content', 'excerpt', 'status', 'fields', 'taxonomies', 'featured_image_id' ) as $key ) {
+		foreach ( array( 'title', 'content', 'excerpt', 'status', 'fields', 'taxonomies', 'featured_image_id', 'featured_image_url' ) as $key ) {
 			if ( array_key_exists( $key, $body ) ) {
 				$record[ $key ] = $body[ $key ];
 			}

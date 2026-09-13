@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **`featured_image_url` on records.** A feed's photo URL can be sent to
+  `POST /posts`, `PUT /posts/{id}` and `POST /posts/upsert` (and mapped in
+  FlowMint's `pre_upsert_records`). Post Runtime sideloads it through core's
+  `download_url()` and `media_handle_sideload()`, keeps the source URL on the
+  attachment (`_pcptpages_source_url`) so the same URL is never downloaded
+  twice — an hourly sync fetches each photo once — sets it as the featured
+  image, and defaults the alt text to the title. Never fatal: a URL that
+  cannot be fetched or is not an image is a warning on the response, and the
+  record is still written. `featured_image_id` wins when both are sent. The
+  MCP relay's three post tools describe the new key.
+  `tests/Unit/ImageSideloadTest.php` pins URL acceptance and the filename a
+  URL without an extension is saved under; `tests/smoke-external-upsert.php`
+  exercises the download, reuse, unchanged-hash, 404 and not-an-image
+  paths on a site.
+
 ### Changed
 
 - **Post-type archives load the cards stylesheet only.** `frontend.css`

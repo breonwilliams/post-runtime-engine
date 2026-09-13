@@ -29,41 +29,56 @@ class PCPTPages_Frontend_Assets {
 	}
 
 	/**
-	 * Enqueue the frontend stylesheet on registered CPT singles AND on the
-	 * matching post-type archive page (so theme archive cards get the
-	 * Iconify web component + cards.css that the post fields rely on).
+	 * Enqueue the frontend assets on registered CPT singles and on the
+	 * matching post-type archive page — but not the same set on both:
+	 *
+	 *   - a SINGLE renders the hero, groupings, body and gallery, which is
+	 *     what frontend.css styles, plus the post-field cards (cards.css);
+	 *   - an ARCHIVE renders only the theme's cards, decorated with post
+	 *     fields through `promptless_archive_card_section` — cards.css and
+	 *     the Iconify web component are all it uses. frontend.css was
+	 *     loaded there too until 2026-09-13, at 0% use (72 KB, measured
+	 *     with CSS coverage on the demo archive), so archives now load the
+	 *     cards stylesheet alone.
+	 *
 	 * PostGrid sections inside Promptless pages take the late-inject
-	 * fallback path through PCPTPages_Card_Filter_Hooks.
+	 * fallback path through PCPTPages_Card_Filter_Hooks, which registers
+	 * cards.css with no dependency — cards.css defines every `--pre-*`
+	 * variable it reads, so it stands alone by design.
 	 */
 	public function enqueue() {
 		if ( ! $this->is_pcptpages_managed_page() ) {
 			return;
 		}
 
+		$is_single = is_singular();
+
 		// CSS versions carry the file's own mtime alongside the plugin
 		// version (kitchen-sink pressure test, 2026-07-25): a static
 		// ?ver means an updated stylesheet keeps an identical URL after
 		// a plugin update, so returning browsers serve their stale
 		// cached copy of a file that is new on disk.
-		wp_enqueue_style(
-			'pcptpages-frontend',
-			PCPTPages_PLUGIN_URL . 'assets/css/frontend.css',
-			array(),
-			PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/frontend.css' )
-		);
-		// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.
-		wp_style_add_data( 'pcptpages-frontend', 'rtl', 'replace' );
+		if ( $is_single ) {
+			wp_enqueue_style(
+				'pcptpages-frontend',
+				PCPTPages_PLUGIN_URL . 'assets/css/frontend.css',
+				array(),
+				PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/frontend.css' )
+			);
+			// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.
+			wp_style_add_data( 'pcptpages-frontend', 'rtl', 'replace' );
+		}
 
 		// v1.1: post-field rendering styles. Loaded on every registered
-		// CPT single (parallel to frontend.css) — the card renderer emits
-		// no output when the CPT has no post fields registered, so loading
-		// the CSS unconditionally on these pages is harmless. PostGrid +
-		// archive integrations in Phase 12 will enqueue this same
-		// stylesheet from their own enqueue paths.
+		// CPT single and archive — the card renderer emits no output when
+		// the CPT has no post fields registered, so loading the CSS
+		// unconditionally on these pages is harmless. On a single it
+		// follows frontend.css so the cascade order matches the late-inject
+		// path; on an archive it is the only stylesheet.
 		wp_enqueue_style(
 			'pcptpages-cards',
 			PCPTPages_PLUGIN_URL . 'assets/css/cards.css',
-			array( 'pcptpages-frontend' ),
+			$is_single ? array( 'pcptpages-frontend' ) : array(),
 			PCPTPages_VERSION . '.' . (int) @filemtime( PCPTPages_PLUGIN_DIR . 'assets/css/cards.css' )
 		);
 		// Right-to-left locales load the rtlcss sibling (assets/css/*-rtl.css); see bin/build-rtl.sh.

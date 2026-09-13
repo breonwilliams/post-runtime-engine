@@ -218,7 +218,7 @@ const TOOLS = [
   {
     name: "postruntime_upsert_post",
     description:
-      "Create OR update the record that mirrors a record in an external system, keyed by (post_type, source, external_id). This is the ingest primitive: use it whenever the data comes from somewhere else (a recreation system, an agenda manager, a spreadsheet export) and may be sent again — re-sending never duplicates, and a record whose mapped payload has not changed is left untouched (action 'unchanged', no revision, no modified date churn). `source` is a short key for the system ('recdesk', 'civicclerk'); `external_id` is that system's own identifier for the record. Only the keys you send are written: a field you do not name keeps its current value, so local edits to other fields survive a sync. `status` defaults to publish on create and is kept on update unless sent. `fields` maps post-field keys to values (dates accept ISO 8601); `taxonomies` maps a taxonomy to term names (created if missing). Returns {post_id, action: created|updated|unchanged, permalink, warnings}. For a scheduled sync of many records use the FlowMint step pre_upsert_records, which calls the same path per record.",
+      "Create OR update the record that mirrors a record in an external system, keyed by (post_type, source, external_id). This is the ingest primitive: use it whenever the data comes from somewhere else (a recreation system, an agenda manager, a spreadsheet export) and may be sent again — re-sending never duplicates, and a record whose mapped payload has not changed is left untouched (action 'unchanged', no revision, no modified date churn). `source` is a short key for the system ('recdesk', 'civicclerk'); `external_id` is that system's own identifier for the record. Only the keys you send are written: a field you do not name keeps its current value, so local edits to other fields survive a sync. `status` defaults to publish on create and is kept on update unless sent. `fields` maps post-field keys to values (dates accept ISO 8601); `taxonomies` maps a taxonomy to term names (created if missing); `featured_image_url` sideloads a feed's photo once per URL and sets it as the featured image. Returns {post_id, action: created|updated|unchanged, permalink, warnings}. For a scheduled sync of many records use the FlowMint step pre_upsert_records, which calls the same path per record.",
     inputSchema: {
       type: "object",
       properties: {
@@ -232,6 +232,7 @@ const TOOLS = [
         fields: { type: "object", description: "Optional. Post-field values keyed by field key, e.g. {\"event_start\": \"2026-10-04T18:00:00-05:00\", \"event_location\": \"Council chambers\"}." },
         taxonomies: { type: "object", description: "Optional. Map of taxonomy slug → list of term names/slugs/IDs. Replaces that taxonomy's terms; omitted taxonomies untouched." },
         featured_image_id: { type: "integer" },
+        featured_image_url: { type: "string", description: "Optional. http(s) URL of the record's image (a feed's photo URL). Sideloaded into the media library ONCE per URL — re-sending the same URL reuses the attachment — and set as the featured image; alt text defaults to the title. Ignored when featured_image_id is given. A URL that cannot be fetched or is not an image surfaces in `warnings`; the record is still written." },
       },
       required: ["post_type", "source", "external_id", "title"],
     },
@@ -471,6 +472,7 @@ const TOOLS = [
         post_content: { type: "string", description: "HTML body for the WP editor area" },
         post_excerpt: { type: "string" },
         featured_image_id: { type: "integer", description: "Attachment ID for the hero image" },
+        featured_image_url: { type: "string", description: "Alternative to featured_image_id: an http(s) image URL, sideloaded once per URL and set as the featured image (alt defaults to the title). Ignored when featured_image_id is given; failures surface in `warnings`, the post is still created." },
         groupings: { type: "array", description: "Optional initial grouping data" },
         taxonomies: { type: "object", description: "Optional. Map of taxonomy slug → list of terms to assign, e.g. {\"category\": [\"Downtown\", \"Waterfront District\"]}. Terms may be names, slugs, or term IDs; names/slugs that don't exist yet are created. The taxonomy must be registered for the CPT (declare it in the CPT's `taxonomies` list at registration). Drives taxonomy-based archive facets and taxonomy_match groupings. Non-fatal: bad terms/taxonomies surface in the response `warnings`." },
       },
@@ -480,7 +482,7 @@ const TOOLS = [
   {
     name: "postruntime_update_post",
     description:
-      "Partially update a post created through the connector. Accepts any subset of post_title, post_content, post_excerpt, post_status, featured_image_id, groupings — omitted fields are not changed. Sending an empty post_excerpt or post_content clears that field; sending featured_image_id=0 removes the thumbnail. Sending `groupings` fully replaces all groupings on the post (same as set_post_groupings). post_content is sanitized: a leading <![CDATA[...]]> wrapper is stripped automatically and a 'post_content_cdata_stripped' warning surfaces in the response. Use this to fix authored content without losing the post ID (which would break cross-CPT references via link_post_id).",
+      "Partially update a post created through the connector. Accepts any subset of post_title, post_content, post_excerpt, post_status, featured_image_id, featured_image_url, groupings — omitted fields are not changed. Sending an empty post_excerpt or post_content clears that field; sending featured_image_id=0 removes the thumbnail. Sending `groupings` fully replaces all groupings on the post (same as set_post_groupings). post_content is sanitized: a leading <![CDATA[...]]> wrapper is stripped automatically and a 'post_content_cdata_stripped' warning surfaces in the response. Use this to fix authored content without losing the post ID (which would break cross-CPT references via link_post_id).",
     inputSchema: {
       type: "object",
       properties: {
@@ -490,6 +492,7 @@ const TOOLS = [
         post_excerpt: { type: "string" },
         post_status: { type: "string", enum: ["publish", "draft", "pending", "private", "future"] },
         featured_image_id: { type: "integer", description: "Attachment ID; pass 0 to remove the existing thumbnail" },
+        featured_image_url: { type: "string", description: "Alternative to featured_image_id: an http(s) image URL, sideloaded once per URL and set as the featured image. Ignored when featured_image_id is given; failures surface in `warnings`." },
         groupings: { type: "array", description: "Optional. Full replace — same semantics as set_post_groupings." },
         taxonomies: { type: "object", description: "Optional. Map of taxonomy slug → list of terms (names, slugs, or IDs). REPLACE per taxonomy supplied — omitted taxonomies are untouched; an empty list clears that taxonomy's terms. Terms that don't exist are created. e.g. {\"category\": [\"Downtown\"]}. Non-fatal: issues surface in `warnings`." },
       },
@@ -1048,7 +1051,7 @@ async function handleTool(name, args) {
 
     case "postruntime_upsert_post": {
       const payload = {};
-      ["post_type", "source", "external_id", "title", "content", "excerpt", "status", "fields", "taxonomies", "featured_image_id"].forEach((k) => {
+      ["post_type", "source", "external_id", "title", "content", "excerpt", "status", "fields", "taxonomies", "featured_image_id", "featured_image_url"].forEach((k) => {
         if (args[k] !== undefined) payload[k] = args[k];
       });
       if ("fields" in payload) payload.fields = maybeParseJsonObjectString(payload.fields);
@@ -1188,6 +1191,7 @@ async function handleTool(name, args) {
         "post_content",
         "post_excerpt",
         "featured_image_id",
+        "featured_image_url",
         "groupings",
         "taxonomies",
       ].forEach((k) => {
@@ -1213,6 +1217,7 @@ async function handleTool(name, args) {
         "post_excerpt",
         "post_status",
         "featured_image_id",
+        "featured_image_url",
         "groupings",
         "taxonomies",
       ].forEach((k) => {

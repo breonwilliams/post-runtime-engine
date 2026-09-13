@@ -71,6 +71,59 @@ $r6 = $pd->upsert_external($cpt, 'recdesk', '4472', ['title' => 'Adult Tennis'])
 $listed = $pd->list_external($cpt, 'recdesk');
 check(isset($listed[$id]) && isset($listed[(int) $r6['post_id']]) && count($listed) === 2, 'list_external returns every record of the source with synced_at', json_encode($listed));
 
+echo "\nfeatured_image_url\n";
+// Local's certificate is self-signed; download_url() goes through
+// wp_safe_remote_get(), which verifies it. A real feed has a real certificate.
+add_filter('https_ssl_verify', '__return_false');
+$src_ids = get_posts(['post_type' => 'attachment', 'post_mime_type' => 'image', 'post_status' => 'inherit', 'posts_per_page' => 1, 'fields' => 'ids', 'meta_query' => [['key' => PCPTPages_Post_Data::IMAGE_SOURCE_META, 'compare' => 'NOT EXISTS']]]);
+$sideloaded = [];
+if (!$src_ids) {
+    echo "  (no image in the media library to serve as a feed photo — skipped)\n";
+} else {
+    $img_url = wp_get_attachment_url((int) $src_ids[0]);
+    $r7 = $pd->upsert_external($cpt, 'recdesk', '4474', ['title' => 'Swim Lessons', 'featured_image_url' => $img_url]);
+    $p7 = (int) ($r7['post_id'] ?? 0);
+    $thumb = (int) get_post_thumbnail_id($p7);
+    check(!is_wp_error($r7) && $r7['action'] === 'created' && empty($r7['warnings']) && $thumb > 0, 'a record with featured_image_url is created with a thumbnail', json_encode($r7));
+    check($thumb !== (int) $src_ids[0], 'the thumbnail is a NEW attachment (a copy), not the source attachment');
+    check(get_post_meta($thumb, PCPTPages_Post_Data::IMAGE_SOURCE_META, true) === $img_url, 'the attachment records the source URL');
+    check(get_post_meta($thumb, '_wp_attachment_image_alt', true) === 'Swim Lessons', 'alt text defaults to the record title');
+    check(wp_attachment_is_image($thumb) && file_exists(get_attached_file($thumb)), 'the file is on disk and is an image');
+    if ($thumb) { $sideloaded[] = $thumb; }
+
+    $r8 = $pd->upsert_external($cpt, 'recdesk', '4475', ['title' => 'Dive Team', 'featured_image_url' => $img_url]);
+    $p8 = (int) ($r8['post_id'] ?? 0);
+    check((int) get_post_thumbnail_id($p8) === $thumb, 'a second record with the same URL REUSES the attachment (no second download)', json_encode($r8));
+    $count = count(get_posts(['post_type' => 'attachment', 'post_status' => 'inherit', 'posts_per_page' => -1, 'fields' => 'ids', 'meta_key' => PCPTPages_Post_Data::IMAGE_SOURCE_META, 'meta_value' => $img_url]));
+    check($count === 1, 'exactly one attachment carries that source URL', (string) $count);
+
+    $r9 = $pd->upsert_external($cpt, 'recdesk', '4474', ['title' => 'Swim Lessons', 'featured_image_url' => $img_url]);
+    check($r9['action'] === 'unchanged', 'the same payload again is unchanged (hash covers the URL)');
+    $r10 = $pd->upsert_external($cpt, 'recdesk', '4474', ['title' => 'Swim Lessons (Fall)', 'featured_image_url' => $img_url]);
+    check($r10['action'] === 'updated' && empty($r10['warnings']) && (int) get_post_thumbnail_id($p7) === $thumb, 'a changed record whose image URL did not move keeps the thumbnail without a download');
+
+    $r11 = $pd->upsert_external($cpt, 'recdesk', '4474', ['title' => 'Swim Lessons (Fall)', 'featured_image_url' => home_url('/wp-content/uploads/does-not-exist-' . wp_rand() . '.jpg')]);
+    check($r11['action'] === 'updated' && !empty($r11['warnings']) && strpos($r11['warnings'][0], 'featured_image_url') === 0 && (int) get_post_thumbnail_id($p7) === $thumb, 'a URL that 404s is a warning; the record is written and the previous thumbnail kept', json_encode($r11));
+    $r12 = $pd->upsert_external($cpt, 'recdesk', '4474', ['title' => 'Swim Lessons (Fall)', 'featured_image_url' => home_url('/')]);
+    check(!empty($r12['warnings']) && strpos($r12['warnings'][0], 'supported image') !== false, 'a URL that is not an image is a warning', json_encode($r12['warnings'] ?? []));
+    check(empty($pd->upsert_external($cpt, 'recdesk', '4474', ['title' => 'Swim Lessons (Fall)', 'featured_image_url' => 'ftp://x/y.jpg'])['warnings'][0]) === false, 'a non-http URL is a warning');
+    $r13 = $pd->upsert_external($cpt, 'recdesk', '4476', ['title' => 'Both given', 'featured_image_id' => (int) $src_ids[0], 'featured_image_url' => $img_url]);
+    check((int) get_post_thumbnail_id((int) $r13['post_id']) === (int) $src_ids[0], 'featured_image_id wins when both are sent');
+
+    $req = new WP_REST_Request('POST', '/' . PCPTPages_REST_NAMESPACE . '/' . PCPTPages_REST_BASE . '/posts');
+    $req->set_header('Content-Type', 'application/json');
+    $req->set_body(wp_json_encode(['post_type' => $cpt, 'post_title' => 'Created with a photo URL', 'featured_image_url' => $img_url]));
+    $res = rest_get_server()->dispatch($req);
+    $d = $res->get_data();
+    check($res->get_status() === 201 && (int) get_post_thumbnail_id((int) ($d['post_id'] ?? 0)) === $thumb, 'POST /posts accepts featured_image_url and reuses the attachment', json_encode($d));
+    $req = new WP_REST_Request('PUT', '/' . PCPTPages_REST_NAMESPACE . '/' . PCPTPages_REST_BASE . '/posts/' . (int) $r6['post_id']);
+    $req->set_url_params(['id' => (int) $r6['post_id']]);
+    $req->set_header('Content-Type', 'application/json');
+    $req->set_body(wp_json_encode(['featured_image_url' => $img_url]));
+    $res = rest_get_server()->dispatch($req);
+    check($res->get_status() === 200 && (int) get_post_thumbnail_id((int) $r6['post_id']) === $thumb, 'PUT /posts/{id} accepts featured_image_url', json_encode($res->get_data()));
+}
+
 echo "\nconnector\n";
 $req = new WP_REST_Request('POST', '/' . PCPTPages_REST_NAMESPACE . '/' . PCPTPages_REST_BASE . '/posts/upsert');
 $req->set_header('Content-Type', 'application/json');
@@ -85,7 +138,7 @@ $req->set_param('post_type', $cpt);
 $res = rest_get_server()->dispatch($req);
 $posts = $res->get_data()['posts'] ?? [];
 $with = array_filter($posts, static fn($p) => !empty($p['external']));
-check(count($with) === 3 && $with[array_key_first($with)]['external']['source'] === 'recdesk', 'list_posts shows the external identity', json_encode(array_column($posts, 'external')));
+check(count($with) >= 3 && $with[array_key_first($with)]['external']['source'] === 'recdesk', 'list_posts shows the external identity', json_encode(array_column($posts, 'external')));
 
 echo "\npurge removes identity\n";
 $req = new WP_REST_Request('DELETE', '/' . PCPTPages_REST_NAMESPACE . '/' . PCPTPages_REST_BASE . '/cpts/' . $cpt);
@@ -101,6 +154,7 @@ check($res->get_status() === 200 && $left === 0, 'purge removes external identit
 // unregistered type and would leave the rows behind.
 foreach ($wpdb->get_col($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE post_type = %s", $cpt)) as $pid) { wp_delete_object_term_relationships((int) $pid, ['category']); wp_delete_post((int) $pid, true); }
 foreach (get_terms(['taxonomy' => 'category', 'hide_empty' => false, 'search' => 'Upsert Youth']) as $t) wp_delete_term($t->term_id, 'category');
+foreach ($sideloaded as $aid) { wp_delete_attachment($aid, true); }
 $tomb = get_option(PCPTPages_Connector_API::DELETED_CPTS_OPTION, []);
 if (is_array($tomb) && isset($tomb[$cpt])) { unset($tomb[$cpt]); update_option(PCPTPages_Connector_API::DELETED_CPTS_OPTION, $tomb, false); }
 

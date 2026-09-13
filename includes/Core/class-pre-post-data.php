@@ -62,6 +62,25 @@ class PCPTPages_Post_Data {
 	const EXTERNAL_HASH_META   = '_pcptpages_external_hash';
 	const EXTERNAL_SYNCED_META = '_pcptpages_external_synced_at';
 
+	/**
+	 * Attachment meta: the URL an image was sideloaded from. A feed that
+	 * sends the same URL again reuses that attachment instead of
+	 * downloading a second copy — the identity idiom applied to images.
+	 */
+	const IMAGE_SOURCE_META = '_pcptpages_source_url';
+
+	/**
+	 * Image MIME types a sideloaded file may have, and the extension the
+	 * saved file gets when the URL carries none (`/photo?id=9`).
+	 */
+	const IMAGE_MIME_EXTENSIONS = array(
+		'image/jpeg' => 'jpg',
+		'image/png'  => 'png',
+		'image/gif'  => 'gif',
+		'image/webp' => 'webp',
+		'image/avif' => 'avif',
+	);
+
 	// ---------------------------------------------------------------------
 	// v1.1 post-field meta keys
 	// ---------------------------------------------------------------------
@@ -1241,7 +1260,8 @@ class PCPTPages_Post_Data {
 	 *   title (required), content, excerpt, status (default publish on
 	 *   create; on update the current status is kept unless given),
 	 *   fields {key => value}, taxonomies {tax => [terms]},
-	 *   featured_image_id.
+	 *   featured_image_id, featured_image_url (sideloaded once per URL and
+	 *   set as the thumbnail; ignored when featured_image_id is given).
 	 * Only the keys present are written; a field the mapping does not name
 	 * is left exactly as it is, so local edits to other fields survive a
 	 * sync. When the payload hash matches what was last written the post
@@ -1318,6 +1338,9 @@ class PCPTPages_Post_Data {
 				$warnings[] = sprintf( 'featured_image_id %d could not be set.', $thumb );
 			}
 		}
+		if ( ! empty( $record['featured_image_url'] ) && empty( $record['featured_image_id'] ) ) {
+			$warnings = array_merge( $warnings, $this->apply_featured_image_url( $post_id, (string) $record['featured_image_url'], $title ) );
+		}
 		if ( isset( $record['taxonomies'] ) && is_array( $record['taxonomies'] ) ) {
 			$warnings = array_merge( $warnings, $this->apply_taxonomies( $post_id, $post_type, $record['taxonomies'] ) );
 		}
@@ -1349,6 +1372,159 @@ class PCPTPages_Post_Data {
 		do_action( 'pcptpages_external_record_upserted', $post_id, $action, $source, $external_id, $origin );
 
 		return array( 'post_id' => $post_id, 'action' => $action, 'permalink' => get_permalink( $post_id ), 'warnings' => $warnings );
+	}
+
+	/**
+	 * Set a record's featured image from a URL: sideload it (or reuse the
+	 * attachment a previous call made from the same URL) and make it the
+	 * thumbnail. Never fatal — every failure comes back as a warning and
+	 * the record stands without the image, the way featured_image_id does.
+	 *
+	 * A feed re-sent every hour hits this for every record; the upsert's
+	 * payload hash already skips unchanged records, and for a changed one
+	 * whose image URL did not move the current thumbnail's source URL
+	 * matches and nothing is downloaded.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $url     Image URL.
+	 * @param string $alt     Alt text for a NEWLY created attachment (the record title); an existing attachment keeps its own.
+	 * @return string[] Warnings; empty on success.
+	 */
+	public function apply_featured_image_url( $post_id, $url, $alt = '' ) {
+		$url = self::normalize_image_url( $url );
+		if ( $url === '' ) {
+			return array( 'featured_image_url is not an http(s) URL; ignored.' );
+		}
+		$current = (int) get_post_thumbnail_id( $post_id );
+		if ( $current > 0 && (string) get_post_meta( $current, self::IMAGE_SOURCE_META, true ) === $url ) {
+			return array();
+		}
+		$attachment_id = $this->sideload_image( $url, $post_id, $alt );
+		if ( is_wp_error( $attachment_id ) ) {
+			return array( sprintf( 'featured_image_url could not be sideloaded (%s); the record was written without it.', $attachment_id->get_error_message() ) );
+		}
+		if ( ! set_post_thumbnail( $post_id, $attachment_id ) ) {
+			return array( sprintf( 'featured_image_url was sideloaded as attachment %d but could not be set as the thumbnail.', $attachment_id ) );
+		}
+		return array();
+	}
+
+	/**
+	 * Sideload an image URL into the media library, once per URL.
+	 *
+	 * Core's own path: `download_url()` (which goes through
+	 * `wp_safe_remote_get()`, so private and loopback hosts are refused)
+	 * then `media_handle_sideload()` (which validates the file as an image
+	 * and generates the sizes). The source URL is kept on the attachment so
+	 * the next call with the same URL returns the same attachment.
+	 *
+	 * @param string $url     Image URL (http/https).
+	 * @param int    $post_id Post the attachment is filed under (0 for none).
+	 * @param string $alt     Alt text when the attachment is created.
+	 * @return int|WP_Error Attachment ID.
+	 */
+	public function sideload_image( $url, $post_id = 0, $alt = '' ) {
+		$url = self::normalize_image_url( $url );
+		if ( $url === '' ) {
+			return new WP_Error( 'pcptpages_invalid_image_url', __( 'The image URL must be an http(s) URL.', 'promptless-cpt-pages' ) );
+		}
+		$existing = $this->find_attachment_by_source_url( $url );
+		if ( $existing > 0 ) {
+			return $existing;
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+
+		$tmp = download_url( $url, 20 );
+		if ( is_wp_error( $tmp ) ) {
+			return $tmp;
+		}
+		$mime = wp_get_image_mime( $tmp );
+		$name = is_string( $mime ) ? self::filename_for_image_url( $url, $mime ) : '';
+		if ( $name === '' ) {
+			wp_delete_file( $tmp );
+			/* translators: %s: the MIME type detected, or "unknown" */
+			return new WP_Error( 'pcptpages_not_an_image', sprintf( __( 'The URL did not return a supported image (%s).', 'promptless-cpt-pages' ), is_string( $mime ) ? $mime : 'unknown' ) );
+		}
+
+		$attachment_id = media_handle_sideload( array( 'name' => $name, 'tmp_name' => $tmp ), (int) $post_id );
+		if ( is_wp_error( $attachment_id ) ) {
+			wp_delete_file( $tmp );
+			return $attachment_id;
+		}
+		$attachment_id = (int) $attachment_id;
+		update_post_meta( $attachment_id, self::IMAGE_SOURCE_META, $url );
+		$alt = sanitize_text_field( (string) $alt );
+		if ( $alt !== '' && (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) === '' ) {
+			update_post_meta( $attachment_id, '_wp_attachment_image_alt', $alt );
+		}
+		return $attachment_id;
+	}
+
+	/**
+	 * The attachment previously sideloaded from a URL, or 0.
+	 *
+	 * @param string $url Normalised URL.
+	 * @return int
+	 */
+	private function find_attachment_by_source_url( $url ) {
+		$ids = get_posts( array(
+			'post_type'      => 'attachment',
+			'post_status'    => 'inherit',
+			'posts_per_page' => 1,
+			'orderby'        => 'ID',
+			'order'          => 'ASC',
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+			'meta_key'       => self::IMAGE_SOURCE_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+			'meta_value'     => $url, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+		) );
+		return $ids ? (int) $ids[0] : 0;
+	}
+
+	/**
+	 * Trim and validate an image URL; '' when it is not http(s).
+	 *
+	 * @param string $url Raw URL.
+	 * @return string
+	 */
+	public static function normalize_image_url( $url ) {
+		$url = trim( (string) $url );
+		if ( $url === '' || ! preg_match( '#^https?://#i', $url ) ) {
+			return '';
+		}
+		$clean = esc_url_raw( $url, array( 'http', 'https' ) );
+		return is_string( $clean ) ? $clean : '';
+	}
+
+	/**
+	 * The filename a sideloaded image is saved under: the URL path's
+	 * basename, or a hash-derived name when the path has none, with an
+	 * image extension — the URL's own when it is one, else the one for the
+	 * detected MIME type. '' when neither gives an image extension.
+	 *
+	 * @param string $url  Image URL.
+	 * @param string $mime Detected MIME type ('' when unknown).
+	 * @return string
+	 */
+	public static function filename_for_image_url( $url, $mime = '' ) {
+		$path = wp_parse_url( $url, PHP_URL_PATH );
+		$base = is_string( $path ) ? basename( rawurldecode( $path ) ) : '';
+		$ext  = strtolower( (string) pathinfo( $base, PATHINFO_EXTENSION ) );
+		$name = (string) pathinfo( $base, PATHINFO_FILENAME );
+		$accepted = array_merge( array_values( self::IMAGE_MIME_EXTENSIONS ), array( 'jpeg' ) );
+		if ( ! in_array( $ext, $accepted, true ) ) {
+			$ext = isset( self::IMAGE_MIME_EXTENSIONS[ $mime ] ) ? self::IMAGE_MIME_EXTENSIONS[ $mime ] : '';
+		}
+		if ( $ext === '' ) {
+			return '';
+		}
+		if ( $name === '' || $name === '.' ) {
+			$name = 'image-' . substr( md5( $url ), 0, 8 );
+		}
+		return sanitize_file_name( $name . '.' . $ext );
 	}
 
 	/**

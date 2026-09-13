@@ -531,6 +531,8 @@ Only `post_type` and `post_title` are required. `post_status` defaults to `draft
 
 If `featured_image_id` is set, the connector calls `set_post_thumbnail($post_id, $id)`. If that fails (attachment doesn't exist, isn't an image), the post is still created and the response includes a `warnings` array.
 
+`featured_image_url` is the alternative for an image that is not in the media library yet — a feed's photo URL. The connector sideloads it through core's `download_url()` and `media_handle_sideload()`, **once per URL**: the attachment keeps the source URL in `_pcptpages_source_url`, and any later call with the same URL (this route, `PUT /posts/{id}`, `POST /posts/upsert`, FlowMint's `pre_upsert_records`) reuses it instead of downloading again. The new attachment's alt text defaults to the post title. Only `http`/`https` URLs are accepted, and private or loopback hosts are refused by core. A URL that cannot be fetched, or that does not return a supported image (JPEG, PNG, GIF, WebP, AVIF), is reported in `warnings` and the post is still created. `featured_image_id` wins when both are sent.
+
 **Success:** `201 Created`
 
 ```json
@@ -646,7 +648,7 @@ The ingest primitive. A record that mirrors something in another system (a recre
 }
 ```
 
-`post_type`, `source`, `external_id` and `title` are required (`post_title` / `post_content` / `post_excerpt` / `post_status` are accepted as aliases). **Only the keys present are written**: a field the caller does not name keeps its current value, so an editor's local additions survive a sync. `status` defaults to `publish` on create and is kept on update unless sent. An unknown field key fails the whole call (422 `pcptpages_unknown_field_key`) and, on create, the post is rolled back.
+`post_type`, `source`, `external_id` and `title` are required (`post_title` / `post_content` / `post_excerpt` / `post_status` are accepted as aliases). `featured_image_id` and `featured_image_url` are accepted exactly as on `POST /posts` — the URL form is sideloaded once per URL and reused on every later sync, so an hourly feed downloads each photo one time. **Only the keys present are written**: a field the caller does not name keeps its current value, so an editor's local additions survive a sync. `status` defaults to `publish` on create and is kept on update unless sent. An unknown field key fails the whole call (422 `pcptpages_unknown_field_key`) and, on create, the post is rolled back.
 
 **Success:** `201 Created` (action `created`) or `200 OK` (action `updated` | `unchanged`)
 

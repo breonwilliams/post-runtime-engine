@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.9.1
+Stable tag: 0.10.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,10 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.10.0 =
+* Added: records accept a photo URL (`featured_image_url`) on the connector and in FlowMint imports. The image is downloaded into the media library once per URL, reused on every later sync, set as the featured image with the title as alt text, and a URL that fails is a warning rather than an error.
+* Changed: post-type archive pages no longer load the single-page stylesheet they never used, so they load faster. Single pages are unchanged.
+
 = 0.9.1 =
 * Fixed: three Plugin Check errors in the 0.9.0 package (two prohibited `suppress_filters` declarations, one missing translators comment). No behaviour change.
 
@@ -104,13 +108,12 @@ Privacy policy: https://iconify.design/privacy/
 * Added: a new "Location / map" field type. Enter a street address on a post and its single page shows a click-to-load map — no Google Maps API key, no coordinates, no setup. Cards and archive listings show the address as text. You choose the zoom level (street / neighborhood / city), whether the map loads on click (privacy-friendly, the default) or automatically, and whether to show a "Get directions" link. You also choose where the map sits on the page — above the content, below it, or in the sidebar — the same placement control your grouping sections use, and each post can override it. If a post has no address, the map uses your Business Identity address (when Promptless WP is set up). The map is self-contained — it does NOT require Promptless WP and works on any theme; when Promptless WP is active the map simply picks up your brand colours automatically. Works from the editor by hand or through the AI connector.
 * Updated: tested up to WordPress 7.1.
 
-= 0.7.1 =
-* Fixed: single-post pages (such as a speaker or session profile) now align their content and hero image to the same layout width as the floating navigation and page sections, instead of extending slightly past it on the left and right.
-* Fixed: in the post editor, a grouping item linked to another post now clearly shows which post it is linked to (and the post type), instead of leaving the link field looking empty. A link whose target has been deleted is flagged. Makes existing connections visible and verifiable at a glance. Editor-only; no content or data changes.
-
 
 
 == Upgrade Notice ==
+
+= 0.10.0 =
+Records can take a photo URL from the connector or a FlowMint import; each image is downloaded once and reused. Archive pages load less CSS. Additive; no settings change.
 
 = 0.9.1 =
 Plugin Check clean-up of the 0.9.0 package; no behaviour change. Safe for all users.
@@ -126,10 +129,3 @@ Fixes two data-handling bugs: deleting a post type destroyed grouping definition
 
 = 0.7.2 =
 Adds a Location / map field: enter an address and the single page shows a click-to-load map — no Google Maps API key or setup. Place it above, below, or in the sidebar, overridable per post. Works with or without Promptless WP. Additive; existing fields unchanged.
-
-= 0.7.1 =
-Grouping items linked to another post now show the linked post (and its type) in the editor instead of a blank field, and flag a link whose target no longer exists. Editor-only clarity fix; no content, schema, or front-end changes. Recommended for all users.
-
-= 0.7.0 =
-Gallery lightbox mobile navigation now matches Promptless WP: on phones and tablets the prev/next controls sit in a bottom nav bar with the image counter between them, instead of side arrows overlapping wide photos. Recommended for all users.
-

@@ -8,7 +8,7 @@
 > | Plugin header / text domain | `Promptless CPT Pages` / `promptless-cpt-pages` |
 > | Class prefix | `PCPTPages_*` (files remain `class-pre-*.php`) |
 > | Main class / accessor | `Promptless_CPT_Pages`, `pcptpages()` (`class_alias` keeps `Post_Runtime_Engine` working) |
-> | Constants | `PCPTPages_VERSION` (0.10.0), `PCPTPages_DATA_VERSION` (0.7.0) — check `post-runtime-engine.php`; this line goes stale |
+> | Constants | `PCPTPages_VERSION` (0.10.1), `PCPTPages_DATA_VERSION` (0.7.0) — check `post-runtime-engine.php`; this line goes stale |
 > | Actions/filters | `pcptpages_*` (e.g. `pcptpages_cpt_registered`, `pcptpages_grouping_defined`, `pcptpages_render_cache_enabled`) |
 > | Options | `pcptpages_*` (`pcptpages_cpts`, `pcptpages_groupings_{cpt}`, `pcptpages_post_fields_{cpt}`, `pcptpages_connector_enabled`) |
 > | Post meta | `_pcptpages_*` (`_pcptpages_groupings`, `_pcptpages_field_{key}`, `_pcptpages_field_visibility`) |

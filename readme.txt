@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.10.0
+Stable tag: 0.10.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,12 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.10.1 =
+* Changed: deleting the plugin keeps post types, fields, groupings and record values unless PCPTPAGES_REMOVE_ALL_DATA is set in wp-config.php.
+* Fixed: the connector's delete removed records permanently while reporting a trash; connector writes could take up to an hour to show on the page.
+* Fixed: all-day events moved to Past on their last day, records with no end date appeared in no list, and a long event dropped out of the calendar feed.
+* Fixed: saving a type or grouping in the admin erased settings made through the connector (custom address, REST base, Iconify icon, reverse lookups).
+
 = 0.10.0 =
 * Added: records accept a photo URL (`featured_image_url`) on the connector and in FlowMint imports. The image is downloaded into the media library once per URL, reused on every later sync, set as the featured image with the title as alt text, and a URL that fails is a warning rather than an error.
 * Changed: post-type archive pages no longer load the single-page stylesheet they never used, so they load faster. Single pages are unchanged.
@@ -104,13 +110,11 @@ Privacy policy: https://iconify.design/privacy/
 * Fixed: the connector used up its hourly request allowance about twice as fast as it should have.
 * Fixed: the connector could not reach an HTTPS local development site.
 
-= 0.7.2 =
-* Added: a new "Location / map" field type. Enter a street address on a post and its single page shows a click-to-load map — no Google Maps API key, no coordinates, no setup. Cards and archive listings show the address as text. You choose the zoom level (street / neighborhood / city), whether the map loads on click (privacy-friendly, the default) or automatically, and whether to show a "Get directions" link. You also choose where the map sits on the page — above the content, below it, or in the sidebar — the same placement control your grouping sections use, and each post can override it. If a post has no address, the map uses your Business Identity address (when Promptless WP is set up). The map is self-contained — it does NOT require Promptless WP and works on any theme; when Promptless WP is active the map simply picks up your brand colours automatically. Works from the editor by hand or through the AI connector.
-* Updated: tested up to WordPress 7.1.
-
-
 
 == Upgrade Notice ==
+
+= 0.10.1 =
+Fixes a connector delete that removed records permanently, event lists that dropped all-day and open-ended events, and admin saves that erased settings made through the connector. Deleting the plugin now keeps your data unless you opt in.
 
 = 0.10.0 =
 Records can take a photo URL from the connector or a FlowMint import; each image is downloaded once and reused. Archive pages load less CSS. Additive; no settings change.
@@ -119,7 +123,7 @@ Records can take a photo URL from the connector or a FlowMint import; each image
 Plugin Check clean-up of the 0.9.0 package; no behaviour change. Safe for all users.
 
 = 0.9.0 =
-Adds "Add to calendar" links and a subscribable calendar feed for event-shaped record types, external-identity upsert for ingesting records from other systems, and right-to-left stylesheets. Fixes orphaned category rows on delete and a purge that skipped trashed records. No settings change.
+Adds Add to calendar links and a subscribable calendar feed for event-shaped record types, external-identity upsert for ingesting records from other systems, and right-to-left stylesheets. Fixes orphaned category rows on delete and a purge that skipped trashed records. No settings change.
 
 = 0.8.1 =
 Accessibility fix: the "Skip to content" link now moves keyboard focus on custom post type single pages instead of only scrolling. No content or settings change.
@@ -127,5 +131,3 @@ Accessibility fix: the "Skip to content" link now moves keyboard focus on custom
 = 0.8.0 =
 Fixes two data-handling bugs: deleting a post type destroyed grouping definitions it claimed to preserve, and "purge data" left most behind. Also stops a bug that created ~20 junk autoloaded options per grouping save, and clears existing ones automatically.
 
-= 0.7.2 =
-Adds a Location / map field: enter an address and the single page shows a click-to-load map — no Google Maps API key or setup. Place it above, below, or in the sidebar, overridable per post. Works with or without Promptless WP. Additive; existing fields unchanged.

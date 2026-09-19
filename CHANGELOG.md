@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-09-19
+
 ### Changed
 
 - **Deleting the plugin keeps the site's definitions and values unless you

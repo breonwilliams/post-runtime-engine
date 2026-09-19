@@ -279,7 +279,11 @@
  * duplicated in AISB's postgrid.css with the same declarations so
  * whichever plugin updates first keeps the composition correct
  * (identical rules cannot conflict). */
-.aisb-postgrid__item--compact .pre-card-fields__position--image-overlay {
+/* Promptless WP 1.8.4+ also fires image_overlay in the content cell of ANY
+ * card without a featured image; same in-flow treatment, identical to the
+ * rule in its postgrid.css. */
+.aisb-postgrid__item--compact .pre-card-fields__position--image-overlay,
+.aisb-postgrid .aisb-features__item-content > .pre-card-fields__position--image-overlay {
 	position: static;
 	top: auto;
 	left: auto;
@@ -296,7 +300,12 @@
  * pushes content down instead of overlapping it, whatever the metadata. The
  * stacked/split hero layouts keep the absolute treatment: there the badge
  * floats over the IMAGE, which is the intended composition. */
-.pre-hero__inner--overlay .pre-card-fields__position--image-overlay {
+/* No-image placement (2026-09-19): when the single post has no image to
+ * sit on, the image_overlay position renders at the top of the hero's text
+ * column instead of being dropped (PCPTPages_Renderer). Same in-flow
+ * treatment as the overlay hero. */
+.pre-hero__inner--overlay .pre-card-fields__position--image-overlay,
+.pre-hero__text > .pre-card-fields__position--image-overlay {
 	position: static;
 	top: auto;
 	left: auto;

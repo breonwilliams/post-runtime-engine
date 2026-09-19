@@ -185,8 +185,13 @@ class PCPTPages_Card_Filter_Hooks {
 		$content = is_array( $content ) ? $content : array();
 		$status  = isset( $content['event_status'] ) ? sanitize_key( $content['event_status'] ) : '';
 		if ( ! in_array( $status, PCPTPages_Event_Query::STATUSES, true ) ) {
-			// '', 'none', or anything unrecognized — no event filtering.
-			return $query_args;
+			// '', 'none', or anything unrecognized — no event FILTERING. An
+			// explicit event_sort still orders the grid, though: the
+			// all-dates archive (status none, so visitors pick upcoming or
+			// past with the filter bar) is exactly where "soonest" matters,
+			// and ignoring it fell back to publish-date order (2026-09-19
+			// pressure test).
+			return self::apply_explicit_event_sort( $query_args, $content );
 		}
 
 		// Resolve the queried post type (string or first of an array).
@@ -221,6 +226,64 @@ class PCPTPages_Card_Filter_Hooks {
 				$query_args['order']    = $sort_args['order'];
 			}
 		}
+
+		return $query_args;
+	}
+
+	/**
+	 * Order an UNFILTERED grid of an event-shaped type by event date, when
+	 * the author asked for it explicitly (event_sort soonest|latest).
+	 * 'auto' and 'none' leave the section's own ordering alone, so existing
+	 * sections render exactly as before.
+	 *
+	 * Uses a named meta_query clause that matches records with OR without
+	 * the sort companion, and orders by that clause. Plain
+	 * meta_key + orderby (what sort_args() returns) would add an INNER JOIN
+	 * and silently drop every record that has no start date — acceptable
+	 * when a date status is filtering anyway, not for an all-dates archive.
+	 *
+	 * @param array $query_args WP_Query args.
+	 * @param array $content    PostGrid section content.
+	 * @return array
+	 */
+	private static function apply_explicit_event_sort( $query_args, $content ) {
+		$requested = isset( $content['event_sort'] ) ? sanitize_key( $content['event_sort'] ) : 'auto';
+		if ( $requested !== 'soonest' && $requested !== 'latest' ) {
+			return $query_args;
+		}
+
+		$post_type = isset( $query_args['post_type'] ) ? $query_args['post_type'] : '';
+		if ( is_array( $post_type ) ) {
+			$post_type = reset( $post_type );
+		}
+		if ( ! is_string( $post_type ) || $post_type === '' || ! PCPTPages_Event_Query::is_event_cpt( $post_type ) ) {
+			return $query_args;
+		}
+
+		$sort = PCPTPages_Event_Query::sort_args( $post_type, $requested );
+		if ( empty( $sort ) ) {
+			return $query_args;
+		}
+
+		$clause     = 'pcptpages_event_sort';
+		$query_args = self::merge_meta_query(
+			$query_args,
+			array(
+				'relation' => 'OR',
+				$clause    => array(
+					'key'     => $sort['meta_key'],
+					'compare' => 'EXISTS',
+					'type'    => 'NUMERIC',
+				),
+				array(
+					'key'     => $sort['meta_key'],
+					'compare' => 'NOT EXISTS',
+				),
+			)
+		);
+		unset( $query_args['meta_key'] );
+		$query_args['orderby'] = array( $clause => $sort['order'] );
+		unset( $query_args['order'] );
 
 		return $query_args;
 	}

@@ -15,6 +15,13 @@
  *
  * The frame owns the aspect ratio + radius; the facade and the injected iframe
  * both fill it absolutely, so the click-to-load swap never shifts layout.
+ *
+ * Colours read the THEME-AWARE --pre-color-* variables frontend.css sets on
+ * the single-post page and redefines for dark pages, dark heroes and the
+ * site-wide dark modes, with the light --aisb-smart-* tokens only as the
+ * fallback. Until 2026-09-19 this file named the light tokens directly, so on
+ * a dark page the "Get directions" link kept its light-page colour and read
+ * at 2.91:1 (WCAG 1.4.3 needs 4.5:1), and the facade stayed a light box.
  */
 
 .pre-map {
@@ -56,8 +63,8 @@
 	justify-content: center;
 	gap: var(--aisb-section-space-sm, 1rem);
 	padding: var(--aisb-section-space-lg, 2rem);
-	background: var(--aisb-color-surface, #f9fafb);
-	border: 1px solid var(--aisb-color-border, #e5e7eb);
+	background: var(--pre-color-surface, var(--aisb-color-surface, #f9fafb));
+	border: 1px solid var(--pre-color-border, var(--aisb-color-border, #e5e7eb));
 	border-radius: inherit;
 	cursor: pointer;
 	text-align: center;
@@ -69,6 +76,9 @@
 
 .pre-map__facade:hover {
 	background: var(--aisb-hover-light, #f3f4f6);
+	/* Shift the surface toward the text colour: darker on a light page,
+	   lighter on a dark one. Browsers without color-mix() keep the line above. */
+	background: color-mix(in srgb, var(--pre-color-surface, #f9fafb) 92%, var(--pre-color-text, #1f2937));
 }
 
 .pre-map__facade:hover .pre-map__facade-action {
@@ -87,7 +97,7 @@
 
 .pre-map__facade-icon {
 	display: inline-flex;
-	color: var(--aisb-smart-light-surface-icon, var(--aisb-color-primary, #6366f1));
+	color: var(--pre-color-surface-icon, var(--aisb-smart-light-surface-icon, var(--aisb-color-primary, #6366f1)));
 }
 
 .pre-map__facade-icon svg {
@@ -98,13 +108,13 @@
 .pre-map__facade-address {
 	font-size: var(--aisb-section-text-base, 1rem);
 	line-height: var(--aisb-section-leading-normal, 1.5);
-	color: var(--aisb-smart-light-surface-text, var(--aisb-color-text, #1f2937));
+	color: var(--pre-color-text, var(--aisb-smart-light-surface-text, var(--aisb-color-text, #1f2937)));
 	max-width: 32em;
 }
 
 .pre-map__facade-action {
 	font-size: var(--aisb-section-text-base, 1rem);
-	color: var(--aisb-smart-light-surface-link, var(--aisb-color-primary, #6366f1));
+	color: var(--pre-color-surface-link, var(--aisb-smart-light-surface-link, var(--aisb-color-primary, #6366f1)));
 }
 
 /* ---- Injected embed iframe (fills the frame the facade occupied) ---- */
@@ -129,7 +139,7 @@
 	font-family: inherit;
 	font-size: var(--aisb-section-text-base, 1rem);
 	text-decoration: none;
-	color: var(--aisb-smart-light-section-link, var(--aisb-color-primary, #6366f1));
+	color: var(--pre-color-link, var(--aisb-smart-light-section-link, var(--aisb-color-primary, #6366f1)));
 }
 
 .pre-map__directions:hover {

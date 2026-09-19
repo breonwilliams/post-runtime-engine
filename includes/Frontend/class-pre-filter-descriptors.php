@@ -159,7 +159,7 @@ class PCPTPages_Filter_Descriptors {
 		}
 
 		foreach ( self::filterable_taxonomies( $cpt_slug ) as $taxonomy ) {
-			$descriptor = self::build_taxonomy_descriptor( $taxonomy );
+			$descriptor = self::build_taxonomy_descriptor( $taxonomy, $cpt_slug );
 			if ( $descriptor !== null ) {
 				$out[] = $descriptor;
 			}
@@ -456,27 +456,34 @@ class PCPTPages_Filter_Descriptors {
 	 * Build a checkbox_group descriptor for a taxonomy, with its terms as
 	 * options (hierarchy carried via `parent` for indented rendering).
 	 *
-	 * @param \WP_Taxonomy $tax Taxonomy object.
+	 * A facet must never offer a dead-end option, so the options are the
+	 * terms that at least one PUBLISHED record of THIS type carries (plus
+	 * their ancestors, so a nested term keeps its parent row). The old
+	 * `hide_empty` test counted posts of every type: on a shared taxonomy
+	 * such as `category` — the one this connector's own guidance attaches —
+	 * a meetings archive offered the blog's and the workshops' categories,
+	 * each returning nothing (2026-09-19 pressure test).
+	 *
+	 * @param \WP_Taxonomy $tax      Taxonomy object.
+	 * @param string       $cpt_slug The record type the facet filters.
 	 * @return array|null
 	 */
-	private static function build_taxonomy_descriptor( $tax ) {
-		$slug  = $tax->name;
-		// hide_empty: a facet should never offer a dead-end option. A term
-		// with zero published posts returns nothing when selected, so it is
-		// excluded. With the intended greenfield model — a dedicated taxonomy
-		// owned by the CPT (e.g. a `neighborhood` taxonomy used only by
-		// `property`) — this is exactly the CPT-scoped behavior the facet
-		// wants. (Shared built-in taxonomies like `category` count posts across
-		// all post types; a category used only by blog posts could still
-		// surface here. CPT-scoped term counting is a deliberate future
-		// enhancement — the architecture steers toward per-CPT taxonomies.)
-		$terms = get_terms(
-			array(
-				'taxonomy'   => $slug,
-				'hide_empty' => true,
-				'number'     => self::MAX_TERM_OPTIONS,
-			)
+	private static function build_taxonomy_descriptor( $tax, $cpt_slug = '' ) {
+		$slug    = $tax->name;
+		$term_ids = $cpt_slug !== '' ? self::term_ids_used_by( $slug, $cpt_slug ) : null;
+		if ( is_array( $term_ids ) && empty( $term_ids ) ) {
+			return null;
+		}
+
+		$args = array(
+			'taxonomy'   => $slug,
+			'hide_empty' => $term_ids === null,
+			'number'     => self::MAX_TERM_OPTIONS,
 		);
+		if ( is_array( $term_ids ) ) {
+			$args['include'] = $term_ids;
+		}
+		$terms = get_terms( $args );
 		if ( is_wp_error( $terms ) || empty( $terms ) ) {
 			return null;
 		}
@@ -505,5 +512,46 @@ class PCPTPages_Filter_Descriptors {
 			'sortable'   => false,
 			'sort_param' => null,
 		);
+	}
+
+	/**
+	 * Ids of the terms in a taxonomy that published records of one type
+	 * carry, plus each one's ancestors. One indexed join, memoised for the
+	 * request (a page can render the same archive facets more than once).
+	 *
+	 * @param string $taxonomy Taxonomy slug.
+	 * @param string $cpt_slug Record type.
+	 * @return int[]
+	 */
+	public static function term_ids_used_by( $taxonomy, $cpt_slug ) {
+		static $memo = array();
+		$key = $taxonomy . '|' . $cpt_slug;
+		if ( isset( $memo[ $key ] ) ) {
+			return $memo[ $key ];
+		}
+
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a single read-only aggregate, memoised per request.
+		$ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT DISTINCT tt.term_id
+				 FROM {$wpdb->term_relationships} tr
+				 INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+				 INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id
+				 WHERE tt.taxonomy = %s AND p.post_type = %s AND p.post_status = 'publish'",
+				$taxonomy,
+				$cpt_slug
+			)
+		);
+		$ids = array_map( 'intval', (array) $ids );
+
+		if ( $ids && is_taxonomy_hierarchical( $taxonomy ) ) {
+			foreach ( $ids as $id ) {
+				$ids = array_merge( $ids, array_map( 'intval', get_ancestors( $id, $taxonomy, 'taxonomy' ) ) );
+			}
+		}
+
+		$memo[ $key ] = array_values( array_unique( $ids ) );
+		return $memo[ $key ];
 	}
 }

@@ -1623,4 +1623,45 @@ class PCPTPages_Post_Data {
 		}
 		return is_string( $external_id ) ? substr( trim( $external_id ), 0, 191 ) : '';
 	}
+
+	/**
+	 * Remove a record: to the trash by default, permanently when forced.
+	 *
+	 * Exists because wp_delete_post( $id, false ) does NOT trash a custom
+	 * post type. Core only diverts 'post' and 'page' to wp_trash_post();
+	 * every other type is deleted permanently whatever $force_delete says.
+	 * The connector's delete_post called it that way for records it
+	 * documented as "trashed by default (recoverable)", and answered
+	 * permanent:false while the rows were gone (found by the 2026-09-19
+	 * pressure test: five records "trashed" that way were not in the trash).
+	 *
+	 * `permanent` is read back from the database rather than assumed from
+	 * $force, because a site with EMPTY_TRASH_DAYS set to 0 makes
+	 * wp_trash_post() delete permanently too, and the caller must be told.
+	 *
+	 * @param int  $post_id Record id.
+	 * @param bool $force   true = delete permanently; false = trash.
+	 * @return array{deleted: bool, permanent: bool, already_trashed: bool}
+	 */
+	public function remove_post( $post_id, $force = false ) {
+		$post_id = (int) $post_id;
+		$post    = get_post( $post_id );
+		if ( ! $post ) {
+			return array( 'deleted' => false, 'permanent' => false, 'already_trashed' => false );
+		}
+
+		if ( ! $force && 'trash' === $post->post_status ) {
+			// Nothing to do: trashing twice must not become a permanent
+			// delete, which is what core does for a trashed post.
+			return array( 'deleted' => true, 'permanent' => false, 'already_trashed' => true );
+		}
+
+		$result = $force ? wp_delete_post( $post_id, true ) : wp_trash_post( $post_id );
+
+		return array(
+			'deleted'         => (bool) $result,
+			'permanent'       => (bool) $result && null === get_post( $post_id ),
+			'already_trashed' => false,
+		);
+	}
 }

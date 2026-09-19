@@ -195,11 +195,11 @@ Agents should call preflight before any content-creation work and SHOULD pass `c
   },
   "field_name_hints": {
     "groupings_item_shape": {
-      "compact-grid":   ["heading", "icon_id", "link", "link_post_id", "link_text", "link_target"],
+      "compact-grid":   ["heading", "icon_id", "link", "link_post_id"],
       "horizontal-row": ["heading", "icon_id"],
       "gallery": ["image_id", "heading"],
-      "card-grid":      ["heading", "supporting_text", "icon_id", "image_id", "link", "link_post_id", "link_text", "link_target"],
-      "featured-card":  ["heading", "supporting_text", "icon_id", "image_id", "link", "link_post_id", "link_text", "link_target"]
+      "card-grid":      ["heading", "supporting_text", "icon_id", "image_id", "link", "link_post_id"],
+      "featured-card":  ["heading", "supporting_text", "icon_id", "image_id", "link", "link_post_id"]
     },
     "cpt_definition":      ["slug", "label_singular", "label_plural", "supports", "public", "has_archive", "show_in_rest", "show_in_menu", "menu_position", "menu_icon", "taxonomies", "capability_type", "description", "rewrite", "hero_layout", "hero_image_position", "hero_image_aspect", "default_icon"],
     "grouping_definition": ["key", "label", "description", "default_variant", "default_position", "default_source", "max_items", "heading_required", "supporting_text_required", "link_required", "icon_or_image_required", "gallery_image_aspect"],
@@ -338,7 +338,7 @@ Grouping shape (matches `PRE_Validator::validate_grouping`):
   "default_position": "above_main",
   "default_variant": "horizontal-row",
   "default_source": "manual",
-  "max_items": 0,
+  "max_items": null,
   "heading_required": true,
   "supporting_text_required": false,
   "link_required": false,
@@ -396,7 +396,7 @@ Source can be a string (`"manual"` or `"child_posts"`) or an object form for the
 
 **Auto-registration of meta keys (v0.4.0+):** When a grouping is defined with a `meta_match` source using a raw `meta_key`, PRE auto-calls `register_post_meta()` for that key with `show_in_rest: true` and an `edit_post` auth callback — on the post type being *queried* (the host CPT for the mirror shape; the configured `post_type` for cross-CPT reverse lookups, since that's where the values live). This makes the meta key writable through the standard WP REST API (`POST /wp/v2/{cpt}/{id}` with `meta: {your_key: value}`) on sites that don't have a field plugin (ACF, MetaBox, Pods) installed. Sites that do use a field plugin can opt out via the `pre_auto_register_meta_match_keys` filter. Underscore-prefixed keys are accepted (the standard WordPress private-meta convention). `field_key` sources skip auto-registration entirely — post-field meta is already PRE-managed.
 
-`max_items: 0` means no cap. `featured-card` variant requires `max_items: 1` (validator enforces).
+`max_items` omitted, `0` or `null` all mean no cap; the stored and returned value for no cap is `null` (0 is normalised on write — before 2026-09-19 it was refused with `pcptpages_invalid_max_items`). A cap is a positive integer. `featured-card` variant requires `max_items: 1` (validator enforces).
 
 #### List groupings for a CPT
 

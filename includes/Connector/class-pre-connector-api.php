@@ -613,7 +613,7 @@ class PCPTPages_Connector_API {
 			'choosing_a_source_mode'       => 'Four source modes are available — see source_modes in this preflight for the full descriptor. Quick chooser: (1) Use manual when each post curates its own items (e.g. a Listing\'s Features grouping where the agent picks specific selling points). (2) Use child_posts when the relationship is hierarchical and natural in WordPress (a Course post with Lesson child posts). (3) Use taxonomy_match when the relationship is "shares a category / tag / region" (related Articles in same topic). (4) Use meta_match when the relationship is a stored value. It has two shapes: the MIRROR shape (default) finds same-CPT siblings sharing the current post\'s value — "more from this agent" with meta_key=_agent_id; the REVERSE-LOOKUP shape (post_type + match_against=current_title/current_id/current_slug + field_key) pulls posts from a DIFFERENT CPT whose post-field names the current post — an Agent page pulling its Listings via {post_type:"listing", field_key:"agent", match_against:"current_title"}. Prefer field_key over meta_key: post-field values are the meta this connector can write (set_post_field_values), so field_key closes the loop with no raw-meta write path needed. meta_match short-circuits to empty when the derived match value is empty, so it is safe to define before every post has its fields populated.',
 			// v1.1 — post field authoring rules.
 			'post_fields_vs_groupings'     => 'Two field types coexist on every CPT: groupings (v1.0, repeatable {icon, heading, text, link} items) and post fields (v1.1, scalar values with typed display). Use groupings for collections that need their own items per post — features lists, FAQ items, course modules. Use post fields for single per-post values that decorate the hero and cards — price, status, location, beds/baths, rating, posted date. Two extreme tells: if every post has a different LIST of things, it is a grouping; if every post has the SAME named values (each one filled differently), they are post fields.',
-			'post_field_positions'         => 'Post fields render in a closed set of 5 positions per context (card AND single-post hero, symmetric): image_overlay (badge on featured image, top-left), headline (large prominent value above the title — price, salary, event date), subtitle (small line under the title — location, company, cuisine), meta_strip (inline horizontal list of small items — beds/baths/sqft, prep/cook/rating, posted/duration/level), footer_meta (smallest line at the bottom — listed-date, attendees). A field can use ANY of the 5 positions in EITHER context, plus a sixth `hidden` value to register a field that should not render in that context. Multiple fields can occupy the same position — they render in field-definition order (controlled by /post-fields/reorder).',
+			'post_field_positions'         => 'Post fields render in a closed set of 5 positions per context (card AND single-post hero, symmetric): image_overlay (badge on the featured image, top-left; above the title when there is no image), headline (large prominent value above the title — price, salary, event date), subtitle (small line under the title — location, company, cuisine), meta_strip (inline horizontal list of small items — beds/baths/sqft, prep/cook/rating, posted/duration/level), footer_meta (smallest line at the bottom — listed-date, attendees). A field can use ANY of the 5 positions in EITHER context, plus a sixth `hidden` value to register a field that should not render in that context. Multiple fields can occupy the same position — they render in field-definition order (controlled by /post-fields/reorder).',
 			'post_field_display_types'     => 'Closed enum of 10 display types — see post_field_enums.display_types in this preflight for the full list with examples. Quick chooser: currency for monetary values (locale-formatted), number_with_label for "N <unit>" pairs (1,800 sqft, 3 BR), badge for single pills with color intent (For sale, Featured), meta_pair for icon+value cells in meta_strip (🛏 3), date for dates (absolute or relative), text for plain string display, rating for "★★★★☆ 4.8 (1,243)" composites, progress for funding-style "$320K of $500K" bars, multi_badge for comma-separated pill lists (Vegan, GF, Quick), location for a per-post address that renders as a click-to-load map on the single-post page (no API key — see critical_rules.location_map_setup). Each display type has its own per-value validation in the validator — see post_field_value_shape below.',
 			'post_field_value_shape'       => 'Per-display-type value rules: (currency, number_with_label, rating-value, progress-value) numeric; (date) YYYY-MM-DD or any strtotime-parseable string; (text, meta_pair) string up to 500 chars; (badge) string or one of the predefined options[].key when defined; (multi_badge) comma-separated string OR array of segments; (rating) array { value: 0-max, count: int|null }; (progress) array { value: 0+, goal: number|null }. Empty / null clears the field on set_post_field_values. Composite types (rating, progress) accept either the array shape OR a bare scalar for the primary value (secondary defaults to null).',
 			'post_field_count_cap'         => 'Each CPT supports up to 12 post fields (HARD_FIELD_COUNT_LIMIT, filterable via pcptpages_max_post_fields_per_cpt). Cards display best with 8 or fewer; beyond that meta_strip starts wrapping on mobile. The connector rejects field #13 with pcptpages_max_field_count_exceeded (HTTP 422). Plan field allocation up front: 1-2 for headline (price/date), 1 for image_overlay (status), 0-1 for subtitle (location), 2-4 for meta_strip, 0-2 for footer_meta.',
@@ -641,11 +641,16 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 	 */
 	private static function get_field_name_hints() {
 		return array(
+			// A linked item renders as ONE link covering the whole card,
+			// named by its heading (PCPTPages_Renderer, .pre-grouping__link-overlay).
+			// There is no separate link label or target: link_text and
+			// link_target were listed here but never rendered, so a client
+			// setting "See the hearing" or a new tab got neither (2026-09-19).
 			'groupings_item_shape' => array(
-				'compact-grid'    => array( 'heading', 'icon_id', 'link', 'link_post_id', 'link_text', 'link_target' ),
+				'compact-grid'    => array( 'heading', 'icon_id', 'link', 'link_post_id' ),
 				'horizontal-row'  => array( 'heading', 'icon_id' ),
-				'card-grid'       => array( 'heading', 'supporting_text', 'icon_id', 'image_id', 'link', 'link_post_id', 'link_text', 'link_target' ),
-				'featured-card'   => array( 'heading', 'supporting_text', 'icon_id', 'image_id', 'link', 'link_post_id', 'link_text', 'link_target' ),
+				'card-grid'       => array( 'heading', 'supporting_text', 'icon_id', 'image_id', 'link', 'link_post_id' ),
+				'featured-card'   => array( 'heading', 'supporting_text', 'icon_id', 'image_id', 'link', 'link_post_id' ),
 				'gallery'         => array( 'image_id', 'heading' ),
 			),
 			'cpt_definition'       => array( 'slug', 'label_singular', 'label_plural', 'supports', 'public', 'has_archive', 'show_in_rest', 'show_in_menu', 'menu_position', 'menu_icon', 'taxonomies', 'capability_type', 'description', 'rewrite', 'hero_layout', 'hero_image_position', 'hero_image_aspect', 'hero_overlay_focus', 'hero_theme', 'hero_width', 'default_icon', 'archive_show_post_date', 'archive_show_post_author', 'archive_image_aspect' ),
@@ -681,7 +686,7 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 			),
 			// 5 positions + hidden, symmetric across card and single-hero contexts.
 			'field_positions' => array(
-				array( 'value' => 'image_overlay', 'label' => 'Image overlay (top-left badge)',     'description' => 'Pill / chip overlaid on the featured image. Best for status badges (For sale, Featured, Almost full).' ),
+				array( 'value' => 'image_overlay', 'label' => 'Image overlay (top-left badge)',     'description' => 'Pill / chip overlaid on the featured image. Best for status badges (For sale, Featured, Almost full, Cancelled). With no featured image it renders in flow above the title instead (single page, and PostGrid cards on Promptless WP 1.8.4+), so a status is never hidden.' ),
 				array( 'value' => 'headline',      'label' => 'Headline (prominent, above title)',  'description' => 'Large prominent value above the title. For one star value per card: price, salary, event date, course price.' ),
 				array( 'value' => 'subtitle',      'label' => 'Subtitle (under title)',             'description' => 'Small line directly under the title. For location, company name, restaurant cuisine, course instructor.' ),
 				array( 'value' => 'meta_strip',    'label' => 'Meta strip (inline list)',           'description' => 'Inline horizontal strip of small items. For up to 3-4 meta_pair / number_with_label / rating items. Wraps on mobile.' ),
@@ -1600,7 +1605,7 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 			}
 		}
 		if ( ! empty( $body['featured_image_url'] ) && empty( $body['featured_image_id'] ) ) {
-			$warnings = array_merge( $warnings, pcptpages()->post_data->apply_featured_image_url( $post_id, (string) $body['featured_image_url'], get_the_title( $post_id ) ) );
+			$warnings = array_merge( $warnings, pcptpages()->post_data->apply_featured_image_url( $post_id, (string) $body['featured_image_url'], get_post_field( 'post_title', $post_id, 'raw' ) ) );
 		}
 
 		// Groupings — full replace, same semantics as set_post_groupings.
@@ -1982,7 +1987,13 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 		foreach ( $query->posts as $p ) {
 			$posts[] = array(
 				'id'         => (int) $p->ID,
-				'title'      => get_the_title( $p ),
+				// The RAW title: this is JSON for a client, not HTML for a
+				// browser. get_the_title() texturizes and escapes, so
+				// "Planning & Zoning" came back as "Planning &#038; Zoning"
+				// and a client copying it into a post field (the value a
+				// meta_match current_title lookup compares against) stored
+				// the entity and silently broke the match (2026-09-19).
+				'title'      => $p->post_title,
 				'post_type'  => $p->post_type,
 				'status'     => $p->post_status,
 				'date'       => $p->post_date,
@@ -2083,17 +2094,21 @@ WHOSE CONTENT. delete_post refuses (403 pcptpages_foreign_post_type) any post wh
 			wp_delete_object_term_relationships( $id, array_keys( get_taxonomies() ) );
 		}
 
-		$result = wp_delete_post( $id, $force );
-		if ( ! $result ) {
+		// Trash by default, permanent only when forced. Never call
+		// wp_delete_post( $id, false ) here: for a custom post type core
+		// deletes permanently regardless (see PCPTPages_Post_Data::remove_post).
+		$removed = $plugin->post_data->remove_post( $id, $force );
+		if ( ! $removed['deleted'] ) {
 			return $this->error_response( 'pcptpages_delete_failed', __( 'WordPress refused to delete the post.', 'promptless-cpt-pages' ), 500 );
 		}
 
 		return rest_ensure_response( array(
-			'deleted'   => true,
-			'id'        => $id,
-			'post_type' => $type,
-			'permanent' => $force,
-			'orphaned'  => ! in_array( $type, $registered, true ),
+			'deleted'         => true,
+			'id'              => $id,
+			'post_type'       => $type,
+			'permanent'       => $removed['permanent'],
+			'already_trashed' => $removed['already_trashed'],
+			'orphaned'        => ! in_array( $type, $registered, true ),
 		) );
 	}
 

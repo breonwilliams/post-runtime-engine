@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- **Deleting the plugin keeps the site's definitions and values unless you
+  opt in.** Up to 0.10.0 `uninstall.php` always deleted the record-type and
+  grouping definitions — the only copy of what makes records render, the
+  same loss the connector's `delete_cpt` stopped causing in 0.8.0 — while
+  keeping post-field definitions; its opt-in removed grouping values but
+  left every field value behind; and the connector switch, calendar-feed
+  rewrite bookkeeping and render markers were never removed. Now
+  housekeeping always goes (transients, render markers, feed rules, the
+  connector switch, capability grants) and data only with consent —
+  `pcptpages_settings.delete_data_on_uninstall` or
+  `define( 'PCPTPAGES_REMOVE_ALL_DATA', true );` (WooCommerce's pattern;
+  there is no settings screen) — which removes every `pcptpages_*` option
+  and all `_pcptpages_*` post meta. Posts are never deleted.
+  `tests/Unit/UninstallTest.php` runs the real `uninstall.php` three ways.
+
 ### Fixed
 
 All found by the 2026-09-19 pressure test (a township site built only

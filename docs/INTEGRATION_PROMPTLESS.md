@@ -139,7 +139,7 @@ When Promptless WP releases a new version, PRE's CI test (Phase 4+) verifies tha
 | Per-post grouping values (`_pre_groupings` post meta) | Post Runtime Engine |
 | PRE settings, audit trails | Post Runtime Engine |
 
-When PRE is uninstalled (`uninstall.php`), only PRE-owned options are dropped. Post meta is preserved by default (mirrors Promptless's data-protection pattern). Promptless data is left untouched.
+When PRE is uninstalled (`uninstall.php`), its definitions and every record's values are KEPT by default (the stack's data-protection rule); only housekeeping goes. With `pcptpages_settings.delete_data_on_uninstall` or `PCPTPAGES_REMOVE_ALL_DATA`, PRE-owned options and `_pcptpages_*` post meta are removed; posts never are. Promptless data is never touched.
 
 When Promptless is uninstalled, PRE continues operating with fallback design tokens. PRE's data is unaffected.
 

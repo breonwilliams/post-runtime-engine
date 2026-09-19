@@ -64,7 +64,7 @@ post-runtime-engine/
   CLAUDE.md                           # AI / engineer reference
   README.md
   CHANGELOG.md
-  uninstall.php                       # On plugin delete: clean options (preserve post meta by default)
+  uninstall.php                       # On plugin delete: housekeeping; definitions + values only with consent
   composer.json                       # If vendor deps emerge; v1 may not need any
   phpunit.xml                         # Test config
   docs/                               # All design / reference docs

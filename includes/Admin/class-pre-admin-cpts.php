@@ -694,6 +694,20 @@ class PCPTPages_Admin_CPTs {
 							<option value="" <?php selected( $values['default_icon'], '' ); ?>>
 								<?php esc_html_e( '— None —', 'promptless-cpt-pages' ); ?>
 							</option>
+							<?php
+							// An Iconify code (set through the connector) is not in the
+							// curated list below. Without its own option nothing is
+							// selected, the browser submits "None", and saving the type
+							// erased the icon.
+							if ( $values['default_icon'] !== '' && ! PCPTPages_Icon_Library::has( $values['default_icon'] ) ) :
+								?>
+								<option value="<?php echo esc_attr( $values['default_icon'] ); ?>" selected>
+									<?php
+									/* translators: %s: Iconify icon code, e.g. mdi:tools */
+									echo esc_html( sprintf( __( 'Current: %s', 'promptless-cpt-pages' ), $values['default_icon'] ) );
+									?>
+								</option>
+							<?php endif; ?>
 							<?php foreach ( PCPTPages_Icon_Library::get_grouped_by_category() as $category => $icons_in_category ) : ?>
 								<optgroup label="<?php echo esc_attr( $category ); ?>">
 									<?php foreach ( $icons_in_category as $icon_id => $icon ) : ?>
@@ -929,11 +943,12 @@ class PCPTPages_Admin_CPTs {
 		$hero_width = isset( $_POST['hero_width'] )
 			? sanitize_key( wp_unslash( $_POST['hero_width'] ) )
 			: 'contained';
-		// default_icon is validated against PCPTPages_Icon_Library by the validator
-		// — sanitize_key strips invalid chars (icon IDs are snake_case) before
-		// the lookup so malformed input fails with a typed error.
+		// default_icon accepts a curated ID or an Iconify code (`collection:name`).
+		// sanitize_key would strip the colon, so — as the meta box does for
+		// icon_id — clean with sanitize_text_field and let the validator's
+		// is_valid_id() enforce the shape with a typed error.
 		$default_icon = isset( $_POST['default_icon'] )
-			? sanitize_key( wp_unslash( $_POST['default_icon'] ) )
+			? trim( sanitize_text_field( wp_unslash( $_POST['default_icon'] ) ) )
 			: '';
 
 		// archive_image_aspect values contain ':' (16:9), which sanitize_key

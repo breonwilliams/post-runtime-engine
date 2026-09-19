@@ -681,7 +681,7 @@ class PCPTPages_Admin_Post_Fields {
 							<th scope="row"><label for="pre-field-filter-widget"><?php esc_html_e( 'Widget style', 'promptless-cpt-pages' ); ?></label></th>
 							<td>
 								<select id="pre-field-filter-widget" name="filter_widget">
-									<option value=""><?php esc_html_e( '— Default (range slider) —', 'promptless-cpt-pages' ); ?></option>
+									<option value=""><?php esc_html_e( '— Default (range slider for numbers, stepper for ratings) —', 'promptless-cpt-pages' ); ?></option>
 									<option value="range" <?php selected( $values['filter_widget'] ?? '', 'range' ); ?>><?php esc_html_e( 'Range slider', 'promptless-cpt-pages' ); ?></option>
 									<option value="stepper" <?php selected( $values['filter_widget'] ?? '', 'stepper' ); ?>><?php esc_html_e( 'Stepper (1+, 2+, 3+ buttons)', 'promptless-cpt-pages' ); ?></option>
 								</select>

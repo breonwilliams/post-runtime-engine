@@ -72,6 +72,74 @@ through the connectors).
   never rendered.** A linked item is one link over the whole card, named by
   its heading. The field hints no longer list them.
 
+### Fixed — found writing the documentation (2026-09-19)
+
+Each checked in the code and then live on Local before changing it.
+
+- **Connector writes didn't reach the page visitors see, for up to an
+  hour.** The render cache was invalidated by `save_post` on the one post
+  and by definition changes. Field values, groupings and visibility set
+  through the connector are post-meta writes that fire no `save_post`;
+  post-field definition changes weren't watched; and a page that lists
+  other records (the related footer, child posts, a department page's
+  reverse lookup of its meetings) never noticed those records change. A
+  content change to a record now bumps its type's marker (editor
+  bookkeeping such as `_edit_lock` excepted, filterable through
+  `pcptpages_render_cache_ignored_meta_keys`). The cache entry records the
+  marker of every other type its render queried. The marker also moves on
+  every bump now: it was `time()`, so a write in the same second as the
+  render that cached a page left the stale page valid. That is how it was
+  found. `tests/Unit/RenderCacheInvalidationTest.php`.
+- **All-day events went to Past on their own last day.** An all-day date
+  is stored as midnight and was compared with the current time, so a
+  one-day event was past from 00:00:01, and a fair ending today was past
+  all day. All-day anchors now compare with the start of today.
+- **A record with no end value was in no list at all.** On a type that
+  maps an `event_end` field, a record without one matched neither Upcoming
+  nor Past. It now falls back to its start, the way a type without an end
+  field already did. `tests/Unit/EventStatusQueryTest.php` evaluates the
+  generated queries against sample records; the phase-2 smoke test is
+  updated for the new clause shape.
+- **A date sent with a UTC offset was stored at the wrong time.**
+  `2026-10-01T18:00:00-05:00`, the ISO 8601 form the upsert tool invites,
+  went through `strtotime()` + `gmdate()` and was stored and shown as
+  23:00. An input that names its own offset is now converted into the
+  field's event timezone (or the site's); a plain wall clock keeps its
+  digits, as before. `PCPTPages_Post_Data::normalize_date_value()`,
+  `tests/Unit/DateNormalizeTest.php`.
+- **A type's calendar feed dropped a long event 30 days after it began.**
+  The feed matched on start only; it now keeps a record that starts OR ends
+  within the window, so a season or an exhibition stays while it runs.
+- **Saving a type in the admin erased its custom address.** The edit form
+  shows some keys, and `register()` stores exactly what it is given, so a
+  `rewrite` or `rest_base` set through the connector vanished on the first
+  admin save. The form's values are now laid over the stored definition,
+  as the connector's update route already did.
+- **The admin couldn't save a reverse-lookup grouping.** The form carried
+  only the meta key, so a `{ field_key, post_type, match_against }` source
+  came back with neither key and the save was refused. The meta_match
+  rows now include **Post field key**, **Records of type** and **Match
+  against**, and every key round-trips.
+- **The admin's Remove link destroyed grouping definitions** (the connector
+  stopped doing that in 0.8.0: re-registering the slug brought the records
+  back with nothing to render their groupings) and wrote no tombstone, so
+  `list_posts include_orphans` couldn't find the records afterwards. It now
+  does what the connector's `delete_cpt` does without `purge_data`.
+- **New types made in the admin showed the author and date bylines.** The
+  registry default has been off since 0.6.6; the admin's new-type form and
+  the relay's descriptions still said on.
+- **The relay advertised `purge_data` on `postruntime_delete_grouping`**,
+  which the handler never read. Removed from the relay and the spec;
+  deleting the type with `purge_data` is the way to remove the values.
+  `featured-card` is described as "max_items 1 or unset", which is what the
+  validator accepts, and the widget dropdown's default label names the
+  stepper for ratings.
+- **Stale text:** readme.txt named menus that don't exist (**Post Types**
+  and **Connector** are the real ones), four variants and three source
+  modes; CLAUDE.md reported 0.6.5 and nine display types; the preflight's
+  visibility rule said no position can be overridden per record, which is
+  not true of a map's placement.
+
 ## [0.10.0] - 2026-09-14
 
 ### Added

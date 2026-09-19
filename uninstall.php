@@ -7,15 +7,22 @@
  * is no longer loaded — only this file runs.
  *
  * Behavior:
- *   - Site-level configuration owned by this plugin (CPT definitions,
- *     grouping definitions, plugin-level settings) is REMOVED. These were
- *     created by the plugin and have no use without it active.
- *   - Per-post content (the actual filled-in groupings stored as post meta)
- *     is PRESERVED by default. Users can re-activate the plugin later and
- *     resume from where they left off.
- *   - If the user has explicitly opted into full deletion via the
- *     `pcptpages_settings.delete_data_on_uninstall` flag, post meta is also
- *     removed. This is the explicit-consent escape hatch.
+ *   - KEEPS the site's data by default: record-type, grouping and post-field
+ *     definitions, settings, and every record's values. Definitions are the
+ *     only copy of what makes the records render — re-installing picks up
+ *     where the site left off. Up to 0.10.0 this file always deleted the
+ *     type and grouping definitions (the same loss the connector's
+ *     delete_cpt stopped causing in 0.8.0) while keeping field definitions,
+ *     and left the connector switch and render markers behind.
+ *   - ALWAYS removes housekeeping: transients (render cache, source cache,
+ *     connector rate limits), the calendar-feed rewrite bookkeeping, render
+ *     markers, the connector switch and the capability grants.
+ *   - With consent — `pcptpages_settings.delete_data_on_uninstall`, or
+ *     `define( 'PCPTPAGES_REMOVE_ALL_DATA', true );` in wp-config.php (the
+ *     plugin has no settings screen; WooCommerce's pattern) — removes every
+ *     definition and option and all `_pcptpages_*` post meta: grouping and
+ *     field values, visibility, external identity, backups.
+ *   - NEVER deletes posts: records are ordinary WordPress content.
  *
  * This mirrors the data-protection pattern Promptless WP and Form Runtime
  * Engine follow. The default is conservative: never destroy user content
@@ -84,105 +91,67 @@ unset( $pcptpages_own_dir, $pcptpages_mains, $pcptpages_main );
 function pcptpages_run_uninstall_cleanup() {
 	global $wpdb;
 
-	// Determine whether the user opted into full deletion.
-	$settings        = get_option( 'pcptpages_settings', array() );
-	$delete_all_data = is_array( $settings ) && ! empty( $settings['delete_data_on_uninstall'] );
+	// --- Always: housekeeping, no user data. -------------------------------
 
-	// ---------------------------------------------------------------------------
-	// Always-removed: plugin-owned site configuration.
-	// ---------------------------------------------------------------------------
+	// Transients: the render cache, source-resolver caches, connector rate
+	// limits.
+	$wpdb->query(
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+			$wpdb->esc_like( '_transient_pcptpages_' ) . '%',
+			$wpdb->esc_like( '_transient_timeout_pcptpages_' ) . '%'
+		)
+	);
 
-	// Read CPT slugs first so we can clean up the per-CPT grouping options.
-	$cpts = get_option( 'pcptpages_cpts', array() );
-	if ( ! is_array( $cpts ) ) {
-		$cpts = array();
-	}
+	// Render-cache markers (pcptpages_gchanged_*) and the calendar-feed
+	// rewrite bookkeeping: derived state, rebuilt on demand.
+	$wpdb->query(
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+			$wpdb->esc_like( 'pcptpages_gchanged_' ) . '%'
+		)
+	);
+	delete_option( 'pcptpages_ics_feed_rules' );
 
-	// Remove top-level options.
-	delete_option( 'pcptpages_cpts' );
-	delete_option( 'pcptpages_settings' );
-	delete_option( 'pcptpages_data_version' );
+	// Access, not content.
+	delete_option( 'pcptpages_connector_enabled' );
 
-	// Revoke the scoped `pcptpages_manage_cpts` capability from every role. Mirrors the
-	// FRE / FlowMint pattern: capability lifecycle tracks plugin lifecycle so the
-	// site doesn't carry orphan capability grants after uninstall. Manually
-	// requires the class file because the plugin's autoloader does not run during
-	// uninstall.
+	// Revoke the scoped capability from every role; activation grants it
+	// again. The autoloader does not run during uninstall.
 	require_once __DIR__ . '/includes/Core/class-pre-capabilities.php';
 	PCPTPages_Capabilities::revoke_all_capabilities();
 
-	// Remove per-CPT grouping definition options.
-	foreach ( array_keys( $cpts ) as $cpt_slug ) {
-		$cpt_slug = sanitize_key( $cpt_slug );
-		if ( '' !== $cpt_slug ) {
-			delete_option( 'pcptpages_groupings_' . $cpt_slug );
-		}
+	// --- Only with consent: the site's data. ------------------------------
+
+	$settings = get_option( 'pcptpages_settings', array() );
+	$consent  = ( defined( 'PCPTPAGES_REMOVE_ALL_DATA' ) && PCPTPAGES_REMOVE_ALL_DATA )
+		|| ( is_array( $settings ) && ! empty( $settings['delete_data_on_uninstall'] ) );
+	if ( ! $consent ) {
+		return;
 	}
 
-	// Belt-and-suspenders cleanup: any pcptpages_groupings_* options that survived a
-	// CPT slug rename or partial cleanup should also go. Done with a direct
-	// query because the option count is small and the alternative
-	// (wp_load_alloptions + filter) is more expensive.
-	$option_prefix = 'pcptpages_groupings_';
-	$option_rows   = $wpdb->get_col(
-		$wpdb->prepare(
-			"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
-			$wpdb->esc_like( $option_prefix ) . '%'
-		)
-	);
-	if ( is_array( $option_rows ) ) {
-		foreach ( $option_rows as $option_row ) {
-			delete_option( $option_row );
-		}
-	}
-
-	// Connector rate-limit transients (added in Phase 3+; cleaning here is
-	// future-proof and harmless if no transients exist).
+	// Every definition and option: types, groupings, post fields, settings,
+	// data version, the removed-types tombstone.
 	$wpdb->query(
 		$wpdb->prepare(
-			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-			'_transient_pcptpages_connector_rate_%',
-			'_transient_timeout_pcptpages_connector_rate_%'
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+			$wpdb->esc_like( 'pcptpages_' ) . '%'
 		)
 	);
 
-	// Source-resolver caches (added in Phase 2+).
+	// Every record's values: groupings, field values and their companions,
+	// visibility, external identity, backups, icons, position overrides.
+	// Up to 0.10.0 the opt-in removed only the grouping keys, leaving every
+	// field value behind.
 	$wpdb->query(
 		$wpdb->prepare(
-			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-			'_transient_pcptpages_source_%',
-			'_transient_timeout_pcptpages_source_%'
+			"DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE %s",
+			$wpdb->esc_like( '_pcptpages_' ) . '%'
 		)
 	);
 
-	// ---------------------------------------------------------------------------
-	// Conditional removal: per-post groupings.
-	// ---------------------------------------------------------------------------
-
-	if ( $delete_all_data ) {
-		// User opted into full deletion. Remove every PRE-owned post meta key
-		// across the entire site, in one query per key. This catches posts in
-		// any post status (published, draft, trash) and any post type.
-		$pcptpages_meta_keys = array(
-			'_pcptpages_groupings',
-			'_pcptpages_groupings_backup',
-			'_pcptpages_groupings_backup_time',
-			'_pcptpages_groupings_backup_user',
-			'_pcptpages_groupings_backup_source',
-			'_pcptpages_position_overrides',
-			'_pcptpages_icon',
-		);
-
-		foreach ( $pcptpages_meta_keys as $pcptpages_meta_key ) {
-			$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => $pcptpages_meta_key ) );
-		}
-	}
-
-	// Note: We deliberately do NOT delete the posts that belonged to registered
-	// CPTs. Those posts contain user content (titles, main-editor body, etc.)
-	// independent of this plugin. If the user wants to delete the posts, they
-	// can do so through the WordPress admin — destroying user content during
-	// uninstall is never the right default.
+	// Posts are deliberately NOT deleted: titles, content and featured
+	// images are ordinary WordPress content the site owner can remove.
 }
 
 pcptpages_run_uninstall_cleanup();

@@ -689,6 +689,18 @@ class PCPTPages_Renderer {
 
 				<div class="pre-hero__text">
 					<?php
+					if ( ! $has_thumbnail ) {
+						// No image for image_overlay fields to sit on: render
+						// them in flow at the top of the text column instead of
+						// dropping them. A status badge is the typical field —
+						// an event's "Cancelled" vanished from its own page when
+						// the record had no featured image, while the schema
+						// and calendar still said cancelled (2026-09-19 pressure
+						// test). cards.css neutralizes the absolute overlay
+						// treatment here, as it already does for compact rows.
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+						echo $card_renderer->render_position_html( $post->ID, 'image_overlay', 'single_hero' );
+					}
 					// Headline-position fields render above the title (the
 					// "price above the address" pattern).
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

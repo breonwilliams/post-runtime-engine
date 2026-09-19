@@ -219,4 +219,31 @@ class GroupingRegistryTest extends UnitTestCase {
         $this->assertInstanceOf( '\\WP_Error', $result );
         $this->assertSame( 'pcptpages_grouping_not_found', $result->get_error_code() );
     }
+
+    /**
+     * "No cap" is spelled 0 by the connector contract and the relay schema,
+     * null/'' by the admin form; all three must define an uncapped grouping
+     * (2026-09-19 pressure test: 0 was refused, so a client that fills in
+     * schema defaults could not define one). A real cap still validates.
+     */
+    public function test_max_items_zero_null_and_empty_all_mean_no_cap() {
+        foreach ( array( 0, '0', null, '' ) as $i => $none ) {
+            $key = 'g' . $i;
+            $this->assertTrue( $this->registry->define( 'listing', $this->valid_grouping( array( 'key' => $key, 'max_items' => $none ) ) ), 'max_items=' . var_export( $none, true ) );
+            $this->assertNull( $this->registry->get( 'listing', $key )['max_items'] );
+        }
+    }
+
+    public function test_sending_zero_on_update_removes_an_existing_cap() {
+        $this->registry->define( 'listing', $this->valid_grouping( array( 'max_items' => 4 ) ) );
+        $this->assertSame( 4, $this->registry->get( 'listing', 'features' )['max_items'] );
+        $this->registry->define( 'listing', $this->valid_grouping( array( 'max_items' => 0 ) ) );
+        $this->assertNull( $this->registry->get( 'listing', 'features' )['max_items'] );
+    }
+
+    public function test_a_negative_cap_is_still_refused() {
+        $result = $this->registry->define( 'listing', $this->valid_grouping( array( 'max_items' => -2 ) ) );
+        $this->assertInstanceOf( \WP_Error::class, $result );
+        $this->assertSame( 'pcptpages_invalid_max_items', $result->get_error_code() );
+    }
 }

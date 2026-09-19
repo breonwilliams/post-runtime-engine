@@ -363,7 +363,7 @@ const TOOLS = [
             },
           ],
         },
-        max_items: { type: "integer", default: 0, description: "0 = no cap. featured-card requires 1." },
+        max_items: { type: "integer", description: "Maximum items per post. Omit (or send 0) for no cap. featured-card requires 1." },
         heading_required: { type: "boolean", default: true },
         supporting_text_required: { type: "boolean", default: false },
         link_required: { type: "boolean", default: false },

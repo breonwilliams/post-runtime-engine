@@ -132,6 +132,20 @@ class PCPTPages_Grouping_Registry {
 		// react.
 		$cpt_exists = $this->is_cpt_registered( $cpt_slug );
 
+		// "No cap" has three spellings in the wild and one in storage. The
+		// connector contract documents max_items: 0 as no cap
+		// (CONNECTOR_SPEC.md), and the relay's tool schema advertised 0 as
+		// the default — so an MCP client that fills in schema defaults sent
+		// 0 on every define and the validator, which requires a positive
+		// integer, refused it (found by the 2026-09-19 pressure test). The
+		// admin form stores no cap as an absent value (null). Normalise all
+		// three to absent before validating, so a cap is only ever a
+		// positive integer and "no cap" always round-trips as null.
+		if ( array_key_exists( 'max_items', $definition )
+			&& in_array( $definition['max_items'], array( 0, '0', null, '' ), true ) ) {
+			unset( $definition['max_items'] );
+		}
+
 		$valid = $this->validator->validate_grouping_definition( $definition );
 		if ( is_wp_error( $valid ) ) {
 			return $valid;

@@ -6,6 +6,72 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+All found by the 2026-09-19 pressure test (a township site built only
+through the connectors).
+
+- **`delete_post` deleted records permanently while reporting a trash.**
+  The connector documents "trashes by default (recoverable)" and called
+  `wp_delete_post( $id, false )` — which core only turns into a trash for
+  `post` and `page`; every custom post type is deleted permanently whatever
+  the flag says. Five records "trashed" that way were gone from the
+  database with the response saying `permanent: false`. A normal delete
+  now calls `wp_trash_post()`, only `force` deletes, a record already in
+  the trash is left there (`already_trashed: true`) instead of being
+  escalated to a permanent delete, and `permanent` is read back from the
+  database, so a site with `EMPTY_TRASH_DAYS = 0` is reported truthfully.
+  `PCPTPages_Post_Data::remove_post()`; `tests/Unit/RemovePostTest.php`,
+  including a source guard that fails if the handler calls
+  `wp_delete_post()` without an explicit `true` again.
+- **A record type's `rewrite: { slug }` was ignored.** The connector
+  documents and stores it; the registry read a different key
+  (`rewrite_slug`) that nothing writes, so every type registered through
+  the connector was published under its internal slug — `/pt_meeting/…`
+  with an underscore. `PCPTPages_CPT_Registry::address_slug()` reads the
+  documented key (nested bases like `council/meetings` sanitised per
+  segment; the old flat key still honoured). Old addresses redirect to the
+  new ones through core's 404 guess, measured on Local.
+- **`max_items: 0` was refused.** The spec and the relay's tool schema both
+  said 0 means no cap, and the relay advertised 0 as the default — so an MCP
+  client that fills schema defaults could not define an uncapped grouping
+  (`pcptpages_invalid_max_items`). 0, `null` and `''` now all mean no cap,
+  stored and returned as `null`; the relay no longer advertises a default.
+- **A cancelled event with no featured image looked scheduled.**
+  `image_overlay` fields — a status badge, typically — were dropped on the
+  single page when there was no image to overlay; the schema and the
+  calendar said cancelled, the page did not. They now render in flow at the
+  top of the hero text. `cards.css` treats the no-image placements like the
+  overlay hero (the hero text column, and a PostGrid card's content cell,
+  which Promptless WP 1.8.4 fills for imageless cards). The admin warning
+  now says where the badges go.
+- **The location map's "Get directions" link failed contrast on dark
+  pages (2.91:1).** `map.css` named the light-page tokens directly; it now
+  reads the theme-aware `--pre-color-*` variables `frontend.css` switches
+  for dark pages (measured 6.09:1), and the map facade follows the page
+  surface instead of staying a light box.
+- **PostGrid `event_sort` only worked together with a date status.** An
+  all-dates meetings archive (status `none`, so visitors pick upcoming or
+  past from the filter bar) with `event_sort: "soonest"` listed meetings in
+  publish order. An explicit `soonest`/`latest` now orders an unfiltered
+  grid by event date, with a named meta clause that keeps records without
+  a start date in the grid; `auto` is unchanged.
+  `tests/Unit/PostgridEventSortTest.php`.
+- **Taxonomy facets offered other types' terms.** On a shared taxonomy
+  such as `category` — the one the connector's own guidance attaches —
+  `hide_empty` counted every post type, so the meetings filter offered the
+  blog's and the workshops' categories, each returning nothing. Options are
+  now the terms that published records of the filtered type carry, plus
+  their ancestors. `tests/Unit/FacetTermScopeTest.php`.
+- **`list_posts` returned HTML-entity titles** (`Planning &#038; Zoning`),
+  and `update_post` defaulted a sideloaded image's alt text to the same
+  entity-encoded string. Raw titles now; a client copying a title into a
+  field that a `meta_match` `current_title` lookup compares against no
+  longer breaks the match.
+- **`link_text` and `link_target` were advertised for grouping items but
+  never rendered.** A linked item is one link over the whole card, named by
+  its heading. The field hints no longer list them.
+
 ## [0.10.0] - 2026-09-14
 
 ### Added

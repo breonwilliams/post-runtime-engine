@@ -296,7 +296,14 @@
  * pushes content down instead of overlapping it, whatever the metadata. The
  * stacked/split hero layouts keep the absolute treatment: there the badge
  * floats over the IMAGE, which is the intended composition. */
-.pre-hero__inner--overlay .pre-card-fields__position--image-overlay {
+/* No-image placements (2026-09-19): when there is no image to sit on, the
+ * image_overlay position is rendered in the TEXT flow instead of being
+ * dropped — the single-post hero's text column (PCPTPages_Renderer) and a
+ * PostGrid card's content cell (AISB's PostGridRenderer, which already did
+ * this for compact rows). Same in-flow treatment as the overlay hero. */
+.pre-hero__inner--overlay .pre-card-fields__position--image-overlay,
+.pre-hero__text > .pre-card-fields__position--image-overlay,
+.aisb-features__item-content > .pre-card-fields__position--image-overlay {
 	position: static;
 	top: auto;
 	left: auto;

@@ -139,11 +139,11 @@ class PCPTPages_Meta_Box_Post_Fields {
 			<?php if ( ! empty( $overlay_field_labels ) ) : ?>
 				<div class="notice notice-warning inline pre-meta-box__overlay-warning">
 					<p>
-						<strong><?php esc_html_e( 'Image-overlay badges need a featured image.', 'promptless-cpt-pages' ); ?></strong><br />
+						<strong><?php esc_html_e( 'Image-overlay badges have no image to sit on.', 'promptless-cpt-pages' ); ?></strong><br />
 						<?php
 						printf(
 							/* translators: %s: comma-separated list of field labels */
-							esc_html__( 'The following field(s) are configured to render as badges over the featured image, but this post has no featured image set: %s. They will be skipped in both card and single-page rendering until you add a featured image (see the Featured image meta box).', 'promptless-cpt-pages' ),
+							esc_html__( 'These field(s) are set to show as badges over the featured image, but this post has none: %s. They show above the title instead until you add a featured image (see the Featured image meta box).', 'promptless-cpt-pages' ),
 							esc_html( implode( ', ', $overlay_field_labels ) )
 						);
 						?>

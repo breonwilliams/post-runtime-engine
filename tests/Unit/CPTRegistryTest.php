@@ -205,4 +205,18 @@ class CPTRegistryTest extends UnitTestCase {
         $this->assertArrayHasKey( 'listing', $all );
         $this->assertArrayHasKey( 'attorney', $all );
     }
+
+    /**
+     * The documented `rewrite: { slug }` sets the address (2026-09-19
+     * pressure test: it was stored but a different key was read, so every
+     * connector-registered type was published under its internal slug).
+     */
+    public function test_address_slug_honours_the_documented_rewrite_slug() {
+        Functions\when( 'sanitize_title' )->alias( function ( $t ) { return strtolower( trim( preg_replace( '/[^A-Za-z0-9]+/', '-', $t ), '-' ) ); } );
+        $this->assertSame( 'meetings', \PCPTPages_CPT_Registry::address_slug( array( 'slug' => 'pt_meeting', 'rewrite' => array( 'slug' => 'meetings' ) ) ) );
+        $this->assertSame( 'council/meetings', \PCPTPages_CPT_Registry::address_slug( array( 'slug' => 'pt_meeting', 'rewrite' => array( 'slug' => '/Council/Meetings/' ) ) ), 'nested bases survive, each segment sanitised' );
+        $this->assertSame( 'legacy-base', \PCPTPages_CPT_Registry::address_slug( array( 'slug' => 'pt_meeting', 'rewrite_slug' => 'legacy-base' ) ), 'the old flat key still works' );
+        $this->assertSame( 'pt_meeting', \PCPTPages_CPT_Registry::address_slug( array( 'slug' => 'pt_meeting' ) ), 'no rewrite → the type slug, as before' );
+        $this->assertSame( 'pt_meeting', \PCPTPages_CPT_Registry::address_slug( array( 'slug' => 'pt_meeting', 'rewrite' => array( 'slug' => '///' ) ) ), 'sanitises to nothing → the type slug' );
+    }
 }

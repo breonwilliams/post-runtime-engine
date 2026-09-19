@@ -286,6 +286,35 @@ class PCPTPages_CPT_Registry {
 	}
 
 	/**
+	 * The address segment a record type is published under.
+	 *
+	 * The connector documents and stores `rewrite: { slug }`
+	 * (CONNECTOR_SPEC.md), but this used to read a flat `rewrite_slug` key
+	 * that nothing writes, so every record type was published under its
+	 * internal slug — `/pt_meeting/…` with an underscore — whatever the
+	 * site asked for (found by the 2026-09-19 pressure test). `rewrite_slug`
+	 * is still honoured for any definition stored that way. Each path
+	 * segment is sanitised separately so a nested base such as
+	 * `council/meetings` survives; anything that sanitises to nothing falls
+	 * back to the type's own slug.
+	 *
+	 * @param array $definition Stored definition.
+	 * @return string
+	 */
+	public static function address_slug( array $definition ) {
+		$requested = '';
+		if ( isset( $definition['rewrite']['slug'] ) && is_string( $definition['rewrite']['slug'] ) ) {
+			$requested = $definition['rewrite']['slug'];
+		} elseif ( isset( $definition['rewrite_slug'] ) && is_string( $definition['rewrite_slug'] ) ) {
+			$requested = $definition['rewrite_slug'];
+		}
+
+		$segments = array_filter( array_map( 'sanitize_title', explode( '/', $requested ) ), 'strlen' );
+
+		return $segments ? implode( '/', $segments ) : (string) $definition['slug'];
+	}
+
+	/**
 	 * Translate a stored definition into the args array that
 	 * register_post_type() expects.
 	 *
@@ -334,8 +363,8 @@ class PCPTPages_CPT_Registry {
 			'capability_type'     => $definition['capability_type'],
 			'map_meta_cap'        => true,
 			'rewrite'             => array(
-				'slug'       => isset( $definition['rewrite_slug'] ) ? $definition['rewrite_slug'] : $definition['slug'],
-				'with_front' => false,
+				'slug'       => self::address_slug( $definition ),
+				'with_front' => isset( $definition['rewrite']['with_front'] ) ? (bool) $definition['rewrite']['with_front'] : false,
 				'feeds'      => false,
 				'pages'      => true,
 			),

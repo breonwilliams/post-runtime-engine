@@ -931,6 +931,61 @@ class PCPTPages_Post_Data {
 	}
 
 	/**
+	 * Normalize a date field's input to the stored wall-clock form:
+	 * 'Y-m-d H:i:s' when the input carries a time, 'Y-m-d' when it does not.
+	 *
+	 * The stored value is a wall clock in the field's timezone (the event
+	 * timezone, else the site's) — that is how it renders and how the
+	 * `__sort` companion reads it. An input that names its own offset
+	 * ("2026-10-01T18:00:00-05:00", "…Z") is an absolute instant, so it is
+	 * converted INTO that timezone. Before 2026-09-19 every input went
+	 * through strtotime() and gmdate(), which stored the UTC clock time:
+	 * 18:00 Chicago became 23:00 on the page, the calendar and the schema.
+	 * Inputs without an offset are wall clocks already and keep their digits.
+	 *
+	 * Pure (no WordPress calls) so it is unit-testable.
+	 *
+	 * @param mixed  $value   Input: a date string, or a unix timestamp (stored as its date).
+	 * @param string $tz_name IANA timezone the stored value is a wall clock in.
+	 * @return mixed The normalized string, or $value unchanged when unparseable.
+	 */
+	public static function normalize_date_value( $value, $tz_name ) {
+		$raw      = trim( (string) $value );
+		$has_time = preg_match( '/\d{1,2}:\d{2}/', $raw ) === 1;
+
+		try {
+			$tz = new DateTimeZone( $tz_name !== '' ? $tz_name : 'UTC' );
+		} catch ( \Exception $e ) {
+			$tz = new DateTimeZone( 'UTC' );
+		}
+
+		if ( is_numeric( $value ) ) {
+			// Unchanged from before: a bare timestamp stores its date only.
+			return gmdate( 'Y-m-d', (int) $value );
+		}
+
+		$has_offset = $has_time && preg_match( '/(?:Z|[+-]\d{2}:?\d{2})$/i', $raw ) === 1;
+		if ( $has_offset ) {
+			try {
+				$dt = ( new DateTimeImmutable( $raw ) )->setTimezone( $tz );
+				return $dt->format( 'Y-m-d H:i:s' );
+			} catch ( \Exception $e ) {
+				return $value;
+			}
+		}
+
+		// A wall clock: parse without any timezone arithmetic.
+		$ts = strtotime( $raw . ' UTC' );
+		if ( $ts === false ) {
+			$ts = strtotime( $raw );
+		}
+		if ( $ts === false ) {
+			return $value;
+		}
+		return $has_time ? gmdate( 'Y-m-d H:i:s', $ts ) : gmdate( 'Y-m-d', $ts );
+	}
+
+	/**
 	 * Compute the normalized sort + UTC companion values for an event date.
 	 *
 	 * Pure function (no WordPress calls) so it is unit-testable in isolation.
@@ -1094,12 +1149,10 @@ class PCPTPages_Post_Data {
 				// only) and "May 20 · 2:30 PM" (event time) use cases.
 				// The renderer's date_i18n() call works with either
 				// stored shape.
-				$raw = (string) $primary;
-				$has_time = is_string( $primary ) && preg_match( '/\d{1,2}:\d{2}/', $raw ) === 1;
-				$ts = is_numeric( $primary ) ? (int) $primary : strtotime( $raw );
-				if ( $ts !== false ) {
-					$primary = $has_time ? gmdate( 'Y-m-d H:i:s', $ts ) : gmdate( 'Y-m-d', $ts );
-				}
+				$primary = self::normalize_date_value(
+					$primary,
+					! empty( $field_def['event_timezone'] ) ? (string) $field_def['event_timezone'] : wp_timezone()->getName()
+				);
 				break;
 
 			case 'multi_badge':

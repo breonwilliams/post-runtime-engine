@@ -18,6 +18,15 @@
  *
  * When a CPT maps no `event_end` role, the end anchor falls back to the
  * `event_start` companion so single-instant events still filter correctly.
+ * When it maps one but a RECORD has no end value, that record falls back to
+ * its own start the same way — before 2026-09-19 such a record matched none
+ * of the three statuses, so a meeting entered without an end time vanished
+ * from both Upcoming and Past.
+ *
+ * All-day anchors compare against the START of today rather than now: an
+ * all-day date is stored as midnight, so comparing it to the current time
+ * made a one-day event "past" from 00:00:01 on its own day, and a multi-day
+ * event past for the whole of its last day.
  *
  * The pure builders (build_status_meta_query, resolve_sort_direction) take
  * already-resolved keys + a caller-supplied "now" so they are unit-testable
@@ -97,57 +106,97 @@ class PCPTPages_Event_Query {
 	 * @param string $end_sort_key   The event_end `__sort` meta key, or '' if none.
 	 * @param string $status         One of STATUSES.
 	 * @param int    $now            Current time as numeric YYYYMMDDHHMMSS (site-local).
+	 * @param array  $all_day        Optional. `start` / `end` => bool: whether
+	 *                               that field is all-day. An all-day anchor
+	 *                               compares against the start of today.
 	 * @return array A meta_query group (possibly empty on invalid input).
 	 */
-	public static function build_status_meta_query( $start_sort_key, $end_sort_key, $status, $now ) {
+	public static function build_status_meta_query( $start_sort_key, $end_sort_key, $status, $now, array $all_day = array() ) {
 		if ( ! in_array( $status, self::STATUSES, true ) || $start_sort_key === '' ) {
 			return array();
 		}
 
-		// End anchor drives upcoming/past so in-progress multi-day events
-		// resolve correctly. Falls back to the start key when no end mapped.
-		$end_anchor = ( $end_sort_key !== '' ) ? $end_sort_key : $start_sort_key;
+		$now       = (int) $now;
+		$today     = self::start_of_day( $now );
+		$start_now = empty( $all_day['start'] ) ? $now : $today;
+		$end_now   = empty( $all_day['end'] ) ? $now : $today;
 
 		switch ( $status ) {
 			case 'upcoming':
-				return array(
-					array(
-						'key'     => $end_anchor,
-						'value'   => (int) $now,
-						'compare' => '>=',
-						'type'    => 'NUMERIC',
-					),
-				);
+				return array( self::end_side( $start_sort_key, $end_sort_key, '>=', $start_now, $end_now ) );
 
 			case 'past':
-				return array(
-					array(
-						'key'     => $end_anchor,
-						'value'   => (int) $now,
-						'compare' => '<',
-						'type'    => 'NUMERIC',
-					),
-				);
+				return array( self::end_side( $start_sort_key, $end_sort_key, '<', $start_now, $end_now ) );
 
 			case 'happening':
 				return array(
 					'relation' => 'AND',
-					array(
-						'key'     => $start_sort_key,
-						'value'   => (int) $now,
-						'compare' => '<=',
-						'type'    => 'NUMERIC',
-					),
-					array(
-						'key'     => $end_anchor,
-						'value'   => (int) $now,
-						'compare' => '>=',
-						'type'    => 'NUMERIC',
-					),
+					self::clause( $start_sort_key, '<=', $now ),
+					self::end_side( $start_sort_key, $end_sort_key, '>=', $start_now, $end_now ),
 				);
 		}
 
 		return array();
+	}
+
+	/**
+	 * The END-anchored half of a status query. Upcoming, past and the second
+	 * bound of happening all compare "when does it finish" with now.
+	 *
+	 * With no end field mapped, the start is the end. With one mapped, a
+	 * record that carries an end compares its end, and a record without one
+	 * compares its start — so a record is never in none of the statuses.
+	 *
+	 * @param string $start_key Start `__sort` key.
+	 * @param string $end_key   End `__sort` key, or ''.
+	 * @param string $compare   '>=' or '<'.
+	 * @param int    $start_now "Now" for a start-as-end comparison.
+	 * @param int    $end_now   "Now" for an end comparison.
+	 * @return array A meta_query clause or group.
+	 */
+	private static function end_side( $start_key, $end_key, $compare, $start_now, $end_now ) {
+		if ( $end_key === '' ) {
+			return self::clause( $start_key, $compare, $start_now );
+		}
+		return array(
+			'relation' => 'OR',
+			self::clause( $end_key, $compare, $end_now ),
+			array(
+				'relation' => 'AND',
+				array(
+					'key'     => $end_key,
+					'compare' => 'NOT EXISTS',
+				),
+				self::clause( $start_key, $compare, $start_now ),
+			),
+		);
+	}
+
+	/**
+	 * One numeric comparison clause.
+	 *
+	 * @param string $key     Meta key.
+	 * @param string $compare Operator.
+	 * @param int    $value   YYYYMMDDHHMMSS.
+	 * @return array
+	 */
+	private static function clause( $key, $compare, $value ) {
+		return array(
+			'key'     => $key,
+			'value'   => (int) $value,
+			'compare' => $compare,
+			'type'    => 'NUMERIC',
+		);
+	}
+
+	/**
+	 * Midnight of the day a YYYYMMDDHHMMSS value falls on, in the same form.
+	 *
+	 * @param int $ymdhis Numeric YYYYMMDDHHMMSS.
+	 * @return int
+	 */
+	public static function start_of_day( $ymdhis ) {
+		return intdiv( (int) $ymdhis, 1000000 ) * 1000000;
 	}
 
 	/**
@@ -195,8 +244,28 @@ class PCPTPages_Event_Query {
 			self::sort_meta_key( $start_key ),
 			$end_key !== '' ? self::sort_meta_key( $end_key ) : '',
 			$status,
-			$now
+			$now,
+			array(
+				'start' => self::is_all_day( $cpt_slug, $start_key ),
+				'end'   => $end_key !== '' && self::is_all_day( $cpt_slug, $end_key ),
+			)
 		);
+	}
+
+	/**
+	 * Whether a CPT's date field is all-day.
+	 *
+	 * @param string $cpt_slug  CPT slug.
+	 * @param string $field_key Field key.
+	 * @return bool
+	 */
+	private static function is_all_day( $cpt_slug, $field_key ) {
+		$plugin = function_exists( 'pcptpages' ) ? pcptpages() : null;
+		if ( ! $plugin || ! $plugin->post_fields ) {
+			return false;
+		}
+		$defs = $plugin->post_fields->get_all( $cpt_slug );
+		return is_array( $defs ) && ! empty( $defs[ $field_key ]['all_day'] );
 	}
 
 	/**

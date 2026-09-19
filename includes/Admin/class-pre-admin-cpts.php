@@ -796,6 +796,17 @@ class PCPTPages_Admin_CPTs {
 			$this->redirect( $this->url() );
 		}
 
+		// Editing: lay the form's values OVER the stored definition. The form
+		// shows only some keys; register() stores exactly what it is given,
+		// so saving a type used to erase everything the form does not show —
+		// a custom address (`rewrite`) or `rest_base` set through the
+		// connector vanished the first time anyone saved the type here. The
+		// connector's update route merges the same way.
+		$existing = is_string( $values['slug'] ) && $values['slug'] !== '' ? $plugin->cpts->get( $values['slug'] ) : null;
+		if ( is_array( $existing ) ) {
+			$values = array_merge( $existing, $values );
+		}
+
 		$result = $plugin->cpts->register( $values['slug'], $values );
 
 		if ( is_wp_error( $result ) ) {
@@ -831,12 +842,13 @@ class PCPTPages_Admin_CPTs {
 			$this->redirect( $this->url() );
 		}
 
-		// Remove all groupings defined for this CPT before unregistering it.
-		// Keeps the option table clean even though the post meta on existing
-		// posts is intentionally preserved.
-		if ( $plugin->groupings ) {
-			$plugin->groupings->remove_all_for_cpt( $cpt_slug );
-		}
+		// Same as the connector's delete_cpt without purge_data: nothing but
+		// the type definition goes. This link used to delete the type's
+		// grouping definitions too — which the connector stopped doing in
+		// 0.8.0 because re-registering the slug then brought the records back
+		// with grouping values nothing could render — and it wrote no
+		// tombstone, so list_posts could not find the records afterwards.
+		PCPTPages_Connector_API::tombstone_cpt( $cpt_slug );
 
 		$result = $plugin->cpts->unregister( $cpt_slug );
 
@@ -1105,8 +1117,11 @@ class PCPTPages_Admin_CPTs {
 			'hero_theme'          => 'inherit',
 			'hero_width'          => 'contained',
 			'default_icon'        => '',
-			'archive_show_post_date'   => true,
-			'archive_show_post_author' => true,
+			// Off, matching PCPTPages_CPT_Registry::merge_defaults() — see the
+			// 2026-07-15 note there. This form started them ticked, so a type
+			// made here showed the admin login as every record's author.
+			'archive_show_post_date'   => false,
+			'archive_show_post_author' => false,
 			'archive_image_aspect'     => '16:9',
 		);
 	}

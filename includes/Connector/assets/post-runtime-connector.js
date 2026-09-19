@@ -159,15 +159,15 @@ const TOOLS = [
         },
         archive_show_post_date: {
           type: "boolean",
-          default: true,
+          default: false,
           description:
-            "Whether the theme archive card should render the post's create-date byline. Default true (backward compatible). Set false when the CPT already exposes a meaningful date via a post-field (e.g. an event CPT whose event_date field IS the date that matters — showing both the post create-date AND event_date on a card is duplicative). Affects only the theme-rendered archive card; the AISB PostGrid section has its own show-date toggle.",
+            "Whether the theme archive card should render the post's create-date byline. Default false for a new type (since 0.6.6 — records rarely have a meaningful create date). Set true for news-like types. Leave false when the CPT already exposes a meaningful date via a post-field (e.g. an event CPT whose event_date field IS the date that matters — showing both the post create-date AND event_date on a card is duplicative). Affects only the theme-rendered archive card; the AISB PostGrid section has its own show-date toggle.",
         },
         archive_show_post_author: {
           type: "boolean",
-          default: true,
+          default: false,
           description:
-            "Whether the theme archive card should render the post author byline. Default true. Set false for CPTs where the author is irrelevant or noisy (e.g. a multi-author publication where every post is by 'admin', or a directory CPT where the author identity isn't the point). Affects only the theme-rendered archive card.",
+            "Whether the theme archive card should render the post author byline. Default false for a new type — the byline is the WordPress account that created the record, which is wrong on most records. Keep false for CPTs where the author is irrelevant or noisy (e.g. a multi-author publication where every post is by 'admin', or a directory CPT where the author identity isn't the point). Affects only the theme-rendered archive card.",
         },
       },
       required: ["slug", "label_singular", "label_plural"],
@@ -209,8 +209,8 @@ const TOOLS = [
         hero_width: { type: "string", enum: ["contained", "full"], description: "'full' bleeds the hero band background viewport-wide; content stays grid-aligned. Default 'contained'." },
         default_icon: { type: "string", description: "Curated icon id (e.g. 'home') OR Iconify code in collection:name form (e.g. 'mdi:home'), or empty string to remove the fallback. See postruntime_list_icons." },
         archive_image_aspect: { type: "string", enum: ["16:9", "4:3", "1:1", "4:5"], description: "Featured-image aspect ratio on theme archive cards. 1:1/4:5 for people, 4:3 for property/product photos, 16:9 (default) for editorial." },
-        archive_show_post_date: { type: "boolean", description: "Hide the theme-rendered post create-date on archive cards by setting false. Default true." },
-        archive_show_post_author: { type: "boolean", description: "Hide the theme-rendered post author byline on archive cards by setting false. Default true." },
+        archive_show_post_date: { type: "boolean", description: "Show (true) or hide (false) the theme-rendered post create-date on archive cards. New types start false." },
+        archive_show_post_author: { type: "boolean", description: "Show (true) or hide (false) the theme-rendered post author byline on archive cards. New types start false." },
       },
       required: ["slug", "connector_version"],
     },
@@ -298,7 +298,7 @@ const TOOLS = [
   {
     name: "postruntime_define_grouping",
     description:
-      "Define a grouping (named cluster of items with shared layout) for a CPT. featured-card variant REQUIRES max_items=1 (the validator enforces this). The gallery variant renders items as a responsive photo grid with an accessible lightbox — set gallery_image_aspect for the tile crop and usually heading_required:false so image-only tiles save cleanly (see preflight critical_rules.gallery_variant). Source modes: 'manual' (items stored explicitly per post), 'child_posts' (auto-populated from hierarchical children), {type:'taxonomy_match',taxonomy:'<slug>'} (auto-populated from posts sharing a taxonomy term — the taxonomy must already exist), or {type:'meta_match',...} (auto-populated from posts whose meta value equals a value derived from the current post). meta_match has two shapes: MIRROR (default) — {type:'meta_match',meta_key:'_agent_id'} finds same-CPT siblings sharing the current post's value ('more from this agent'); REVERSE LOOKUP — {type:'meta_match',post_type:'listing',field_key:'agent',match_against:'current_title'} pulls posts from a DIFFERENT CPT whose post-field names the current post (an Agent page pulling its Listings, a Neighborhood page pulling area Listings). Prefer field_key (a PRE post-field key — the meta this connector writes via set_post_field_values) over raw meta_key; exactly one of the two is required. match_against: same_key (default) | current_id | current_slug | current_title.",
+      "Define a grouping (named cluster of items with shared layout) for a CPT. featured-card variant needs max_items 1 or unset (the validator rejects any other cap). The gallery variant renders items as a responsive photo grid with an accessible lightbox — set gallery_image_aspect for the tile crop and usually heading_required:false so image-only tiles save cleanly (see preflight critical_rules.gallery_variant). Source modes: 'manual' (items stored explicitly per post), 'child_posts' (auto-populated from hierarchical children), {type:'taxonomy_match',taxonomy:'<slug>'} (auto-populated from posts sharing a taxonomy term — the taxonomy must already exist), or {type:'meta_match',...} (auto-populated from posts whose meta value equals a value derived from the current post). meta_match has two shapes: MIRROR (default) — {type:'meta_match',meta_key:'_agent_id'} finds same-CPT siblings sharing the current post's value ('more from this agent'); REVERSE LOOKUP — {type:'meta_match',post_type:'listing',field_key:'agent',match_against:'current_title'} pulls posts from a DIFFERENT CPT whose post-field names the current post (an Agent page pulling its Listings, a Neighborhood page pulling area Listings). Prefer field_key (a PRE post-field key — the meta this connector writes via set_post_field_values) over raw meta_key; exactly one of the two is required. match_against: same_key (default) | current_id | current_slug | current_title.",
     inputSchema: {
       type: "object",
       properties: {
@@ -363,7 +363,7 @@ const TOOLS = [
             },
           ],
         },
-        max_items: { type: "integer", description: "Maximum items per post. Omit (or send 0) for no cap. featured-card requires 1." },
+        max_items: { type: "integer", description: "Maximum items per post. Omit (or send 0) for no cap. featured-card accepts 1 or no cap." },
         heading_required: { type: "boolean", default: true },
         supporting_text_required: { type: "boolean", default: false },
         link_required: { type: "boolean", default: false },
@@ -417,13 +417,12 @@ const TOOLS = [
   {
     name: "postruntime_delete_grouping",
     description:
-      "Remove a grouping definition from a CPT. Post data referencing the deleted key is preserved (silently skipped at render time) unless purge_data=true.",
+      "Remove a grouping definition from a CPT. Records' values for the deleted key are always kept (skipped at render time), so defining the key again brings them back. To remove those values too, delete the whole type with postruntime_delete_cpt purge_data=true.",
     inputSchema: {
       type: "object",
       properties: {
         slug: { type: "string" },
         key: { type: "string" },
-        purge_data: { type: "boolean", default: false },
       },
       required: ["slug", "key"],
     },
@@ -1161,10 +1160,9 @@ async function handleTool(name, args) {
     }
 
     case "postruntime_delete_grouping": {
-      const qs = args.purge_data ? "?purge_data=1" : "";
       return await makeRequest(
         "DELETE",
-        `/cpts/${encodeURIComponent(args.slug)}/groupings/${encodeURIComponent(args.key)}${qs}`
+        `/cpts/${encodeURIComponent(args.slug)}/groupings/${encodeURIComponent(args.key)}`
       );
     }
 

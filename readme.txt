@@ -17,10 +17,10 @@ Promptless CPT Pages provides a constrained, opinionated primitive for repeatabl
 * Register custom post types from an admin UI — no ACF / MetaBox / Pods dependency.
 * Define "groupings" per CPT — named clusters of items sharing a layout variant and a position (above main / below main / sidebar).
 * Items follow one shape — `{ image-or-icon, heading, supporting_text, optional link }`.
-* Four layout variants per grouping — compact-grid, card-grid, featured-card, horizontal-row.
-* Three source modes — `manual`, `child_posts`, `taxonomy_match`.
+* Five layout variants per grouping — compact-grid, card-grid, featured-card, horizontal-row, gallery.
+* Four source modes — `manual`, `child_posts`, `taxonomy_match`, `meta_match` (including reverse lookups across types).
 * Curated icon library of 53 icons across 13 categories, extensible via the `pre_icon_library` filter.
-* Connector REST API + MCP tools (18 endpoints under `/wp-json/post-runtime/v1/connector/`) so AI assistants like Claude Cowork can register CPTs, define groupings, populate per-post values, and preview rendered output.
+* Connector REST API + MCP tools (under `/wp-json/post-runtime/v1/connector/`) so AI assistants like Claude Cowork can register CPTs, define groupings, populate per-post values, and preview rendered output.
 * Design-token inheritance from Promptless WP — colors, spacing, typography, radii. Graceful fallback when Promptless is not installed.
 
 Promptless CPT Pages is positioned as a free companion plugin to Promptless WP (the page builder) and Promptless Forms (the form renderer). It owns dynamic CPT single-page rendering; it does not replace Promptless for landing-page composition or Promptless Forms for forms.
@@ -29,8 +29,8 @@ Promptless CPT Pages is positioned as a free companion plugin to Promptless WP (
 
 1. Upload the plugin folder to `/wp-content/plugins/` or install via WP Admin → Plugins → Add New → Upload Plugin.
 2. Activate the plugin through the **Plugins** screen in WordPress.
-3. Visit **Post Runtime → CPTs** in the admin to register your first custom post type.
-4. To enable the Claude Cowork connector, visit **Post Runtime → Claude Connection** and follow the setup steps.
+3. Visit **Post Runtime → Post Types** in the admin to register your first custom post type.
+4. To enable the connector for Claude, visit **Post Runtime → Connector** and follow the setup steps.
 
 For full documentation see `CLAUDE.md` and `docs/` inside the plugin folder.
 
@@ -72,7 +72,7 @@ Privacy policy: https://iconify.design/privacy/
 
 1. Admin UI for registering a custom post type — name, slug, labels, icon picker, archive on/off
 2. Grouping definitions per CPT — define a named cluster of items sharing a layout variant and a position (above main / below main / sidebar)
-3. The per-post meta box for filling in grouping items, with the four layout-variant preview cards
+3. The per-post meta box for filling in grouping items, with the layout-variant preview cards
 4. Frontend render of a CPT single page with the compact-grid variant for an "amenities" grouping
 5. Claude Cowork connector setup — opt-in App Password generation, default-disabled kill switch
 

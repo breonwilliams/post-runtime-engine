@@ -31,6 +31,16 @@ if ( ! defined( 'ABSPATH' ) ) {
  *       CHANGED_OPTION_PREFIX for why that name sits outside the
  *       groupings option prefix).
  *
+ *   A render also depends on OTHER records: its own type's (child posts,
+ *   taxonomy matches, the related footer) and, through a reverse
+ *   meta_match, another type's. So any content change to a record —
+ *   including a post-meta write, which is all the connector's field,
+ *   grouping and visibility writes are — bumps its type's marker, and the
+ *   cache entry stores the marker of every other type the render queried
+ *   (`deps`). Before 2026-09-19 only save_post invalidated, and only that
+ *   one post: connector writes and new records left visitors on the old
+ *   page for up to the TTL.
+ *
  *   Active invalidation also fires on save_post / before_delete_post /
  *   set_object_terms — these keep the transient store cleaner but aren't
  *   strictly required for correctness; the timestamp comparison would
@@ -97,6 +107,32 @@ class PCPTPages_Renderer {
 	const DEFAULT_CACHE_LIFETIME = HOUR_IN_SECONDS;
 
 	/**
+	 * Post meta keys whose writes never change what a page shows: the
+	 * editor's lock (rewritten by every heartbeat while a record is open),
+	 * the sync bookkeeping an unchanged ingest touches, and the groupings
+	 * backup. Filterable via `pcptpages_render_cache_ignored_meta_keys`.
+	 *
+	 * @var string[]
+	 */
+	const IGNORED_META_KEYS = array(
+		'_edit_lock',
+		'_edit_last',
+		'_pcptpages_external_synced_at',
+		'_pcptpages_groupings_backup',
+		'_pcptpages_groupings_backup_time',
+		'_pcptpages_groupings_backup_user',
+		'_pcptpages_groupings_backup_source',
+	);
+
+	/**
+	 * Other post types the render in progress queried, or null when no
+	 * render is capturing. See note_dependency().
+	 *
+	 * @var array<string,bool>|null
+	 */
+	private static $capturing_deps = null;
+
+	/**
 	 * Source resolver dependency.
 	 *
 	 * @var PCPTPages_Source_Resolver
@@ -142,6 +178,126 @@ class PCPTPages_Renderer {
 		// parallel key so cache-key composition stays single-sourced.
 		add_action( 'pcptpages_cpt_registered', array( __CLASS__, 'bump_cpt_changed' ), 10, 1 );
 		add_action( 'pcptpages_cpt_unregistered', array( __CLASS__, 'bump_cpt_changed' ), 10, 1 );
+
+		// Content changes to a RECORD invalidate every cached page that can
+		// show it — its type's pages, and pages whose reverse lookup reads
+		// that type. Post meta is where every connector write lands (field
+		// values, groupings, visibility, featured image), and none of those
+		// bump post_modified.
+		add_action( 'save_post', array( __CLASS__, 'record_changed' ), 10, 1 );
+		add_action( 'delete_post', array( __CLASS__, 'record_changed' ), 10, 1 );
+		add_action( 'set_object_terms', array( __CLASS__, 'record_changed' ), 10, 1 );
+		add_action( 'added_post_meta', array( __CLASS__, 'record_meta_changed' ), 10, 3 );
+		add_action( 'updated_post_meta', array( __CLASS__, 'record_meta_changed' ), 10, 3 );
+		add_action( 'deleted_post_meta', array( __CLASS__, 'record_meta_changed' ), 10, 3 );
+	}
+
+	/**
+	 * A record's content changed: bump its type's marker, when that type is
+	 * one a cached render can depend on.
+	 *
+	 * @param int $post_id Post ID.
+	 */
+	public static function record_changed( $post_id ) {
+		$post_id = (int) $post_id;
+		if ( $post_id <= 0 || wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) {
+			return;
+		}
+		$type = get_post_type( $post_id );
+		if ( ! is_string( $type ) || $type === '' ) {
+			return;
+		}
+		if ( self::is_watched_type( $type ) ) {
+			self::bump_cpt_changed( $type );
+		}
+	}
+
+	/**
+	 * Post-meta adapter for record_changed(). Signature of the
+	 * added/updated/deleted_post_meta actions: ($meta_id, $object_id, $meta_key).
+	 *
+	 * @param int|int[] $meta_id   Meta ID(s).
+	 * @param int       $object_id Post ID.
+	 * @param string    $meta_key  Meta key.
+	 */
+	public static function record_meta_changed( $meta_id, $object_id, $meta_key ) {
+		/**
+		 * Filter the post meta keys whose writes leave cached renders valid.
+		 *
+		 * @param string[] $keys Meta keys.
+		 */
+		$ignored = (array) apply_filters( 'pcptpages_render_cache_ignored_meta_keys', self::IGNORED_META_KEYS );
+		if ( in_array( (string) $meta_key, $ignored, true ) ) {
+			return;
+		}
+		self::record_changed( $object_id );
+	}
+
+	/**
+	 * Whether a post type's changes can reach a cached render: one of this
+	 * plugin's types, or a type some render has recorded as a dependency
+	 * (its marker option exists). Keeps an ordinary page or post save from
+	 * writing an option on sites that never look them up.
+	 *
+	 * @param string $type Post type.
+	 * @return bool
+	 */
+	private static function is_watched_type( $type ) {
+		$plugin = function_exists( 'pcptpages' ) ? pcptpages() : null;
+		if ( $plugin && $plugin->cpts && $plugin->cpts->exists( $type ) ) {
+			return true;
+		}
+		return get_option( self::CHANGED_OPTION_PREFIX . sanitize_key( $type ), false ) !== false;
+	}
+
+	/**
+	 * Record that the render in progress read another post type's records.
+	 * Called by the source resolver; a no-op outside a cached render.
+	 *
+	 * @param string $type Post type queried.
+	 */
+	public static function note_dependency( $type ) {
+		if ( self::$capturing_deps === null || ! is_string( $type ) || $type === '' ) {
+			return;
+		}
+		self::$capturing_deps[ sanitize_key( $type ) ] = true;
+	}
+
+	/**
+	 * Current markers for a set of post types. A type with no marker yet
+	 * gets one, so later changes to it are watched (see is_watched_type()).
+	 *
+	 * @param string[] $types Post types.
+	 * @return array<string,int>
+	 */
+	private static function dependency_markers( array $types ) {
+		$markers = array();
+		foreach ( $types as $type ) {
+			$option = self::CHANGED_OPTION_PREFIX . $type;
+			$value  = get_option( $option, false );
+			if ( $value === false ) {
+				$value = time();
+				add_option( $option, $value );
+			}
+			$markers[ $type ] = (int) $value;
+		}
+		return $markers;
+	}
+
+	/**
+	 * Whether every dependency marker stored with a cached render is still
+	 * current.
+	 *
+	 * @param array $deps type => marker, as stored.
+	 * @return bool
+	 */
+	private static function dependencies_current( array $deps ) {
+		foreach ( $deps as $type => $marker ) {
+			if ( (int) get_option( self::CHANGED_OPTION_PREFIX . $type, 0 ) !== (int) $marker ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -155,7 +311,23 @@ class PCPTPages_Renderer {
 		if ( ! is_string( $cpt_slug ) || $cpt_slug === '' ) {
 			return;
 		}
-		update_option( self::CHANGED_OPTION_PREFIX . sanitize_key( $cpt_slug ), time() );
+		$option = self::CHANGED_OPTION_PREFIX . sanitize_key( $cpt_slug );
+		update_option( $option, self::next_marker( get_option( $option, 0 ) ) );
+	}
+
+	/**
+	 * The next value for a change marker: the current time, or one past the
+	 * stored value when that is already this second or later. A marker has
+	 * to CHANGE on every bump — with a bare time(), a write in the same
+	 * second as the render that cached a page left the marker equal and the
+	 * stale page valid (measured on Local, 2026-09-19: a field write right
+	 * after a view was not seen until the TTL).
+	 *
+	 * @param mixed $current Stored marker.
+	 * @return int
+	 */
+	public static function next_marker( $current ) {
+		return max( time(), (int) $current + 1 );
 	}
 
 	/**
@@ -209,9 +381,16 @@ class PCPTPages_Renderer {
 		if ( ! is_string( $option ) ) {
 			return;
 		}
+		// Grouping definitions and post-field definitions are both per-CPT
+		// options, and both change what every record of the type renders.
+		// Post-field definitions were missing until 2026-09-19: renaming a
+		// field's label or moving it left cached pages on the old layout.
 		$prefix = PCPTPages_Grouping_Registry::OPTION_PREFIX;
 		if ( strpos( $option, $prefix ) !== 0 ) {
-			return;
+			$prefix = PCPTPages_Post_Field_Registry::OPTION_PREFIX;
+			if ( strpos( $option, $prefix ) !== 0 ) {
+				return;
+			}
 		}
 		$cpt_slug = substr( $option, strlen( $prefix ) );
 		if ( $cpt_slug === '' ) {
@@ -225,7 +404,7 @@ class PCPTPages_Renderer {
 		if ( strpos( $option, self::CHANGED_OPTION_PREFIX ) === 0 ) {
 			return;
 		}
-		update_option( self::CHANGED_OPTION_PREFIX . sanitize_key( $cpt_slug ), time() );
+		self::bump_cpt_changed( $cpt_slug );
 	}
 
 	/**
@@ -293,6 +472,7 @@ class PCPTPages_Renderer {
 			&& isset( $cached['html'], $cached['post_modified'], $cached['defs_changed'], $cached['styles'] )
 			&& $cached['post_modified'] === $post->post_modified
 			&& (int) $cached['defs_changed'] === $defs_changed
+			&& self::dependencies_current( (array) ( $cached['deps'] ?? array() ) )
 		) {
 			// Cache hit. Replay the asset enqueues that the original render
 			// triggered as side effects (see the capture below) BEFORE
@@ -327,9 +507,12 @@ class PCPTPages_Renderer {
 		$styles_before  = wp_styles()->queue;
 		$scripts_before = wp_scripts()->queue;
 
+		self::$capturing_deps = array();
 		ob_start();
 		$this->render_internal( $post );
 		$html = ob_get_clean();
+		$deps                 = self::dependency_markers( array_keys( self::$capturing_deps ) );
+		self::$capturing_deps = null;
 
 		$render_styles  = array_values( array_diff( wp_styles()->queue, $styles_before ) );
 		$render_scripts = array_values( array_diff( wp_scripts()->queue, $scripts_before ) );
@@ -354,6 +537,7 @@ class PCPTPages_Renderer {
 				'defs_changed'  => $defs_changed,
 				'styles'        => $render_styles,
 				'scripts'       => $render_scripts,
+				'deps'          => $deps,
 			),
 			$lifetime
 		);

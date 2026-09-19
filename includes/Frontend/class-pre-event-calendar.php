@@ -288,8 +288,11 @@ class PCPTPages_Event_Calendar {
 	}
 
 	/**
-	 * The records a type's feed carries: published, start within the
-	 * look-back window or in the future, soonest first, capped.
+	 * The records a type's feed carries: published, starting OR ending
+	 * within the look-back window or later, soonest first, capped. Matching
+	 * the end too keeps a long event — a season, an exhibition, a
+	 * construction closure — in the feed while it is still running; until
+	 * 2026-09-19 it dropped out 30 days after it began.
 	 *
 	 * @param string $type Post type slug.
 	 * @return WP_Post[]
@@ -300,7 +303,26 @@ class PCPTPages_Event_Calendar {
 			return array();
 		}
 		$sort_key = PCPTPages_Event_Query::sort_meta_key( $start_key );
+		$end_key  = PCPTPages_Event_Query::resolve_role_field_key( $type, 'event_end' );
 		$since    = (int) wp_date( 'YmdHis', time() - self::ARCHIVE_LOOKBACK_DAYS * DAY_IN_SECONDS );
+
+		$window = array(
+			'relation' => 'OR',
+			array(
+				'key'     => $sort_key,
+				'value'   => $since,
+				'compare' => '>=',
+				'type'    => 'NUMERIC',
+			),
+		);
+		if ( $end_key !== '' ) {
+			$window[] = array(
+				'key'     => PCPTPages_Event_Query::sort_meta_key( $end_key ),
+				'value'   => $since,
+				'compare' => '>=',
+				'type'    => 'NUMERIC',
+			);
+		}
 
 		$args = array(
 			'post_type'           => $type,
@@ -311,14 +333,7 @@ class PCPTPages_Event_Calendar {
 			'meta_key'            => $sort_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 			'orderby'             => 'meta_value_num',
 			'order'               => 'ASC',
-			'meta_query'          => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-				array(
-					'key'     => $sort_key,
-					'value'   => $since,
-					'compare' => '>=',
-					'type'    => 'NUMERIC',
-				),
-			),
+			'meta_query'          => $window, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 		);
 
 		/**

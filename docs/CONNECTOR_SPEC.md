@@ -440,7 +440,7 @@ Source can be a string (`"manual"` or `"child_posts"`) or an object form for the
 
 `PUT /cpts/{slug}/groupings/{key}` — same versioning rules as CPT update
 
-`DELETE /cpts/{slug}/groupings/{key}` → `200 OK`, body `{ "deleted": true, "slug": "...", "key": "..." }`. Post data referencing this grouping_key is preserved unless `?purge_data=1` is set.
+`DELETE /cpts/{slug}/groupings/{key}` → `200 OK`, body `{ "deleted": true, "slug": "...", "key": "..." }`. Post data referencing this grouping_key is always preserved (skipped at render time), so defining the key again brings it back. There is no per-grouping purge: `?purge_data` was documented here and advertised by the relay but never read by the handler (removed from both 2026-09-19). To remove the values, delete the type with `?purge_data=1`.
 
 ---
 

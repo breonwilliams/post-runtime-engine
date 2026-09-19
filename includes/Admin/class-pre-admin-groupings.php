@@ -502,6 +502,23 @@ class PCPTPages_Admin_Groupings {
 				</tr>
 				<tr class="pre-source-row pre-source-row--meta">
 					<th scope="row">
+						<label for="pcptpages_source_field_key"><?php esc_html_e( 'Post field key', 'promptless-cpt-pages' ); ?></label>
+					</th>
+					<td>
+						<input
+							type="text"
+							id="pcptpages_source_field_key"
+							name="source_field_key"
+							class="regular-text code"
+							value="<?php echo esc_attr( $values['source_field_key'] ); ?>"
+							maxlength="64">
+						<p class="description">
+							<?php esc_html_e( 'Only used when source mode is "meta_match". The key of a post field (for example agent or department). Fill in this OR the post-meta key below, not both.', 'promptless-cpt-pages' ); ?>
+						</p>
+					</td>
+				</tr>
+				<tr class="pre-source-row pre-source-row--meta">
+					<th scope="row">
 						<label for="pcptpages_source_meta_key"><?php esc_html_e( 'Post-meta key', 'promptless-cpt-pages' ); ?></label>
 					</th>
 					<td>
@@ -513,7 +530,39 @@ class PCPTPages_Admin_Groupings {
 							value="<?php echo esc_attr( $values['source_meta_key'] ); ?>"
 							maxlength="64">
 						<p class="description">
-							<?php esc_html_e( 'Only used when source mode is "meta_match". The resolver reads the current post\'s value for this meta key and returns other posts in the same CPT whose value matches. Underscore-prefixed keys (private meta) are allowed. Examples: _agent_id, _employer_id, _business_id.', 'promptless-cpt-pages' ); ?>
+							<?php esc_html_e( 'Only used when source mode is "meta_match", for meta written by other code. Underscore-prefixed keys (private meta) are allowed. Examples: _agent_id, _employer_id, _business_id.', 'promptless-cpt-pages' ); ?>
+						</p>
+					</td>
+				</tr>
+				<tr class="pre-source-row pre-source-row--meta">
+					<th scope="row">
+						<label for="pcptpages_source_post_type"><?php esc_html_e( 'Records of type', 'promptless-cpt-pages' ); ?></label>
+					</th>
+					<td>
+						<select id="pcptpages_source_post_type" name="source_post_type">
+							<option value=""><?php esc_html_e( '— This post type —', 'promptless-cpt-pages' ); ?></option>
+							<?php foreach ( $this->meta_match_post_type_choices( $values['source_post_type'] ) as $pt_slug => $pt_label ) : ?>
+								<option value="<?php echo esc_attr( $pt_slug ); ?>" <?php selected( $values['source_post_type'], $pt_slug ); ?>><?php echo esc_html( $pt_label ); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Only used when source mode is "meta_match". Choose another type to list ITS records on this type\'s pages — a department page listing its meetings.', 'promptless-cpt-pages' ); ?>
+						</p>
+					</td>
+				</tr>
+				<tr class="pre-source-row pre-source-row--meta">
+					<th scope="row">
+						<label for="pcptpages_source_match_against"><?php esc_html_e( 'Match against', 'promptless-cpt-pages' ); ?></label>
+					</th>
+					<td>
+						<select id="pcptpages_source_match_against" name="source_match_against">
+							<option value=""><?php esc_html_e( 'This record\'s own value for the same key (default)', 'promptless-cpt-pages' ); ?></option>
+							<option value="current_title" <?php selected( $values['source_match_against'], 'current_title' ); ?>><?php esc_html_e( 'This record\'s title', 'promptless-cpt-pages' ); ?></option>
+							<option value="current_slug" <?php selected( $values['source_match_against'], 'current_slug' ); ?>><?php esc_html_e( 'This record\'s slug', 'promptless-cpt-pages' ); ?></option>
+							<option value="current_id" <?php selected( $values['source_match_against'], 'current_id' ); ?>><?php esc_html_e( 'This record\'s ID', 'promptless-cpt-pages' ); ?></option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Only used when source mode is "meta_match". The default finds records that share a value with this one; the others find records whose field names this record.', 'promptless-cpt-pages' ); ?>
 						</p>
 					</td>
 				</tr>
@@ -691,6 +740,9 @@ class PCPTPages_Admin_Groupings {
 			'source_meta_key'          => isset( $_POST['source_meta_key'] )
 				? strtolower( trim( wp_unslash( (string) $_POST['source_meta_key'] ) ) )
 				: '',
+			'source_field_key'         => isset( $_POST['source_field_key'] ) ? sanitize_key( wp_unslash( $_POST['source_field_key'] ) ) : '',
+			'source_post_type'         => isset( $_POST['source_post_type'] ) ? sanitize_key( wp_unslash( $_POST['source_post_type'] ) ) : '',
+			'source_match_against'     => isset( $_POST['source_match_against'] ) ? sanitize_key( wp_unslash( $_POST['source_match_against'] ) ) : '',
 			'source_limit'             => isset( $_POST['source_limit'] ) && $_POST['source_limit'] !== '' ? max( 1, min( 100, (int) $_POST['source_limit'] ) ) : null,
 			'source_exclude_self'      => ! empty( $_POST['source_exclude_self'] ),
 			'heading_required'         => ! empty( $_POST['heading_required'] ),
@@ -747,11 +799,24 @@ class PCPTPages_Admin_Groupings {
 				$definition['default_source'] = $source;
 				break;
 			case 'meta_match':
-				$source = array(
-					'type'         => 'meta_match',
-					'meta_key'     => $values['source_meta_key'],
-					'exclude_self' => $values['source_exclude_self'],
-				);
+				// Every key the connector can set is round-tripped here. Until
+				// 2026-09-19 only meta_key was, so saving a reverse lookup
+				// ({field_key, post_type, match_against}) from this screen
+				// rewrote it into a same-type mirror of an empty meta key.
+				$source = array( 'type' => 'meta_match' );
+				if ( $values['source_field_key'] !== '' ) {
+					$source['field_key'] = $values['source_field_key'];
+				}
+				if ( $values['source_meta_key'] !== '' ) {
+					$source['meta_key'] = $values['source_meta_key'];
+				}
+				if ( $values['source_post_type'] !== '' ) {
+					$source['post_type'] = $values['source_post_type'];
+				}
+				if ( $values['source_match_against'] !== '' ) {
+					$source['match_against'] = $values['source_match_against'];
+				}
+				$source['exclude_self'] = $values['source_exclude_self'];
 				if ( $values['source_limit'] !== null ) {
 					$source['limit'] = $values['source_limit'];
 				}
@@ -764,6 +829,28 @@ class PCPTPages_Admin_Groupings {
 		}
 
 		return $definition;
+	}
+
+	/**
+	 * Post types a meta_match source can read: this plugin's types, plus
+	 * whatever is already stored (a type registered by other code must
+	 * survive a save rather than be dropped from the select).
+	 *
+	 * @param string $current Stored post_type, or ''.
+	 * @return array<string,string> slug => label
+	 */
+	private function meta_match_post_type_choices( $current ) {
+		$choices = array();
+		$plugin  = pcptpages();
+		if ( $plugin->cpts ) {
+			foreach ( $plugin->cpts->get_all() as $slug => $def ) {
+				$choices[ $slug ] = ! empty( $def['label_plural'] ) ? $def['label_plural'] . ' (' . $slug . ')' : $slug;
+			}
+		}
+		if ( is_string( $current ) && $current !== '' && ! isset( $choices[ $current ] ) ) {
+			$choices[ $current ] = $current;
+		}
+		return $choices;
 	}
 
 	/**
@@ -786,6 +873,9 @@ class PCPTPages_Admin_Groupings {
 			'source_type'              => is_array( $source ) ? ( $source['type'] ?? 'manual' ) : (string) $source,
 			'source_taxonomy'          => is_array( $source ) ? ( $source['taxonomy'] ?? '' ) : '',
 			'source_meta_key'          => is_array( $source ) ? ( $source['meta_key'] ?? '' ) : '',
+			'source_field_key'         => is_array( $source ) ? ( $source['field_key'] ?? '' ) : '',
+			'source_post_type'         => is_array( $source ) ? ( $source['post_type'] ?? '' ) : '',
+			'source_match_against'     => is_array( $source ) && ( $source['match_against'] ?? 'same_key' ) !== 'same_key' ? $source['match_against'] : '',
 			'source_limit'             => is_array( $source ) ? ( $source['limit'] ?? null ) : null,
 			'source_exclude_self'      => is_array( $source ) ? ( $source['exclude_self'] ?? true ) : true,
 			'heading_required'         => isset( $definition['heading_required'] ) ? (bool) $definition['heading_required'] : true,
@@ -813,6 +903,10 @@ class PCPTPages_Admin_Groupings {
 			'max_items'                => null,
 			'source_type'              => 'manual',
 			'source_taxonomy'          => '',
+			'source_meta_key'          => '',
+			'source_field_key'         => '',
+			'source_post_type'         => '',
+			'source_match_against'     => '',
 			'source_limit'             => null,
 			'source_exclude_self'      => true,
 			'heading_required'         => true,

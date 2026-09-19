@@ -43,22 +43,28 @@ $NOW = 20260601120000; // 2026-06-01 12:00:00 as YYYYMMDDHHMMSS
 
 echo "=== build_status_meta_query(): clause shapes ===\n";
 
-// Upcoming anchors on the END key (in-progress multi-day events stay upcoming).
+// Upcoming anchors on the END key (in-progress multi-day events stay upcoming);
+// a record with no end value falls back to its start (NOT EXISTS branch).
 $mq = PCPTPages_Event_Query::build_status_meta_query( 'S', 'E', 'upcoming', $NOW );
-check( 'upcoming: single clause', is_array( $mq ) && count( $mq ) === 1 && isset( $mq[0] ) );
-check( 'upcoming: anchors on END key', $mq[0]['key'] === 'E' );
-check( 'upcoming: compare >=', $mq[0]['compare'] === '>=' );
-check( 'upcoming: numeric value = now', $mq[0]['value'] === $NOW && $mq[0]['type'] === 'NUMERIC' );
+check( 'upcoming: single group', is_array( $mq ) && count( $mq ) === 1 && isset( $mq[0] ) );
+check( 'upcoming: OR of end / no-end-use-start', $mq[0]['relation'] === 'OR' );
+check( 'upcoming: anchors on END key, compare >=', $mq[0][0]['key'] === 'E' && $mq[0][0]['compare'] === '>=' );
+check( 'upcoming: numeric value = now', $mq[0][0]['value'] === $NOW && $mq[0][0]['type'] === 'NUMERIC' );
+check( 'upcoming: no end falls back to START', $mq[0][1][0]['compare'] === 'NOT EXISTS' && $mq[0][1][1]['key'] === 'S' );
 
 // Past anchors on END key with strict <.
 $mq = PCPTPages_Event_Query::build_status_meta_query( 'S', 'E', 'past', $NOW );
-check( 'past: anchors on END key, compare <', $mq[0]['key'] === 'E' && $mq[0]['compare'] === '<' );
+check( 'past: anchors on END key, compare <', $mq[0][0]['key'] === 'E' && $mq[0][0]['compare'] === '<' );
 
 // Happening: start <= now AND end >= now.
 $mq = PCPTPages_Event_Query::build_status_meta_query( 'S', 'E', 'happening', $NOW );
 check( 'happening: relation AND', isset( $mq['relation'] ) && $mq['relation'] === 'AND' );
 check( 'happening: start clause <= now', $mq[0]['key'] === 'S' && $mq[0]['compare'] === '<=' );
-check( 'happening: end clause >= now', $mq[1]['key'] === 'E' && $mq[1]['compare'] === '>=' );
+check( 'happening: end clause >= now', $mq[1][0]['key'] === 'E' && $mq[1][0]['compare'] === '>=' );
+
+// All-day end compares against the start of today.
+$mq = PCPTPages_Event_Query::build_status_meta_query( 'S', 'E', 'upcoming', $NOW, array( 'end' => true ) );
+check( 'all-day end: compares with midnight today', $mq[0][0]['value'] === 20260601000000 );
 
 echo "\n=== end-key fallback + guards ===\n";
 

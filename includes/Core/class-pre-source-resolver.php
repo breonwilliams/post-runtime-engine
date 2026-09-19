@@ -275,6 +275,12 @@ class PCPTPages_Source_Resolver {
 			$args['exclude'] = array( $post->ID );
 		}
 
+		// A reverse lookup reads ANOTHER type's records, so a cached render
+		// of this page is only good while that type is unchanged.
+		if ( $target_post_type !== $post->post_type && class_exists( 'PCPTPages_Renderer' ) ) {
+			PCPTPages_Renderer::note_dependency( $target_post_type );
+		}
+
 		$matched = get_posts( $args );
 		return array_map( array( $this, 'post_to_item' ), $matched );
 	}

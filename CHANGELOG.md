@@ -24,14 +24,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `tests/Unit/UninstallTest.php` runs the real `uninstall.php` three ways.
 
 ### Fixed
-- **Saving a type in the admin erased an Iconify default icon.** The
-  **Default icon** list holds only the curated icons, so a type whose icon
-  was set through the connector as an Iconify code (`mdi:tools`) had no
-  selected option and saved as None — and the save handler's
-  `sanitize_key()` stripped the colon from any Iconify code anyway. The
-  list now shows the current code as its own option, and the handler
-  cleans the value the way the meta box does, leaving the check to the
-  validator. Found in the release-readiness click-through.
 
 All found by the 2026-09-19 pressure test (a township site built only
 through the connectors).
@@ -164,6 +156,17 @@ Each checked in the code and then live on Local before changing it.
   modes; CLAUDE.md reported 0.6.5 and nine display types; the preflight's
   visibility rule said no position can be overridden per record, which is
   not true of a map's placement.
+
+### Fixed — found in the release check (2026-09-19)
+
+- **Saving a type in the admin erased an Iconify default icon.** The
+  **Default icon** list holds only the curated icons, so a type whose icon
+  was set through the connector as an Iconify code (`mdi:tools`) had no
+  selected option and saved as None — and the save handler's
+  `sanitize_key()` stripped the colon from any Iconify code anyway. The
+  list now shows the current code as its own option, and the handler
+  cleans the value the way the meta box does, leaving the check to the
+  validator. Found in the release-readiness click-through.
 
 ## [0.10.0] - 2026-09-14
 

@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+Fixes from the Promptless video dry run (2026-10).
+
+### Fixed
+
+- **The relay reported failed calls as results.** An HTTP error came back
+  as an ordinary tool result without MCP's `isError`, so a refused write
+  read as done. Failed calls now carry `isError: true`; a 429 adds
+  `rate_limited` and `retry_after_seconds`. `tests/relay-tool-errors.test.js`.
+- **`filter_widget: "pill_select"` rendered as a dropdown.** The filter
+  descriptor now carries `presentation: "pills"` for a field saved with
+  `pill_select`, and Promptless WP renders it as pills. Older Promptless WP
+  ignores the key and keeps the dropdown. `tests/smoke-filters-phase2.php`.
+- **A `multi_badge` value sent as a list read back as comma text.** The
+  connector's field-values responses (GET and PUT) now return
+  `multi_badge` as a list, matching what the tool examples send. Storage is
+  unchanged (comma-separated, which the filter query reads).
+  `tests/smoke-multi-badge-roundtrip.php` (Local).
+
 ## [0.10.1] - 2026-09-19
 
 ### Changed

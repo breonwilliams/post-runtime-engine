@@ -89,6 +89,15 @@ $p = call_priv( 'params_for_widget', array( 'title', 'text_search' ) );
 check( 'text_search param q', ( $p['q'] ?? '' ) === 'title_q' );
 $p = call_priv( 'params_for_widget', array( 'tags', 'checkbox_group' ) );
 check( 'checkbox_group param values', ( $p['values'] ?? '' ) === 'tags' );
+// presentation: pills only when the field explicitly chose pill_select; the
+// badge default (dropdown) carries no hint (video dry run, 2026-10).
+$d_default  = call_priv( 'build_field_descriptor', array( 'listings', 'status', field( array( 'display_type' => 'badge', 'filterable' => true ) ) ) );
+$d_explicit = call_priv( 'build_field_descriptor', array( 'listings', 'status', field( array( 'display_type' => 'badge', 'filterable' => true, 'filter_widget' => 'pill_select' ) ) ) );
+$d_checks   = call_priv( 'build_field_descriptor', array( 'listings', 'status', field( array( 'display_type' => 'badge', 'filterable' => true, 'filter_widget' => 'checkbox_group' ) ) ) );
+check( 'badge default: pill_select widget, no presentation hint', $d_default['widget'] === 'pill_select' && ! isset( $d_default['presentation'] ) );
+check( 'explicit filter_widget pill_select: presentation pills', $d_explicit['widget'] === 'pill_select' && ( $d_explicit['presentation'] ?? '' ) === 'pills' );
+check( 'checkbox_group override: no presentation hint', $d_checks['widget'] === 'checkbox_group' && ! isset( $d_checks['presentation'] ) );
+
 $p = call_priv( 'params_for_widget', array( 'status', 'pill_select' ) );
 check( 'pill_select param value', ( $p['value'] ?? '' ) === 'status' );
 

@@ -4,7 +4,7 @@ Tags: custom post types, post template, structured content, custom fields, singl
 Requires at least: 5.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.10.1
+Stable tag: 0.11.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,11 @@ Privacy policy: https://iconify.design/privacy/
 
 == Changelog ==
 
+= 0.11.0 =
+* Added: a field saved with the "pill_select" filter widget now renders as pills on Promptless WP 1.8.11 and later (older versions keep the dropdown).
+* Changed: the connector returns multi-badge field values as a list, matching what it accepts. Values are stored the same way as before.
+* Fixed: the AI connector now reports a refused or failed request as an error (including rate limits, with a retry time) instead of as a success.
+
 = 0.10.1 =
 * Changed: deleting the plugin keeps post types, fields, groupings and record values unless PCPTPAGES_REMOVE_ALL_DATA is set in wp-config.php.
 * Fixed: the connector's delete removed records permanently while reporting a trash; connector writes could take up to an hour to show on the page.
@@ -101,17 +106,10 @@ Privacy policy: https://iconify.design/privacy/
 = 0.8.1 =
 * Fixed: "Skip to content" did nothing on custom post type single pages. The template mirrors the theme's `<main>` but had not been updated with it, so activating the link scrolled the page without moving keyboard focus — the next Tab went back to the top of the navigation (WCAG 2.4.1).
 
-= 0.8.0 =
-* Added: the connector can now list and delete the posts it creates. Previously it could build a set of content and then had no way to review or undo it without going into wp-admin by hand.
-* Added: re-registering a post type you deleted earlier now tells you what came back — existing groupings, fields and posts — instead of looking like a fresh start and then failing confusingly.
-* Fixed: deleting a post type destroyed its grouping definitions even though it reported that your data was preserved. Re-registering brought back content that could no longer be displayed. Nothing is destroyed now unless you explicitly ask to purge.
-* Fixed: "purge data" left most of the data behind — field definitions, saved values and backup rows. It now removes all of it.
-* Fixed: every grouping save created around 20 junk database options that were loaded on every page request, growing with each save. Rows already on your site are removed automatically the first time you visit wp-admin after updating.
-* Fixed: the connector used up its hourly request allowance about twice as fast as it should have.
-* Fixed: the connector could not reach an HTTPS local development site.
-
-
 == Upgrade Notice ==
+
+= 0.11.0 =
+Pill filters render as pills with Promptless WP 1.8.11, multi-badge values read back as a list through the connector, and connector errors are reported as errors. No settings change.
 
 = 0.10.1 =
 Fixes a connector delete that removed records permanently, event lists that dropped all-day and open-ended events, and admin saves that erased settings made through the connector. Deleting the plugin now keeps your data unless you opt in.
@@ -127,7 +125,3 @@ Adds Add to calendar links and a subscribable calendar feed for event-shaped rec
 
 = 0.8.1 =
 Accessibility fix: the "Skip to content" link now moves keyboard focus on custom post type single pages instead of only scrolling. No content or settings change.
-
-= 0.8.0 =
-Fixes two data-handling bugs: deleting a post type destroyed grouping definitions it claimed to preserve, and "purge data" left most behind. Also stops a bug that created ~20 junk autoloaded options per grouping save, and clears existing ones automatically.
-

@@ -964,6 +964,43 @@ function normalizeGroupingsArray(groupings) {
 // Tool → REST route mapping.
 // ---------------------------------------------------------------------------
 
+/**
+ * The MCP tools/call result for a handler's return value.
+ *
+ * makeRequest() turns every HTTP status >= 400 into `{ error: true, status,
+ * ... }` and resolves rather than rejects, so a refused write (a 429 rate
+ * limit, a 403, a 500) used to reach the model as an ordinary result with no
+ * `isError`, and the AI reported the write as done (found in the Promptless
+ * video dry run, 2026-10; the Promptless WP relay had the same gap). MCP's
+ * contract is that a tool which failed says so with `isError: true`. For a
+ * rate limit the message also says when to retry.
+ *
+ * @param {*} result
+ * @returns {{content: Array, isError?: boolean}}
+ */
+function toolCallResult(result) {
+  const failed = !!(result && typeof result === "object" && result.error === true);
+  let payload = result;
+  if (failed && result.status === 429) {
+    const retry = Number(result?.data?.retry_after ?? result?.retry_after ?? 60);
+    payload = {
+      ...result,
+      rate_limited: true,
+      retry_after_seconds: retry,
+      message:
+        (result.message ? result.message + " " : "") +
+        `Nothing was written. Wait ${retry} seconds, then retry this same call.`,
+    };
+  }
+  const out = {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+  };
+  if (failed) {
+    out.isError = true;
+  }
+  return out;
+}
+
 async function handleTool(name, args) {
   switch (name) {
     case "postruntime_preflight":
@@ -1536,11 +1573,7 @@ async function handleMessage(msg) {
 
       try {
         const result = await handleTool(toolName, toolArgs);
-        sendResult(id, {
-          content: [
-            { type: "text", text: JSON.stringify(result, null, 2) },
-          ],
-        });
+        sendResult(id, toolCallResult(result));
       } catch (e) {
         sendResult(id, {
           content: [

@@ -208,6 +208,16 @@ class PCPTPages_Filter_Descriptors {
 			$descriptor['options'] = self::options_for_field( $def );
 		}
 
+		// pill_select is the DEFAULT widget for every filterable badge, which
+		// Promptless WP draws as a dropdown. A field that explicitly CHOSE
+		// pill_select asks for pills, so say so (Promptless video dry run,
+		// 2026-10: the explicit choice drew a dropdown). An additive hint, not
+		// a new widget value: a renderer that predates it ignores the key and
+		// still draws a working dropdown. See SCHEMA_DRIVEN_FILTERS_DESIGN.md §4.
+		if ( $widget === 'pill_select' && ( $def['filter_widget'] ?? '' ) === 'pill_select' ) {
+			$descriptor['presentation'] = 'pills';
+		}
+
 		if ( in_array( $widget, array( 'range', 'stepper' ), true ) ) {
 			$descriptor['range'] = self::range_for_field( $def );
 		}

@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-12
+
 Fixes from the Promptless video dry run (2026-10).
 
 ### Fixed
